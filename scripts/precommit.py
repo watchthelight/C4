@@ -65,7 +65,7 @@ def denied(rel: str):
         return "backup files are never committed"
     if p.suffix == ".jsonl" and p.parts[:1] != ("fixtures",):
         return "JSONL outside fixtures/ looks like a transcript or ledger"
-    if p.suffix in {".pem", ".pfx", ".p12", ".crt", ".key"} and not rel.startswith("fixtures/registry/"):
+    if p.suffix in {".pem", ".pfx", ".p12", ".crt", ".key"} and not rel.startswith("fixtures/home/sessions/"):
         return "key and certificate files are never committed"
     return None
 

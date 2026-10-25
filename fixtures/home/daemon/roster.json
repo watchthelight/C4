@@ -1,0 +1,86 @@
+{
+  "proto": 1,
+  "supervisorPid": 41900,
+  "updatedAt": 1792900500000,
+  "workers": {
+    "0b2c3d4e": {
+      "pid": 41011,
+      "procStart": "134373011000000000",
+      "sessionId": "0b2c3d4e-0002-4000-8000-000000000011",
+      "rendezvousSock": "\\\\.\\pipe\\cc-daemon-0000000000000000-rv-0b2c3d4e",
+      "ptySock": "\\\\.\\pipe\\cc-daemon-0000000000000000-pty-0b2c3d4e",
+      "cliVersion": "2.1.299",
+      "startedAt": 1792800000000,
+      "attempt": 1,
+      "cwd": "/home/example/proj-worker-one",
+      "dispatch": {
+        "proto": 1,
+        "short": "0b2c3d4e",
+        "nonce": "00000001",
+        "sessionId": "0b2c3d4e-0002-4000-8000-000000000011",
+        "createdAt": 1792799999000,
+        "source": "slash",
+        "cwd": "/home/example/proj-worker-one",
+        "launch": {
+          "mode": "prompt",
+          "args": ["run the test suite and report"],
+          "restoresTranscript": false
+        },
+        "env": {},
+        "isolation": "none",
+        "respawnFlags": ["--bg"],
+        "agent": "claude",
+        "seed": {
+          "intent": "run the test suite and report",
+          "name": "worker one"
+        },
+        "cols": 120,
+        "rows": 40
+      },
+      "decModes": [1, 25, 1000, 1002, 1004, 1006, 2004],
+      "rvAuth": "fixture-not-a-secret-00000001",
+      "ptyAuth": "fixture-not-a-secret-00000002"
+    },
+    "0c3d4e5f": {
+      "pid": 41012,
+      "procStart": "134373012000000000",
+      "sessionId": "0c3d4e5f-0002-4000-8000-000000000012",
+      "rendezvousSock": "\\\\.\\pipe\\cc-daemon-0000000000000000-rv-0c3d4e5f",
+      "ptySock": "\\\\.\\pipe\\cc-daemon-0000000000000000-pty-0c3d4e5f",
+      "cliVersion": "2.1.299",
+      "startedAt": 1792700000000,
+      "attempt": 2,
+      "cwd": "/home/example/proj-worker-two",
+      "dispatch": {
+        "proto": 1,
+        "short": "0c3d4e5f",
+        "nonce": "00000002",
+        "sessionId": "0c3d4e5f-0002-4000-8000-000000000012",
+        "createdAt": 1792699999000,
+        "source": "slash",
+        "cwd": "/home/example/proj-worker-two",
+        "launch": {
+          "mode": "resume",
+          "sessionId": "/home/example/.claude/projects/-home-example-proj-worker-two/0c3d4e5f-0002-4000-8000-000000000012.jsonl",
+          "fork": true,
+          "flagArgs": [],
+          "restoresTranscript": true
+        },
+        "env": {
+          "CLAUDE_BG_ISOLATION": "none"
+        },
+        "isolation": "none",
+        "respawnFlags": ["--bg", "--fork-session"],
+        "seed": {
+          "intent": "continue the review",
+          "name": "worker two"
+        },
+        "cols": 120,
+        "rows": 40
+      },
+      "decModes": [1, 25, 1000, 1002, 1004, 1006, 2004],
+      "rvAuth": "fixture-not-a-secret-00000003",
+      "ptyAuth": "fixture-not-a-secret-00000004"
+    }
+  }
+}

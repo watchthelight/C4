@@ -14,7 +14,7 @@ perf/results/
 *.pfx
 *.p12
 *.key
-!fixtures/registry/*.key
+!fixtures/home/sessions/*.key
 *.bak
 *.bak-*
 .claude/settings.local.json

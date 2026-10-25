@@ -1,0 +1,1 @@
+Not a registry record. The scanner reads only <pid>.json files and leaves everything else alone.

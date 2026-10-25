@@ -1,0 +1,21 @@
+{
+  "pid": 41002,
+  "sessionId": "0a1b2c3d-0001-4000-8000-000000000002",
+  "cwd": "/home/example/proj-beta",
+  "startedAt": 1792900100000,
+  "procStart": "134373001000000000",
+  "version": "2.1.299",
+  "peerProtocol": 1,
+  "peerFeatures": ["notify_idle", "artifact_yield"],
+  "kind": "interactive",
+  "entrypoint": "cli",
+  "messagingSocketPath": "/tmp/claude-example/cc-msg-0000000000000002.sock",
+  "name": "nightly build",
+  "nameSource": "user",
+  "nameSince": 1792900120000,
+  "formerNames": ["proj-beta"],
+  "updatedAt": 1792900200000,
+  "status": "waiting",
+  "waitingFor": "approve Bash",
+  "statusUpdatedAt": 1792900200000
+}

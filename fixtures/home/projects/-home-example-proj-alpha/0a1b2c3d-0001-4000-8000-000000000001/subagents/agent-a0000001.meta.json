@@ -1,0 +1,6 @@
+{
+  "agentType": "Explore",
+  "description": "Find build entry points",
+  "toolUseId": "toolu_fx_0002",
+  "spawnDepth": 1
+}

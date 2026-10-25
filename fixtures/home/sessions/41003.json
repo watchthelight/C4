@@ -1,0 +1,20 @@
+{
+  "pid": 41003,
+  "sessionId": "0a1b2c3d-0001-4000-8000-000000000003",
+  "cwd": "C:\\Users\\example\\proj-gamma",
+  "startedAt": 1792900300000,
+  "procStart": "134373003000000000",
+  "version": "2.1.299",
+  "peerProtocol": 1,
+  "peerFeatures": ["notify_idle", "artifact_yield"],
+  "kind": "interactive",
+  "entrypoint": "cli",
+  "pidDomain": "win32:0000",
+  "messagingSocketPath": "\\\\.\\pipe\\LOCAL\\cc-msg-0000000000000003",
+  "name": "proj-gamma",
+  "nameSource": "auto",
+  "nameSince": 1792900300900,
+  "updatedAt": 1792900400000,
+  "status": "idle",
+  "statusUpdatedAt": 1792900400000
+}

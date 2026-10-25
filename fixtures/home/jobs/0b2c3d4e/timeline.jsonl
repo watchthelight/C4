@@ -1,0 +1,3 @@
+{"at":"2026-10-25T10:00:02.000Z","state":"working","detail":"starting","text":"Reading the repository layout."}
+{"at":"2026-10-25T10:03:00.000Z","state":"working","detail":"running cargo test","text":"Running the workspace tests."}
+{"at":"2026-10-25T10:05:00.000Z","state":"working","detail":"running cargo test","text":"Waiting on a slow integration test."}

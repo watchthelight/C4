@@ -1,0 +1,11 @@
+{
+  "pid": 41004,
+  "sessionId": "0a1b2c3d-0001-4000-8000-000000000004",
+  "cwd": "/home/example/proj-delta",
+  "startedAt": 1792900400000,
+  "procStart": 134373004000000000,
+  "version": "2.1.250",
+  "kind": "interactive",
+  "entrypoint": "cli",
+  "updatedAt": 1792900400000
+}

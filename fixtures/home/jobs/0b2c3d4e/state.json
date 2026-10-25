@@ -1,0 +1,42 @@
+{
+  "state": "working",
+  "detail": "running cargo test",
+  "tempo": "active",
+  "inFlight": {
+    "tasks": 1,
+    "queued": 0,
+    "kinds": ["shell"],
+    "drainableMonitors": 0
+  },
+  "fan": [
+    {
+      "id": "fan000001",
+      "kind": "shell",
+      "label": "cargo test --workspace",
+      "startedAt": 1792800300000
+    }
+  ],
+  "tokens": 12345,
+  "needs": "",
+  "output": null,
+  "children": null,
+  "linkScanOffset": 2048,
+  "linkScanPath": "/home/example/.claude/projects/-home-example-proj-worker-one/0b2c3d4e-0002-4000-8000-000000000011.jsonl",
+  "template": "bg",
+  "respawnFlags": ["--bg"],
+  "intent": "run the test suite and report",
+  "name": "worker one",
+  "nameSource": "user",
+  "sessionId": "0b2c3d4e-0002-4000-8000-000000000011",
+  "resumeSessionId": "0b2c3d4e-0002-4000-8000-000000000011",
+  "daemonShort": "0b2c3d4e",
+  "cliVersion": "2.1.299",
+  "cwd": "/home/example/proj-worker-one",
+  "bgIsolation": "none",
+  "providerEnv": {},
+  "interactiveLineage": false,
+  "backend": "daemon",
+  "createdAt": "2026-10-25T10:00:00.000Z",
+  "updatedAt": "2026-10-25T10:05:00.000Z",
+  "firstTerminalAt": "2026-10-25T10:00:02.000Z"
+}
