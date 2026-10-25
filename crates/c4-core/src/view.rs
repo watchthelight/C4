@@ -108,6 +108,12 @@ pub struct SessionView {
     pub pending_background_agents: u32,
     /// `pendingWorkflowCount` from the last `turn_duration` record.
     pub pending_workflows: u32,
+    /// The short job id of a background session, for `claude attach` and friends.
+    pub daemon_short: Option<String>,
+    /// Tasks the background supervisor counts as in flight.
+    pub daemon_in_flight: u32,
+    /// The supervisor's detail line for a background session.
+    pub daemon_detail: Option<String>,
     /// Compactions seen.
     pub compactions: u32,
     /// When C4 first saw the session.
@@ -157,6 +163,9 @@ impl SessionView {
             background_tasks: Vec::new(),
             pending_background_agents: 0,
             pending_workflows: 0,
+            daemon_short: None,
+            daemon_in_flight: 0,
+            daemon_detail: None,
             compactions: 0,
             first_seen: now,
             started_at: None,
@@ -205,12 +214,14 @@ impl SessionView {
             .count()
     }
 
-    /// How much work is known to be in flight after a turn ends: running tasks, running agents and
-    /// whatever the last turn record counted as pending.
+    /// How much work is known to be in flight after a turn ends: running tasks, running agents,
+    /// whatever the last turn record counted as pending, and the supervisor's own count.
     #[must_use]
     pub fn in_flight(&self) -> u32 {
         let known = self.running_tasks().max(self.running_agents());
-        (known as u32).max(self.pending_background_agents + self.pending_workflows)
+        (known as u32)
+            .max(self.pending_background_agents + self.pending_workflows)
+            .max(self.daemon_in_flight)
     }
 
     /// The attention sort key: higher weight first, then the longest wait, then the most recent

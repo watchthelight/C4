@@ -15,6 +15,7 @@ pub mod observation;
 pub mod redact;
 pub mod reduce;
 pub mod state;
+pub mod table;
 pub mod view;
 
 pub use clock::Timestamp;
@@ -27,6 +28,7 @@ pub use observation::{
 };
 pub use reduce::{HEURISTIC_GUARD_MS, STALL_AFTER_MS, Transition, reduce, tick};
 pub use state::{DisconnectReason, InputReason, SessionState, StateKind};
+pub use table::SessionTable;
 pub use view::{AgentInfo, SessionView, TaskInfo, ToolInfo};
 
 /// The crate version, exported so the CLI and the UI can show the same number.

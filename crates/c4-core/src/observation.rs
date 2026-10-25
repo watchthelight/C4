@@ -336,6 +336,31 @@ pub enum ObservationBody {
         /// The display name.
         name: Option<String>,
     },
+    /// A background session as the supervisor's roster and job files describe it.
+    Daemon {
+        /// The short job id, which `claude attach`, `claude stop` and `claude logs` take.
+        short: String,
+        /// The worker process, when the roster lists one.
+        process: Option<ProcessRef>,
+        /// The job state.
+        state: BgState,
+        /// `active`, `idle` or `blocked`.
+        tempo: Option<String>,
+        /// The free-text detail line.
+        detail: Option<String>,
+        /// What the job needs from the user, when it is blocked.
+        needs: Option<String>,
+        /// Tasks the supervisor counts as in flight.
+        in_flight: u32,
+        /// The working directory.
+        cwd: Option<String>,
+        /// The display name.
+        name: Option<String>,
+        /// `user`, `auto` or `derived`.
+        name_source: Option<String>,
+        /// The Claude Code version of the worker.
+        version: Option<String>,
+    },
     /// The process was seen alive.
     ProcessAlive {
         /// The process.

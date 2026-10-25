@@ -137,31 +137,48 @@ pub fn reduce(view: &mut SessionView, obs: &Observation) -> Option<Transition> {
                     RegistryStatus::Unknown => None,
                 };
             }
-            match bg_state {
-                Some(BgState::Working) => set_state(view, SessionState::Working, ev),
-                Some(BgState::Blocked) => {
-                    set_state(view, waiting_state(waiting_for.as_deref()), ev)
-                }
-                Some(BgState::Done) => set_state(view, rest_state(view), ev),
-                Some(BgState::Failed) => set_state(
-                    view,
-                    SessionState::Failed {
-                        error: "background job failed".into(),
-                    },
-                    ev,
-                ),
-                Some(BgState::Stopped) => {
-                    view.ended = true;
-                    set_state(
-                        view,
-                        SessionState::Completed {
-                            reason: "stopped".into(),
-                        },
-                        ev,
-                    )
-                }
-                Some(BgState::Unknown) | None => None,
+            let waiting = Some(waiting_state(waiting_for.as_deref()));
+            apply_bg_state(view, *bg_state, waiting, ev)
+        }
+        ObservationBody::Daemon {
+            short,
+            process,
+            state,
+            tempo: _,
+            detail,
+            needs,
+            in_flight,
+            cwd,
+            name,
+            name_source,
+            version,
+        } => {
+            view.session_kind = SessionKind::Background;
+            view.daemon_short = Some(short.clone());
+            view.daemon_in_flight = *in_flight;
+            view.daemon_detail.clone_from(detail);
+            if let Some(p) = process
+                && view.process.is_none()
+            {
+                view.process = Some(*p);
             }
+            if view.cwd.is_none() && cwd.is_some() {
+                view.cwd.clone_from(cwd);
+            }
+            if name.is_some() && view.name_source.as_deref() != Some("user") {
+                view.name.clone_from(name);
+                view.name_source.clone_from(name_source);
+            }
+            if view.version.is_none() && version.is_some() {
+                view.version.clone_from(version);
+            }
+            let ev = Evidence::observed(Source::Daemon, at);
+            let waiting = needs
+                .as_deref()
+                .map(str::trim)
+                .filter(|n| !n.is_empty())
+                .map(daemon_waiting_state);
+            apply_bg_state(view, Some(*state), waiting, ev)
         }
         ObservationBody::ProcessAlive { process } => {
             view.process = Some(*process);
@@ -602,6 +619,58 @@ fn rest_state(view: &SessionView) -> SessionState {
         SessionState::BackgroundAgentsActive { count }
     } else {
         SessionState::Idle
+    }
+}
+
+/// Map a background job state, from the supervisor files or `claude agents --json`, to a transition.
+/// `waiting` is the state to show while the job is blocked.
+fn apply_bg_state(
+    view: &mut SessionView,
+    bg_state: Option<BgState>,
+    waiting: Option<SessionState>,
+    ev: Evidence,
+) -> Option<Transition> {
+    match bg_state {
+        Some(BgState::Working) => set_state(view, SessionState::Working, ev),
+        Some(BgState::Blocked) => {
+            let next = waiting.unwrap_or_else(|| waiting_state(None));
+            set_state(view, next, ev)
+        }
+        Some(BgState::Done) => set_state(view, rest_state(view), ev),
+        Some(BgState::Failed) => set_state(
+            view,
+            SessionState::Failed {
+                error: "background job failed".into(),
+            },
+            ev,
+        ),
+        Some(BgState::Stopped) => {
+            view.ended = true;
+            set_state(
+                view,
+                SessionState::Completed {
+                    reason: "stopped".into(),
+                },
+                ev,
+            )
+        }
+        Some(BgState::Unknown) | None => None,
+    }
+}
+
+/// Map the supervisor's free-text `needs` line to a waiting state. The whole line is kept as the
+/// detail; a permission request is recognized by its wording.
+fn daemon_waiting_state(needs: &str) -> SessionState {
+    let lower = needs.to_ascii_lowercase();
+    if lower.contains("approve") || lower.contains("permission") {
+        SessionState::WaitingPermission {
+            what: Some(needs.to_string()),
+        }
+    } else {
+        SessionState::WaitingUserInput {
+            reason: InputReason::Other,
+            detail: Some(needs.to_string()),
+        }
     }
 }
 
