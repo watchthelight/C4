@@ -368,8 +368,9 @@ pub enum ObservationBody {
     },
     /// The process is gone or its pid now belongs to something else.
     ProcessDead {
-        /// The process that was expected.
-        process: ProcessRef,
+        /// The process that was expected, or `None` for a session whose process was never known
+        /// (a background job the supervisor no longer lists).
+        process: Option<ProcessRef>,
         /// Why it counts as gone.
         reason: DisconnectReason,
     },

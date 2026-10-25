@@ -195,10 +195,13 @@ pub fn reduce(view: &mut SessionView, obs: &Observation) -> Option<Transition> {
             }
         }
         ObservationBody::ProcessDead { process, reason } => {
-            if let Some(known) = view.process
-                && !known.same_process(process)
-                && view.alive
-            {
+            let mismatched = match (view.process, process) {
+                (Some(known), Some(reported)) => !known.same_process(reported),
+                // A report naming no process cannot override a process this view knows.
+                (Some(_), None) => true,
+                (None, _) => false,
+            };
+            if mismatched && view.alive {
                 // A report about a process this view no longer refers to.
                 return None;
             }
@@ -1072,7 +1075,7 @@ mod tests {
                 sid(),
                 Timestamp::from_millis(at),
                 ObservationBody::ProcessDead {
-                    process: ProcessRef::new(10, 1),
+                    process: Some(ProcessRef::new(10, 1)),
                     reason: DisconnectReason::ProcessGone,
                 },
             )
@@ -1175,7 +1178,7 @@ mod tests {
             sid(),
             Timestamp::from_millis(2000),
             ObservationBody::ProcessDead {
-                process: ProcessRef::new(10, 1),
+                process: Some(ProcessRef::new(10, 1)),
                 reason: DisconnectReason::ProcessGone,
             },
         );
@@ -1217,7 +1220,7 @@ mod tests {
                 sid(),
                 Timestamp::from_millis(2000),
                 ObservationBody::ProcessDead {
-                    process: ProcessRef::new(10, 1),
+                    process: Some(ProcessRef::new(10, 1)),
                     reason: DisconnectReason::ProcessGone,
                 },
             ),
@@ -1238,12 +1241,46 @@ mod tests {
             sid(),
             Timestamp::from_millis(2000),
             ObservationBody::ProcessDead {
-                process: ProcessRef::new(99, 7),
+                process: Some(ProcessRef::new(99, 7)),
                 reason: DisconnectReason::ProcessGone,
             },
         );
         assert!(reduce(&mut v, &other).is_none());
         assert!(v.alive);
+        // A report that names no process cannot kill a view whose process is known and alive.
+        let anonymous = Observation::new(
+            sid(),
+            Timestamp::from_millis(2100),
+            ObservationBody::ProcessDead {
+                process: None,
+                reason: DisconnectReason::ProcessGone,
+            },
+        );
+        assert!(reduce(&mut v, &anonymous).is_none());
+        assert!(v.alive);
+    }
+
+    #[test]
+    fn an_anonymous_death_report_disconnects_a_view_with_no_process() {
+        let mut v = fresh();
+        v.process = None;
+        hook(&mut v, 1000, HookEvent::UserPromptSubmit);
+        let anonymous = Observation::new(
+            sid(),
+            Timestamp::from_millis(2000),
+            ObservationBody::ProcessDead {
+                process: None,
+                reason: DisconnectReason::ProcessGone,
+            },
+        );
+        let t = reduce(&mut v, &anonymous).expect("a transition");
+        assert_eq!(
+            t.to,
+            SessionState::Disconnected {
+                reason: DisconnectReason::ProcessGone
+            }
+        );
+        assert!(!v.alive);
     }
 
     #[test]
