@@ -1,0 +1,32 @@
+# <wtl> project: c4 | file: .github/ISSUE_TEMPLATE/bug_report.yml | author: watchthelight </wtl>
+name: Bug report
+description: Something C4 does wrong
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: C4 version and platform
+      placeholder: "0.1.0, Windows 11 / macOS 15 / Ubuntu 24.04"
+    validations:
+      required: true
+  - type: input
+    id: claude
+    attributes:
+      label: Claude Code version
+      placeholder: "claude --version"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what C4 showed, what you expected. Attach `c4 doctor` output if it runs.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log excerpt
+      description: From ~/.c4/logs, with anything private removed. C4 redacts tokens and home paths, but check.
+      render: text

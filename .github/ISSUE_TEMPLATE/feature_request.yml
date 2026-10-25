@@ -1,0 +1,17 @@
+# <wtl> project: c4 | file: .github/ISSUE_TEMPLATE/feature_request.yml | author: watchthelight </wtl>
+name: Feature request
+description: Something C4 should do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you are trying to do with your sessions that C4 does not help with today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: How it could work. Say which terminal and platform you use if it matters.

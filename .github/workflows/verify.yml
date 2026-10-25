@@ -1,0 +1,113 @@
+# <wtl> project: c4 | file: .github/workflows/verify.yml | author: watchthelight </wtl>
+# Full verification: lint on one runner, then clippy, the whole test suite and a debug app build on
+# Windows, Linux, macOS arm64 and macOS x64. Runs on every push to main, weekly, and on request.
+name: verify
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: 1
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: headers, slop lint, secret scan
+        run: |
+          python -I scripts/check_headers.py
+          python -I scripts/slop_lint.py
+          python -I scripts/scan.py
+      - name: python compiles and hook tests
+        run: |
+          python -m compileall -q scripts
+          if [ -d hooks ]; then python -m compileall -q hooks; fi
+          if [ -d hooks/tests ]; then python -m unittest discover -s hooks/tests -t .; fi
+      - name: linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf xdg-utils
+      - uses: dtolnay/rust-toolchain@master
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all --check
+      - name: cargo deny
+        if: hashFiles('deny.toml') != ''
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check
+      - name: third-party notices are current
+        if: hashFiles('scripts/gen_notices.py') != ''
+        run: python -I scripts/gen_notices.py --check
+      - uses: pnpm/action-setup@v6
+        if: hashFiles('pnpm-lock.yaml') != ''
+      - uses: actions/setup-node@v7
+        if: hashFiles('pnpm-lock.yaml') != ''
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: frontend lint and typecheck
+        if: hashFiles('pnpm-lock.yaml') != ''
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm -r lint
+          pnpm -r typecheck
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf xdg-utils
+      - uses: dtolnay/rust-toolchain@master
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+      - uses: pnpm/action-setup@v6
+        if: hashFiles('pnpm-lock.yaml') != ''
+      - uses: actions/setup-node@v7
+        if: hashFiles('pnpm-lock.yaml') != ''
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: frontend tests
+        if: hashFiles('pnpm-lock.yaml') != ''
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm -r test
+      - name: playwright (mock bridge)
+        if: runner.os == 'Linux' && hashFiles('apps/desktop/e2e/playwright.config.ts') != ''
+        run: |
+          pnpm -C apps/desktop exec playwright install --with-deps chromium
+          pnpm -C apps/desktop e2e
+      - name: debug app build
+        if: hashFiles('apps/desktop/src-tauri/tauri.conf.json') != ''
+        run: pnpm -C apps/desktop tauri build --debug --no-bundle
