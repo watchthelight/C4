@@ -1,0 +1,5 @@
+# <wtl> project: c4 | file: rust-toolchain.toml | author: watchthelight </wtl>
+[toolchain]
+channel = "1.99.1"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

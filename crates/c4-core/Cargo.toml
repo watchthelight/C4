@@ -1,0 +1,20 @@
+# <wtl> project: c4 | file: crates/c4-core/Cargo.toml | author: watchthelight </wtl>
+[package]
+name = "c4-core"
+description = "Typed schemas, the session state machine and the event envelope shared by every C4 crate"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+time = { workspace = true }
+uuid = { workspace = true }
+
+[lints]
+workspace = true

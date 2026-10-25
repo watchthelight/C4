@@ -1,0 +1,27 @@
+# <wtl> project: c4 | file: .gitignore | author: watchthelight </wtl>
+target/
+node_modules/
+dist/
+apps/desktop/src-tauri/gen/
+coverage/
+playwright-report/
+test-results/
+perf/results/
+*.log
+.env
+.env.*
+*.pem
+*.pfx
+*.p12
+*.key
+!fixtures/registry/*.key
+*.bak
+*.bak-*
+.claude/settings.local.json
+.DS_Store
+Thumbs.db
+__pycache__/
+*.pyc
+.vscode/
+.idea/
+vendor/
