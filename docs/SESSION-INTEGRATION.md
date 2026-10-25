@@ -1,0 +1,116 @@
+<!-- <wtl> project: c4 | file: docs/SESSION-INTEGRATION.md | author: watchthelight </wtl> -->
+
+# Session integration
+
+How C4 plugs into an existing Claude Code setup, what it changes, and how to take it out again.
+
+Status: `c4 install` ships in Milestone 2. Until then C4 runs in the coarse mode described in
+docs/HOW-IT-WORKS.md: registry, transcripts and the status line's cache files, no hooks.
+
+## What `c4 install` changes
+
+Exactly two things in `~/.claude/settings.json`, nothing anywhere else:
+
+1. The `statusLine.command` is wrapped so that the payload reaches C4 before the original command runs.
+2. Hook groups are added for the events C4 listens to.
+
+Before:
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "PYTHONIOENCODING=utf-8 python ~/.claude/statusline.py",
+    "padding": 1
+  },
+  "hooks": {
+    "Stop": [
+      {"hooks": [{"type": "command", "command": "python ~/.claude/hooks/turn_end.py", "timeout": 60}]}
+    ]
+  }
+}
+```
+
+After:
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "PYTHONIOENCODING=utf-8 ~/.c4/bin/c4-shim statusline -- python ~/.claude/statusline.py",
+    "padding": 1
+  },
+  "hooks": {
+    "Stop": [
+      {"hooks": [{"type": "command", "command": "python ~/.claude/hooks/turn_end.py", "timeout": 60}]},
+      {"hooks": [{"type": "command", "command": "~/.c4/bin/c4-shim hook", "timeout": 5, "async": true}]}
+    ],
+    "UserPromptSubmit": [
+      {"hooks": [{"type": "command", "command": "~/.c4/bin/c4-shim hook", "timeout": 5, "async": true}]}
+    ]
+  }
+}
+```
+
+The same `c4-shim hook` group is added for SessionStart, UserPromptSubmit, PreToolUse, PostToolUse,
+PostToolUseFailure, Notification, SubagentStart, SubagentStop, TaskCreated, TaskCompleted, Stop,
+StopFailure, PreCompact, PostCompact, CwdChanged and ConfigChange, all asynchronous, plus a synchronous
+SessionEnd hook with a 1 s timeout (Claude Code gives SessionEnd hooks 1.5 s). None of them print
+anything or return a decision, so they cannot block a tool call, a permission prompt or a session.
+C4 never installs PermissionRequest, Elicitation, PreModelSwitch or any other hook that can decide
+something.
+
+The shim adds about 2 ms before the original status line command runs. The status line's own output,
+cache files and everything that reads them keep working exactly as before.
+
+## Backups and removal
+
+Before writing, the installer copies `settings.json` to `settings.json.bak-c4-<timestamp>`, writes the
+new file to a temporary name and renames it into place, and records the before and after hashes and
+the exact keys it touched in `~/.c4/install-manifest.json`. `c4 uninstall` removes only those keys and
+restores the original `statusLine.command`. `c4 doctor` reports whether the install is intact.
+
+## Living with other installers
+
+Hook groups are matched by command string, so an installer that merges its own groups (such as the
+one in watchthelight-labs/agents, or iTerm2's Claude Code integration) leaves C4's groups alone and C4
+leaves theirs alone. An installer that overwrites `statusLine` wholesale removes the shim; C4 keeps
+working from the status line's cache files and the hooks, `c4 doctor` points it out, and a watch on
+`settings.json` offers to re-apply the wrapper.
+
+Claude Code reloads `settings.json` hooks while a session runs, according to its documentation. Until
+the first event with a session's id arrives, that session shows "hook telemetry pending", which is
+correct whether or not the running session has picked the hooks up.
+
+## Managed sessions
+
+A session C4 starts gets the same hook groups and the status line wrapper through `--settings` on its
+command line, so it is fully observed even when the global install was declined. Managed sessions run
+in a detached host process that survives a C4 crash or exit; "stop sessions on quit" is an explicit
+option, off by default.
+
+Daemon-backed background sessions (`claude --bg`) are a first-class alternative: C4 lists them from
+`claude agents --json` and attaches to them with `claude attach` inside a managed terminal.
+
+## Attachment modes and what each host needs
+
+| Host | Mode | Requirement | Verified on |
+|---|---|---|---|
+| C4 terminal | Managed | none | Windows (Milestone 3) |
+| WezTerm | Interactive Attached | `wezterm cli` on PATH; the pane is matched through the `WEZTERM_PANE` variable of the Claude Code process | Windows |
+| tmux | Interactive Attached | `tmux` on PATH; pane matched through `TMUX_PANE` | not yet |
+| iTerm2 | Interactive Attached | Python API enabled in iTerm2; session matched through `ITERM_SESSION_ID` | not yet |
+| kitty | Interactive Attached | remote control enabled; window matched through `KITTY_WINDOW_ID` | not yet |
+| Windows Terminal | Observed | none; window focus only, there is no public tab API | Windows |
+| Terminal.app, VS Code, GNOME Terminal, Alacritty, conhost | Observed | none | not yet |
+
+An Observed session still gets a message channel: Claude Code's own peer-message socket, documented
+under cross-session messaging. C4 labels such a message as "sent as a message from another process";
+it is never presented as keyboard input and it cannot answer a permission prompt.
+
+## What C4 asks of a running session
+
+Nothing it cannot ask through a documented interface. C4 does not restart a session to pick up a new
+MCP server or skill; it marks the session "restart required" and offers a restart only for sessions it
+started itself. It does not approve permission prompts. It does not send keystrokes to a terminal it
+has not verified.
