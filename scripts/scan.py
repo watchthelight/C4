@@ -39,7 +39,8 @@ PATTERNS = [
     (re.compile(r"\bcc-msg-[0-9a-f]{16}\b"), "messaging socket name"),
     (re.compile(r"\bcc-socks-\d+\b"), "messaging socket name"),
     (re.compile(r"(?i)ntfy\.sh/[A-Za-z0-9_-]{6,}"), "ntfy topic"),
-    (re.compile(r"(?i)(?:[A-Za-z]:\\\\?Users\\\\?|/Users/|/home/)(?!you\b|USER\b|me\b|example\b|runner\b|Shared\b|Public\b|ubuntu\b|<|\$|%|\{)[A-Za-z][\w.-]+"), "home path with a user name"),
+    (re.compile(r"(?i)[A-Za-z]:\\\\?Users\\\\?(?!you\b|USER\b|me\b|example\b|runner\b|Shared\b|Public\b|Default\b|<|\$|%|\{)[A-Za-z][\w.-]+"), "home path with a user name"),
+    (re.compile(r"(?:/Users/|/home/)(?!you\b|USER\b|me\b|example\b|runner\b|Shared\b|ubuntu\b|<|\$|\{)[A-Za-z][\w.-]+"), "home path with a user name"),
     (re.compile(r"\b\d{17,20}\b"), "long numeric id (Discord/snowflake?)"),
 ]
 IPV4 = re.compile(r"(?<![\d.])(\d{1,3}(?:\.\d{1,3}){3})(?![\d.])")
