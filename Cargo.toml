@@ -28,6 +28,7 @@ sysinfo = "0.39"
 rusqlite = { version = "0.41", features = ["bundled"] }
 portable-pty = "0.9"
 vt100 = "0.18"
+tempfile = "3"
 
 [workspace.lints.rust]
 unsafe_code = "warn"
