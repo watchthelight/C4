@@ -1,0 +1,7 @@
+#!/bin/sh
+# <wtl> project: c4 | file: .githooks/commit-msg | author: watchthelight </wtl>
+# Rejects subjects that are not lowercase or are over 72 characters, non-ASCII text and any trailer.
+if command -v python3 >/dev/null 2>&1 && python3 -c "import sys" >/dev/null 2>&1; then
+  exec python3 scripts/slop_lint.py --commit-msg "$1"
+fi
+exec python scripts/slop_lint.py --commit-msg "$1"

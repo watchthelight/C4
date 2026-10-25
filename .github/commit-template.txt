@@ -1,0 +1,8 @@
+# <wtl> project: c4 | file: .github/commit-template.txt | author: watchthelight </wtl>
+# area: what changed
+#
+# Subject: lowercase, under 72 characters, no trailing period.
+# Body (optional): why, in plain ASCII sentences. No trailers of any kind.
+# Areas: init, scripts, ci, docs, core, discovery, transcript, telemetry, ingest,
+# adapters, host, controls, capabilities, store, remote, shim, cli, testkit,
+# desktop, fixtures, hooks, changelog, release.

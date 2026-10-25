@@ -1,0 +1,7 @@
+#!/bin/sh
+# <wtl> project: c4 | file: .githooks/pre-commit | author: watchthelight </wtl>
+# Runs scripts/precommit.py with whichever Python this machine has.
+if command -v python3 >/dev/null 2>&1 && python3 -c "import sys" >/dev/null 2>&1; then
+  exec python3 scripts/precommit.py "$@"
+fi
+exec python scripts/precommit.py "$@"

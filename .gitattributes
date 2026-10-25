@@ -1,0 +1,13 @@
+# <wtl> project: c4 | file: .gitattributes | author: watchthelight </wtl>
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.icns binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.gif binary
+*.jpg binary
+*.webp binary
+*.pdf binary
