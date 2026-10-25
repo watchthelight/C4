@@ -52,7 +52,7 @@ EMAIL = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 def files(paths):
     if paths:
         for p in paths:
-            p = Path(p)
+            p = Path(p).resolve()  # relative to absolute, so .scanignore applies to command-line paths too
             if p.is_dir():
                 yield from (q for q in p.rglob("*") if q.is_file())
             elif p.is_file():
