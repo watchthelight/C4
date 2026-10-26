@@ -63,5 +63,10 @@ stay at 0.y.z while the interfaces settle.
   the spool replay at start and every 30 s, a probe for `c4 doctor`, and a second server on the same
   home refused. The app does not start the server yet. Fixtures for every hook payload C4 listens
   to, two status line payloads and a spool file with two bad lines.
+- `Discovery::fold` in `c4-discovery`: applies a batch of observations from outside a pass (the hook
+  events and status line payloads the ingest server parses) in `recv_at` order, a stable sort so a
+  payload's identity lands before its event, then runs the clock. It returns the transitions and the
+  sessions touched. A session only such a payload names gets a view with no process. A test folds
+  the hook and status line fixtures through the `c4-ingest` parser in reverse arrival order.
 
 [Unreleased]: https://github.com/watchthelight/C4/compare/c3a0a47...HEAD

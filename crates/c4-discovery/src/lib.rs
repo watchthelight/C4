@@ -11,9 +11,10 @@
 //! 4. [`process`]: the process table, which decides whether a pid is still the process the files
 //!    describe, and [`host`], which reads the terminal host from the process environment.
 //!
-//! [`snapshot`] runs them together and folds the result into a [`c4_core::SessionTable`]. Nothing
-//! here writes to the Claude home, and nothing reads a transcript; that is the transcript crate's
-//! job.
+//! [`snapshot`] runs them together and folds the result into a [`c4_core::SessionTable`].
+//! [`Discovery::fold`] takes observations from elsewhere (the hook events and status line payloads
+//! the ingest server parses, transcript events) into the same table, in stamp order. Nothing here
+//! writes to the Claude home, and nothing reads a transcript; that is the transcript crate's job.
 //!
 //! Every reader is tolerant: a file that cannot be parsed becomes a [`Problem`] in the report, never
 //! an error that stops the scan, because one broken file must not hide the other sessions.
@@ -39,7 +40,7 @@ pub use process::{
 };
 pub use registry::{RegistryEntry, RegistryScan, scan_registry};
 pub use snapshot::{
-    Discovery, DiscoveryOptions, KnownProcess, RefreshResult, Snapshot, SnapshotReport,
+    Discovery, DiscoveryOptions, FoldResult, KnownProcess, RefreshResult, Snapshot, SnapshotReport,
     take_snapshot,
 };
 

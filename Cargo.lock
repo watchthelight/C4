@@ -296,6 +296,7 @@ name = "c4-discovery"
 version = "0.0.1"
 dependencies = [
  "c4-core",
+ "c4-ingest",
  "serde",
  "serde_json",
  "sysinfo",

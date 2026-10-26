@@ -78,8 +78,9 @@ sequenceDiagram
 
 Identity is the session id. The registry entry fills the process, cwd, name, version and socket
 first; the session list command and the supervisor files add what the registry did not have; the
-transcript path is derived from the cwd and recorded only when the file is there. From Milestone 2
-the hook and status line payloads join by the session id they carry.
+transcript path is derived from the cwd and recorded only when the file is there. The hook and
+status line payloads join by the session id they carry, folded into the same table between passes
+in the order the shim received them.
 
 A pass remembers every live process from the pass before, so a session whose registry file vanished
 is still looked up until its process is gone. One lookup per pid serves every session that names it,

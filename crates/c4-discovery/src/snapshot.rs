@@ -354,6 +354,31 @@ pub struct RefreshResult {
     pub report: SnapshotReport,
 }
 
+/// What one fold of observations from outside a snapshot changed.
+#[derive(Clone, Debug, Default)]
+pub struct FoldResult {
+    /// State changes, in order.
+    pub transitions: Vec<(SessionId, Transition)>,
+    /// Every session an observation or the clock touched.
+    pub touched: BTreeSet<SessionId>,
+    /// Observations applied, whether or not they moved anything.
+    pub applied: usize,
+}
+
+/// Fold one observation and record what it did.
+fn apply_one(
+    table: &mut SessionTable,
+    obs: &Observation,
+    now: Timestamp,
+    transitions: &mut Vec<(SessionId, Transition)>,
+    touched: &mut BTreeSet<SessionId>,
+) {
+    if let Some(t) = table.apply(obs, now) {
+        transitions.push((obs.session.clone(), t));
+    }
+    touched.insert(obs.session.clone());
+}
+
 /// The session table kept current by repeated snapshots.
 #[derive(Debug)]
 pub struct Discovery {
@@ -415,6 +440,34 @@ impl Discovery {
         self.refresh_inner(probe, now, false)
     }
 
+    /// Fold observations that did not come from a snapshot: the hook events and status line payloads
+    /// the ingest server parses, or transcript events. The batch is applied in stamp order. The sort
+    /// is stable, so observations with the same stamp keep the order they came in and a payload's
+    /// identity lands before its event; after a spool replay the inbox's arrival order is not stamp
+    /// order. The clock runs after the batch, as it does after a snapshot.
+    ///
+    /// A line more than a second older than what a view already knows moves no state (the reducer
+    /// allows that much clock skew and treats the rest as history) but still counts as touching
+    /// its session. A session that only such a line names
+    /// gets a view with no process; nothing probes it, so it stays alive until a `SessionEnd` event
+    /// arrives or a file names its process.
+    pub fn fold(&mut self, mut observations: Vec<Observation>, now: Timestamp) -> FoldResult {
+        observations.sort_by_key(|obs| obs.at);
+        let mut result = FoldResult::default();
+        for obs in &observations {
+            apply_one(
+                &mut self.table,
+                obs,
+                now,
+                &mut result.transitions,
+                &mut result.touched,
+            );
+        }
+        result.applied = observations.len();
+        result.touched.extend(self.table.tick(now));
+        result
+    }
+
     fn refresh_inner(
         &mut self,
         probe: &mut dyn ProcessProbe,
@@ -448,17 +501,23 @@ impl Discovery {
             ..RefreshResult::default()
         };
         for obs in &snapshot.observations {
-            if let Some(t) = self.table.apply(obs, now) {
-                result.transitions.push((obs.session.clone(), t));
-            }
-            result.touched.insert(obs.session.clone());
+            apply_one(
+                &mut self.table,
+                obs,
+                now,
+                &mut result.transitions,
+                &mut result.touched,
+            );
         }
         for gone in self.registry_seen.difference(&snapshot.registry_sessions) {
             let obs = Observation::new(gone.clone(), now, ObservationBody::RegistryGone);
-            if let Some(t) = self.table.apply(&obs, now) {
-                result.transitions.push((gone.clone(), t));
-            }
-            result.touched.insert(gone.clone());
+            apply_one(
+                &mut self.table,
+                &obs,
+                now,
+                &mut result.transitions,
+                &mut result.touched,
+            );
         }
         self.registry_seen = snapshot.registry_sessions;
         result.touched.extend(self.table.tick(now));
@@ -470,7 +529,7 @@ impl Discovery {
 mod tests {
     use super::*;
     use crate::process::{FakeProbe, ProcessInfo};
-    use c4_core::{HostKind, SessionState, StateKind};
+    use c4_core::{HookEvent, HostKind, STALL_AFTER_MS, SessionState, StateKind};
     use std::path::{Path, PathBuf};
 
     /// The fixtures root with native separators and no `..`, since cmd.exe reads `/` as a switch.
@@ -760,5 +819,154 @@ mod tests {
         let r = d.refresh(&mut FakeProbe::new(), Timestamp::from_millis(1));
         assert!(r.report.agents_error.is_some());
         assert_eq!(r.report.agents_entries, None);
+    }
+
+    fn hook(id: &SessionId, at: i64, event: HookEvent) -> Observation {
+        Observation::new(
+            id.clone(),
+            Timestamp::from_millis(at),
+            ObservationBody::Hook(event),
+        )
+    }
+
+    fn named(id: &SessionId, at: i64, name: &str) -> Observation {
+        Observation::new(
+            id.clone(),
+            Timestamp::from_millis(at),
+            ObservationBody::Identity {
+                cwd: None,
+                name: Some(name.into()),
+                transcript_path: None,
+                version: None,
+            },
+        )
+    }
+
+    fn stop() -> HookEvent {
+        HookEvent::Stop {
+            background_tasks: Vec::new(),
+            session_crons: 0,
+        }
+    }
+
+    fn tool(name: &str) -> HookEvent {
+        HookEvent::PreToolUse {
+            tool_name: name.into(),
+            tool_use_id: None,
+        }
+    }
+
+    #[test]
+    fn fold_applies_a_batch_in_stamp_order_and_keeps_a_payload_together() {
+        let tmp = tempfile::tempdir().unwrap();
+        let mut d = Discovery::new(DiscoveryOptions::files_only(ClaudeHome::at(tmp.path())));
+        let sid = SessionId::new("0a1b2c3d-0001-4000-8000-000000000055");
+        let now = Timestamp::from_millis(10_000);
+        // Arrival order after a spool replay is not stamp order. The identity stamped 200 came
+        // before the tool event stamped 200 and must stay there.
+        let batch = vec![
+            hook(&sid, 300, stop()),
+            named(&sid, 200, "named by its payload"),
+            hook(&sid, 200, tool("Bash")),
+            hook(&sid, 100, HookEvent::UserPromptSubmit),
+        ];
+        let r = d.fold(batch, now);
+        assert_eq!(r.applied, 4);
+        assert_eq!(r.touched, BTreeSet::from([sid.clone()]));
+        let kinds: Vec<StateKind> = r.transitions.iter().map(|(_, t)| t.to.kind()).collect();
+        assert_eq!(
+            kinds,
+            [StateKind::Working, StateKind::RunningTool, StateKind::Idle]
+        );
+        let stamps: Vec<i64> = r
+            .transitions
+            .iter()
+            .map(|(_, t)| t.evidence.at.millis())
+            .collect();
+        assert_eq!(stamps, [100, 200, 300]);
+        let v = d.table().get(&sid).unwrap();
+        assert_eq!(v.state, SessionState::Idle);
+        assert!(v.hooks_seen && !v.coarse && v.alive);
+        assert_eq!(v.display_name(), "named by its payload");
+        assert_eq!(v.process, None, "no file named a process");
+        assert_eq!(v.first_seen, now);
+    }
+
+    #[test]
+    fn fold_turns_a_coarse_registry_session_into_a_hooked_one() {
+        let home = ClaudeHome::at(fixtures().join("home"));
+        let mut d = Discovery::new(DiscoveryOptions::files_only(home));
+        let mut p = probe();
+        let t0 = Timestamp::from_millis(1_792_900_900_000);
+        d.refresh(&mut p, t0);
+        let sid = SessionId::new("0a1b2c3d-0001-4000-8000-000000000001");
+        let before = d.table().get(&sid).unwrap();
+        assert!(before.coarse);
+        assert_eq!(before.state, SessionState::Working);
+        let process = before.process;
+        assert!(process.is_some());
+
+        let r = d.fold(
+            vec![hook(&sid, 1_792_900_900_500, tool("Grep"))],
+            t0.plus_millis(600),
+        );
+        assert_eq!(r.transitions.len(), 1, "{:?}", r.transitions);
+        let v = d.table().get(&sid).unwrap();
+        assert_eq!(
+            v.state,
+            SessionState::RunningTool {
+                tool: "Grep".into()
+            }
+        );
+        assert!(!v.coarse && v.hooks_seen);
+        assert_eq!(v.process, process, "the registry's process stays");
+        assert_eq!(v.host, HostKind::WezTerm);
+
+        // The next pass reads the same busy registry record and keeps the tool the hook named.
+        let r = d.refresh(&mut p, t0.plus_millis(2_000));
+        assert!(
+            r.transitions.iter().all(|(id, _)| id != &sid),
+            "{:?}",
+            r.transitions
+        );
+        assert_eq!(
+            d.table().get(&sid).unwrap().state,
+            SessionState::RunningTool {
+                tool: "Grep".into()
+            }
+        );
+    }
+
+    #[test]
+    fn a_fold_of_an_older_line_moves_no_state() {
+        let tmp = tempfile::tempdir().unwrap();
+        let mut d = Discovery::new(DiscoveryOptions::files_only(ClaudeHome::at(tmp.path())));
+        let sid = SessionId::new("0a1b2c3d-0001-4000-8000-000000000056");
+        let now = Timestamp::from_millis(20_000);
+        let r = d.fold(vec![hook(&sid, 10_000, HookEvent::UserPromptSubmit)], now);
+        assert_eq!(r.transitions.len(), 1);
+        // A spool replay delivers a line the view has already moved past, by more than the
+        // second of clock skew the reducer allows.
+        let r = d.fold(vec![hook(&sid, 500, stop())], now);
+        assert!(r.transitions.is_empty(), "{:?}", r.transitions);
+        assert_eq!(r.applied, 1);
+        assert!(r.touched.contains(&sid));
+        assert_eq!(d.table().get(&sid).unwrap().state, SessionState::Working);
+    }
+
+    #[test]
+    fn fold_runs_the_clock() {
+        let tmp = tempfile::tempdir().unwrap();
+        let mut d = Discovery::new(DiscoveryOptions::files_only(ClaudeHome::at(tmp.path())));
+        let sid = SessionId::new("0a1b2c3d-0001-4000-8000-000000000057");
+        d.fold(
+            vec![hook(&sid, 0, HookEvent::UserPromptSubmit)],
+            Timestamp::from_millis(0),
+        );
+        assert!(!d.table().get(&sid).unwrap().stalled);
+        let r = d.fold(Vec::new(), Timestamp::from_millis(STALL_AFTER_MS + 1_000));
+        assert_eq!(r.applied, 0);
+        assert_eq!(r.touched, BTreeSet::from([sid.clone()]));
+        assert!(d.table().get(&sid).unwrap().stalled);
     }
 }

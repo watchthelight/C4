@@ -53,7 +53,7 @@ graph TD
 | Crate | Responsibility | Milestone |
 |---|---|---|
 | `c4-core` | `SessionId`, `ProcessRef {pid, proc_start}`, `Evidence {source, observed or heuristic, at}`, the nine-state `SessionState`, `Observation` (registry, agents command, daemon, process, transcript, hook, OSC, status line), `SessionView`, `SessionTable`, `reduce` with its rules, the versioned event `Envelope`, `redact`, and `home` (where C4 keeps its own files and how its ingest endpoint is named). No I/O. | 1, 2 |
-| `c4-discovery` | `ClaudeHome` resolution (`C4_CLAUDE_HOME`, `CLAUDE_CONFIG_DIR`, `~/.claude`), the registry reader, the `claude agents --json` runner with a timed capture, daemon and job enrichment with the auth fields dropped, the process probe (sysinfo) with the liveness ladder (pid, creation time, executable name), terminal host identification from the process environment, the transcript existence check, and `Discovery`, which folds one pass into the table and reports the transitions. | 1 |
+| `c4-discovery` | `ClaudeHome` resolution (`C4_CLAUDE_HOME`, `CLAUDE_CONFIG_DIR`, `~/.claude`), the registry reader, the `claude agents --json` runner with a timed capture, daemon and job enrichment with the auth fields dropped, the process probe (sysinfo) with the liveness ladder (pid, creation time, executable name), terminal host identification from the process environment, the transcript existence check, and `Discovery`, which folds one pass into the table and reports the transitions, and whose `fold` applies observations from outside a pass (the hook events and status line payloads the ingest server parses) in stamp order. | 1, 2 (`fold`) |
 | `c4-transcript` | The byte-offset tailer, the tolerant record parser gated on the major `version`, the record-to-event map, the subagent and workflow directory scanner, the project index built from metadata only, `SessionFollower` (one session's main transcript and agent files, folded into observations, usage max-merged per message id) and the file watcher. The workflow graph comes in Milestone 5. | 1 (reader), 5 (graph) |
 | `c4-testkit` | `ScratchHome` (a Claude home in a temp dir, seeded from `fixtures/home`), `FakeClaude` (a real process registered with its pid and creation time, so liveness tests run on a real process table), the discovery tests A and B. | 1 |
 | `c4-cli` | `c4 sessions [--json|--watch|--files-only|--redact|--home]`, `c4 doctor [--json|--no-commands]`, `c4 telemetry --transcript <file> [--json]`. JSON output carries `schema: 1`. Exit 0, 1 (could not do the job, reason on stderr) or 2 (usage). | 1 |
@@ -124,8 +124,10 @@ sequenceDiagram
     end
 ```
 
-Hook and status line payloads join through the shim and the ingest server. The server, the parser and
-the inbox are in the tree; the app drains the inbox into the reducer with the next Milestone 2 commit:
+Hook and status line payloads join through the shim and the ingest server. The server, the parser, the
+inbox and the fold into the table (`Discovery::fold`, a stable sort by `recv_at` and then the
+reducer) are in the tree; the app starts the server and drains the inbox in a later Milestone 2
+commit:
 
 ```mermaid
 sequenceDiagram
@@ -153,7 +155,7 @@ screen snapshot plus the tail of the ring buffer.
 The CLI is synchronous on the main thread: a command is one pass or one file read, then exit. The app
 has the Tauri event loop on the main thread, the `c4-refresh` thread, and whatever threads the
 webview brings. `c4-ingest` brings tokio: an accept task, one task per connection, a replay timer, and
-the spool read on a blocking thread; the app starts them with the next Milestone 2 commit. The process
+the spool read on a blocking thread; the app starts them in a later Milestone 2 commit. The process
 probe keeps its own system snapshot and refreshes only the pids it is asked about.
 
 A file discovery cannot use becomes a `Problem` (path and reason) in the pass report, never an error

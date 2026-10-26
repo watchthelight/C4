@@ -128,8 +128,12 @@ A line the parser refuses is counted and logged by size and reason, never by con
 payload carries whatever the session typed. A connection that stays silent for 5 s is closed; one that
 sends a line over 2 MiB is dropped (the shim never sends more than 1 MiB). Parsed lines wait in a
 bounded inbox of 4,096 items that drops its oldest item and counts the drop rather than hold up a
-hook. The inbox keeps arrival order; after a replay that is not `recv_at` order, so the consumer sorts
-each batch it drains.
+hook. The inbox keeps arrival order; after a replay that is not `recv_at` order, so `Discovery::fold`
+in `c4-discovery` sorts each batch by `recv_at` before the reducer sees it. The sort is stable, so a
+payload's identity stays ahead of its event, and a line more than a second older than what a view
+already knows moves no state (the reducer allows that much clock skew). A session that only such a
+line names gets a view with no process; nothing probes it, so it stays alive until its `SessionEnd`
+arrives or a registry file names its process.
 
 The spool is replayed once right after the server binds and every 30 s after that. A spool file is
 claimed by renaming it to `<name>.replaying`, so a shim that spools its next line starts a fresh file;
