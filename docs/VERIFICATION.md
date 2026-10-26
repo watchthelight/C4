@@ -36,7 +36,7 @@ the fold chord and its preference, the relay of headless commands, all with Chro
 | Windows x64 | the crates, the page bundle, the Electron main process and the unpacked app, verify run 40340688289 | `cargo test --workspace`, `pnpm -r test` and the Playwright check green (windows-latest, run 40342371620) | `c4 sessions`, `c4 doctor`, `c4 install` and `c4 uninstall` against the real home, the Tauri window showing hook states and context figures from live sessions, the Electron window against the real home read only, and the packaged app (the window with the core from its resources, the relay of headless commands, the console behaviour at a prompt), see Results |
 | macOS arm64 | the crates, the page bundle, the Electron main process and the unpacked app, verify run 40340688289 | `cargo test --workspace`, `pnpm -r test` and the Playwright check green (macos-latest, run 40342371620): the unsigned `c4.app` starts there | no hardware in reach |
 | macOS x64 | the crates, the page bundle, the Electron main process and the unpacked app, verify run 40340688289 | `cargo test --workspace`, `pnpm -r test` and the Playwright check green (macos-15-intel, run 40342371620) | no hardware in reach |
-| Linux x64 | the crates, the page bundle, the Electron main process and the unpacked app, verify run 40340688289 | `cargo test --workspace` and `pnpm -r test` green (ubuntu-latest); the Playwright check on run 40342371620: the window green under xvfb, the relay stopped by Chromium's sandbox (Results); from the commit after f6b0dec the check runs with the sandbox on under the AppArmor profile the deb installs, loaded for the unpacked binary, and its run goes in Results | not yet |
+| Linux x64 | the crates, the page bundle, the Electron main process and the unpacked app, verify run 40340688289 | `cargo test --workspace`, `pnpm -r test` and the Playwright check green (ubuntu-latest, run 40345083401), the check under xvfb with Chromium's sandbox on and the AppArmor profile the deb installs loaded for the unpacked binary; the run before it, 40342371620, had the relay stopped by the sandbox (Results) | not yet |
 
 ## Manual checklist
 
@@ -373,7 +373,13 @@ result below the list when you run it.
   Chromium stops before the main process runs (docs/BUILDING.md, Packaging). From the next commit
   the workflow loads the AppArmor profile the deb's post-install script installs, written for the
   unpacked binary, the check launches the window with the sandbox on everywhere, a relay that
-  fails names its signal and stderr, and the macOS result counts; its run is recorded below.
+  fails names its signal and stderr, and the macOS result counts; its run is the next entry.
+- 2026-10-26, the verify workflow for commit 0394ac7 (run 40345083401): the lint job and the four
+  test jobs green, the Playwright check passing on every runner with Chromium's sandbox on. The
+  Linux step's record confirms the reading of the run before: the runner reports
+  `kernel.apparmor_restrict_unprivileged_userns = 1`, the unpacked `chrome-sandbox` is mode 0755
+  and owned by the runner's user, and with the deb's profile loaded for the binary the window check
+  passed under xvfb in 2.1 s and the relay check in 568 ms (3.4 s for both on Windows).
 - 2026-10-26, the switch rule of the packaged `c4`, by hand on Windows with the output piped
   (`release/win-unpacked/c4.exe` rebuilt from the main process with the rule, the fixture Claude
   home, a scratch C4 home): `c4 --no-sandbox --version` exit 0 with the version in 154 ms, so a
