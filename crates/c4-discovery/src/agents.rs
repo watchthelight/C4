@@ -233,7 +233,10 @@ impl AgentsCommand {
         cmd
     }
 
-    fn capture(&self, timeout: Duration) -> Result<Captured, AgentsError> {
+    /// Run the command with a time budget and collect whatever it printed. [`Self::run`] is this
+    /// plus the JSON parse. On Windows a bare program name is also looked up with PATHEXT, so an
+    /// npm `.cmd` shim is found.
+    pub fn capture(&self, timeout: Duration) -> Result<Captured, AgentsError> {
         let spawn_error = |source| AgentsError::Spawn {
             program: self.program.clone(),
             source,
@@ -282,48 +285,67 @@ impl AgentsCommand {
             status: status.to_string(),
             stdout: join(stdout),
             stderr: join(stderr),
+            elapsed: started.elapsed(),
         })
     }
 }
 
-/// Find `program` on PATH with each PATHEXT extension, the way cmd.exe would. A program given with
-/// an extension or a directory is returned only when it exists as written.
+/// Find `program` on PATH. On Windows a name without an extension is tried with each PATHEXT
+/// extension, the way cmd.exe does, so an npm `.cmd` shim is found; elsewhere the name is the
+/// executable. A program given with a directory is returned only when it exists as written.
 #[must_use]
 pub fn resolve_on_path(program: &str) -> Option<PathBuf> {
     let given = Path::new(program);
-    if given.components().count() > 1 || given.extension().is_some() {
+    if given.components().count() > 1 {
         return given.is_file().then(|| given.to_path_buf());
     }
-    let exts: Vec<String> = std::env::var("PATHEXT")
+    let candidates: Vec<String> = if cfg!(windows) && given.extension().is_none() {
+        pathext()
+            .iter()
+            .map(|ext| format!("{program}{ext}"))
+            .collect()
+    } else {
+        vec![program.to_string()]
+    };
+    let path = std::env::var_os("PATH")?;
+    std::env::split_paths(&path)
+        .filter(|dir| !dir.as_os_str().is_empty())
+        .flat_map(|dir| candidates.iter().map(move |name| dir.join(name)))
+        .find(|candidate| candidate.is_file())
+}
+
+/// The PATHEXT list, lower-cased, or cmd.exe's own default when it is unset.
+fn pathext() -> Vec<String> {
+    std::env::var("PATHEXT")
         .ok()
         .map(|p| {
             p.split(';')
                 .filter(|e| e.starts_with('.'))
                 .map(str::to_ascii_lowercase)
-                .collect()
+                .collect::<Vec<String>>()
         })
-        .filter(|v: &Vec<String>| !v.is_empty())
+        .filter(|v| !v.is_empty())
         .unwrap_or_else(|| {
             [".com", ".exe", ".bat", ".cmd"]
                 .iter()
-                .map(ToString::to_string)
+                .map(|ext| (*ext).to_string())
                 .collect()
-        });
-    let path = std::env::var_os("PATH")?;
-    std::env::split_paths(&path)
-        .filter(|dir| !dir.as_os_str().is_empty())
-        .flat_map(|dir| {
-            exts.iter()
-                .map(move |ext| dir.join(format!("{program}{ext}")))
         })
-        .find(|candidate| candidate.is_file())
 }
 
-struct Captured {
-    success: bool,
-    status: String,
-    stdout: String,
-    stderr: String,
+/// What a command printed and how it ended.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Captured {
+    /// True when the exit status was success.
+    pub success: bool,
+    /// The exit status as text.
+    pub status: String,
+    /// Everything it wrote to stdout, with invalid UTF-8 replaced.
+    pub stdout: String,
+    /// Everything it wrote to stderr, the same way.
+    pub stderr: String,
+    /// How long it ran.
+    pub elapsed: Duration,
 }
 
 fn drain(mut reader: impl Read + Send + 'static) -> std::thread::JoinHandle<Vec<u8>> {

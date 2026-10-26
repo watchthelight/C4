@@ -26,7 +26,10 @@ pub mod process;
 pub mod registry;
 pub mod snapshot;
 
-pub use agents::{AGENTS_CMD_ENV, AgentsCommand, AgentsEntry, AgentsError, parse_agents_json};
+pub use agents::{
+    AGENTS_CMD_ENV, AgentsCommand, AgentsEntry, AgentsError, Captured, parse_agents_json,
+    resolve_on_path,
+};
 pub use daemon::{BackgroundJob, DaemonScan, JobState, Roster, RosterWorker, scan_daemon};
 pub use home::{CONFIG_DIR_ENV, ClaudeHome, HOME_ENV, encode_cwd};
 pub use host::{HOST_ENV_KEYS, HostHint, identify_host};
