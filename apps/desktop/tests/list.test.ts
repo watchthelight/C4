@@ -456,6 +456,45 @@ describe("session list", () => {
     expect(rowsOf(again)).toHaveLength(7);
   });
 
+  it("takes preferences written elsewhere, all at once and without a report", () => {
+    const views = syntheticSessions(NOW);
+    const prefs: ListPrefs[] = [];
+    const list = createSessionList({ onSelect: () => undefined, onPrefs: (p) => prefs.push(p) });
+    viewport(list, 400);
+    list.update(views, null, NOW);
+    const review = views.find((v) => v.name === "review")?.id ?? "";
+
+    const written: ListPrefs = {
+      density: "compact",
+      groupBy: "project",
+      pinned: [review],
+      collapsed: ["project:/home/example/proj/beta"],
+    };
+    list.setPrefs(written);
+    expect(prefs).toEqual([]);
+    expect(list.density).toBe("compact");
+    expect(list.el.dataset.density).toBe("compact");
+    expect(list.groupBy).toBe("project");
+    expect(list.el.dataset.group).toBe("project");
+    expect(list.isPinned(review)).toBe(true);
+    expect(list.prefs()).toEqual(written);
+    const heads = headsOf(list);
+    expect(heads).toHaveLength(8);
+    expect(heads.find((h) => h.querySelector(".title")?.textContent === "beta")?.dataset.collapsed).toBe("true");
+    expect(rowsOf(list)).toHaveLength(7);
+    expect(rowsOf(list).find((r) => r.dataset.id === review)?.dataset.pinned).toBe("true");
+
+    // the same again changes nothing; the defaults put everything back
+    list.setPrefs(written);
+    list.setPrefs({ density: "standard", groupBy: "none", pinned: [], collapsed: [] });
+    expect(prefs).toEqual([]);
+    expect(list.density).toBe("standard");
+    expect(list.isPinned(review)).toBe(false);
+    expect(headsOf(list)).toHaveLength(0);
+    expect(rowsOf(list)).toHaveLength(8);
+    expect(rowsOf(list).at(-1)?.dataset.id).toBe(review);
+  });
+
   it("skips the headers when selecting with the keyboard", () => {
     const views = syntheticSessions(NOW);
     const picked: string[] = [];

@@ -1,7 +1,8 @@
 // <wtl> project: c4 | file: apps/desktop/e2e/app.spec.ts | author: watchthelight </wtl>
 // The packaged app end to end: the window with the core from the app's own resources against the
-// fixture Claude home, the fold chord and the preference it leaves behind, and the relay of
-// headless commands with their exit codes. The app runs as an installed one does, with Chromium's
+// fixture Claude home, the fold chord and the preference it leaves behind, the sidebar moved into
+// a window of its own and back across two runs, and the relay of headless commands with their
+// exit codes. The app runs as an installed one does, with Chromium's
 // sandbox on (Playwright's Electron launcher would add --no-sandbox on Linux by itself), so on a
 // system that restricts user namespaces the binary needs what the deb's post-install script sets
 // up; docs/BUILDING.md, Packaging. Nothing here touches the real Claude home: the C4 home is a
@@ -15,6 +16,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { _electron as electron, expect, test } from "@playwright/test";
+import type { ElectronApplication, Page } from "@playwright/test";
 
 const desktop = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const fixturesHome = path.resolve(desktop, "..", "..", "fixtures", "home");
@@ -79,8 +81,8 @@ function report(result: SpawnSyncReturns<string>): string {
   return lines.join("\n");
 }
 
-test("the window runs the core from its resources and keeps the fold", async () => {
-  const home = scratchHome();
+/** The app over the C4 home `home`, and the exit code of its process once it is gone. */
+async function launch(home: string): Promise<{ app: ElectronApplication; exited: Promise<number | null> }> {
   const app = await electron.launch({
     executablePath: appPath(),
     args: [],
@@ -92,6 +94,38 @@ test("the window runs the core from its resources and keeps the fold", async () 
   const exited = new Promise<number | null>((resolve) => {
     app.process().once("exit", (code) => resolve(code));
   });
+  return { app, exited };
+}
+
+function readPrefs<T>(home: string): T {
+  return JSON.parse(readFileSync(path.join(home, "prefs.json"), "utf8")) as T;
+}
+
+/** The part of the preferences the main process writes about the sidebar's window. */
+interface WindowsPrefs {
+  windows: { sidebar: { detached: boolean; bounds: Record<string, unknown> | null } };
+}
+
+/** The main window and the sidebar's own, once both are open and loaded, told apart by the query string. */
+async function bothWindows(app: ElectronApplication): Promise<{ main: Page; sidebar: Page }> {
+  while (app.windows().length < 2) {
+    await app.waitForEvent("window");
+  }
+  const pages = app.windows();
+  for (const page of pages) {
+    await page.waitForLoadState();
+  }
+  const sidebar = pages.find((page) => page.url().includes("window=sidebar"));
+  const main = pages.find((page) => !page.url().includes("window=sidebar"));
+  if (!sidebar || !main) {
+    throw new Error(`expected the main window and the sidebar's, got ${pages.map((page) => page.url()).join(", ")}`);
+  }
+  return { main, sidebar };
+}
+
+test("the window runs the core from its resources and keeps the fold", async () => {
+  const home = scratchHome();
+  const { app, exited } = await launch(home);
   try {
     expect(await app.evaluate(({ app: electronApp }) => electronApp.isPackaged)).toBe(true);
     expect(await app.evaluate(() => process.env.C4_CLI ?? "")).toBe("");
@@ -113,10 +147,67 @@ test("the window runs the core from its resources and keeps the fold", async () 
   }
   expect(await exited).toBe(0);
 
-  const prefs = JSON.parse(readFileSync(path.join(home, "prefs.json"), "utf8")) as {
-    sidebar: { view: string };
-  };
-  expect(prefs.sidebar.view).toBe("rail");
+  expect(readPrefs<{ sidebar: { view: string } }>(home).sidebar.view).toBe("rail");
+  remove(home);
+});
+
+test("the sidebar moves into a window of its own and comes back where it sat", async () => {
+  test.setTimeout(150_000);
+  const home = scratchHome();
+  const first = await launch(home);
+  try {
+    const main = await first.app.firstWindow();
+    await expect(main).toHaveTitle("c4");
+    const root = main.locator("#app");
+    await expect(root).toHaveAttribute("data-sidebar", "full");
+    await expect(main.locator("body")).toContainText("proj-alpha");
+
+    // the chord opens the sidebar's window; the main window shows the rail in its place
+    const opened = first.app.waitForEvent("window");
+    await main.keyboard.press("Control+Shift+KeyO");
+    const side = await opened;
+    await expect(side).toHaveURL(/window=sidebar/);
+    await expect(side).toHaveTitle("c4 sessions");
+    await expect(side.locator("#app")).toHaveAttribute("data-window", "sidebar");
+    await expect(side.locator("body")).toContainText("proj-alpha");
+    await expect(root).toHaveAttribute("data-sidebar", "away");
+    await expect(root).toHaveAttribute("data-detached", "true");
+
+    // a session chosen in the sidebar's window is the one the main window inspects
+    await side.locator(".row", { hasText: "nightly build" }).click();
+    await expect(main.locator(".inspector .title")).toHaveText("nightly build");
+  } finally {
+    await first.app.close();
+  }
+  expect(await first.exited).toBe(0);
+
+  const saved = readPrefs<WindowsPrefs>(home).windows.sidebar;
+  expect(saved.detached).toBe(true);
+  expect(saved.bounds).not.toBeNull();
+  for (const key of ["x", "y", "width", "height"]) {
+    expect(typeof saved.bounds?.[key], key).toBe("number");
+  }
+
+  // the next run opens the sidebar's window again; the fold chord there puts the sidebar back
+  const second = await launch(home);
+  try {
+    const { main, sidebar } = await bothWindows(second.app);
+    const root = main.locator("#app");
+    await expect(root).toHaveAttribute("data-sidebar", "away");
+    await expect(sidebar.locator("body")).toContainText("proj-alpha");
+    // the keys go down only: the chord's keydown closes this window, so there is no page left
+    // for the keys to come up in, and a press would fail on its keyup
+    await sidebar.keyboard.down("Control");
+    await sidebar.keyboard.down("Shift");
+    await sidebar.keyboard.down("KeyB");
+    await expect.poll(() => second.app.windows().length).toBe(1);
+    await expect(root).toHaveAttribute("data-sidebar", "full");
+    await expect(root).toHaveAttribute("data-detached", "false");
+  } finally {
+    await second.app.close();
+  }
+  expect(await second.exited).toBe(0);
+  expect(readPrefs<WindowsPrefs>(home).windows.sidebar.detached).toBe(false);
   remove(home);
 });
 

@@ -1,7 +1,8 @@
 // <wtl> project: c4 | file: apps/desktop/tests/filterbar.test.ts | author: watchthelight </wtl>
 // The filter box and the grouping button above the list: typing narrows at once, Enter and the down
 // arrow hand focus back to the list, Escape clears first and leaves second, the button walks the
-// grouping modes and shows one chosen elsewhere.
+// grouping modes and shows one chosen elsewhere; then the two buttons a window may add, one that
+// moves the sidebar between the windows and one that folds it to its rail.
 
 import { describe, expect, it } from "vitest";
 import { createFilterBar, groupLabel } from "../src/sessions/filter";
@@ -63,7 +64,50 @@ describe("filter bar", () => {
     expect(groups).toEqual(["project", "none"]);
     expect(groupLabel("host")).toBe("by host");
     expect(bar.el.querySelector("button.fold")).toBeNull();
+    expect(bar.el.querySelector("button.window")).toBeNull();
     bar.el.remove();
+  });
+
+  it("gets a window button that says which way the sidebar moves, before the fold button", () => {
+    let moved = 0;
+    const bar = createFilterBar({
+      groupBy: "none",
+      onFilter: () => {},
+      onGroupBy: () => {},
+      onLeave: () => {},
+      windowButton: {
+        kind: "detach",
+        onClick: () => {
+          moved += 1;
+        },
+      },
+      onFold: () => {},
+    });
+    expect([...bar.el.querySelectorAll("button")].map((b) => b.className)).toEqual(["groupby", "window", "fold"]);
+    const move = bar.el.querySelector<HTMLButtonElement>("button.window");
+    if (!move) {
+      throw new Error("the bar has no window button");
+    }
+    expect(move.type).toBe("button");
+    expect(move.dataset.kind).toBe("detach");
+    expect(move.getAttribute("aria-label")).toBe("open the sidebar in its own window");
+    expect(move.title).toBe("open the sidebar in its own window (Ctrl+Shift+O)");
+    expect(move.querySelector(".glyph-window")?.getAttribute("aria-hidden")).toBe("true");
+    move.click();
+    expect(moved).toBe(1);
+
+    const back = createFilterBar({
+      groupBy: "none",
+      onFilter: () => {},
+      onGroupBy: () => {},
+      onLeave: () => {},
+      windowButton: { kind: "attach", onClick: () => {} },
+    });
+    const attach = back.el.querySelector<HTMLButtonElement>("button.window");
+    expect(attach?.dataset.kind).toBe("attach");
+    expect(attach?.getAttribute("aria-label")).toBe("put the sidebar back in the main window");
+    expect(attach?.title).toBe("put the sidebar back in the main window (Ctrl+Shift+O)");
+    expect(back.el.querySelector("button.fold")).toBeNull();
   });
 
   it("gets a fold button only when the window has a rail to fold to", () => {

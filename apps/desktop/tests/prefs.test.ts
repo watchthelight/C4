@@ -13,6 +13,7 @@ import {
   WRITE_DELAY_MS,
   clampWidth,
   createPrefsStore,
+  readDetached,
   readSidebar,
   sidebarSection,
 } from "../src/prefs";
@@ -83,6 +84,18 @@ describe("readSidebar", () => {
     expect(got.pinned).toHaveLength(PINS_MAX);
     expect(got.pinned[0]).toBe("id-5");
     expect(got.pinned[PINS_MAX - 1]).toBe(`id-${PINS_MAX + 4}`);
+  });
+});
+
+describe("readDetached", () => {
+  it("is true only when the windows section says the sidebar is in its own window", () => {
+    expect(readDetached({})).toBe(false);
+    expect(readDetached(undefined)).toBe(false);
+    expect(readDetached({ windows: { sidebar: { detached: true } } })).toBe(true);
+    expect(readDetached({ windows: { sidebar: { detached: true, bounds: null } } })).toBe(true);
+    expect(readDetached({ windows: { sidebar: { detached: "true" } } })).toBe(false);
+    expect(readDetached({ windows: { sidebar: null } })).toBe(false);
+    expect(readDetached({ windows: [] })).toBe(false);
   });
 });
 

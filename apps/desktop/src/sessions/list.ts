@@ -94,6 +94,11 @@ export interface SessionList {
   setDensity(density: Density): void;
   setGroupBy(groupBy: GroupBy): void;
   /**
+   * Take preferences written elsewhere, by the sidebar in the other window: all four at once, at
+   * once, and without a report through onPrefs, since they are already in the file.
+   */
+  setPrefs(prefs: ListPrefs): void;
+  /**
    * Narrow the list: words match the name, the project and the cwd; `state:`, `project:`, `tool:`,
    * `mode:` and `host:` tokens match one field each. Applies at once.
    */
@@ -574,14 +579,35 @@ export function createSessionList(options: SessionListOptions): SessionList {
     options.onPrefs?.(prefs());
   }
 
-  function setGroupBy(g: GroupBy): void {
+  /** The row height, with the item at the top of the viewport kept there; false when it is the same. */
+  function applyDensity(d: Density): boolean {
+    if (d === density) {
+      return false;
+    }
+    hideHover();
+    const anchor = indexAt(root.scrollTop);
+    density = d;
+    root.dataset.density = d;
+    layout();
+    root.scrollTop = offsets[anchor] ?? 0;
+    paint();
+    return true;
+  }
+
+  function applyGroupBy(g: GroupBy): boolean {
     if (g === groupBy) {
-      return;
+      return false;
     }
     groupBy = g;
     root.dataset.group = g;
-    rebuild(true);
-    notify();
+    return true;
+  }
+
+  function setGroupBy(g: GroupBy): void {
+    if (applyGroupBy(g)) {
+      rebuild(true);
+      notify();
+    }
   }
 
   function togglePin(id: string): void {
@@ -842,19 +868,24 @@ export function createSessionList(options: SessionListOptions): SessionList {
     },
     paint,
     setDensity(d) {
-      if (d === density) {
-        return;
+      if (applyDensity(d)) {
+        notify();
       }
-      hideHover();
-      const anchor = indexAt(root.scrollTop);
-      density = d;
-      root.dataset.density = d;
-      layout();
-      root.scrollTop = offsets[anchor] ?? 0;
-      paint();
-      notify();
     },
     setGroupBy,
+    setPrefs(p) {
+      applyDensity(p.density);
+      applyGroupBy(p.groupBy);
+      pinned.clear();
+      for (const id of p.pinned) {
+        pinned.add(id);
+      }
+      collapsed.clear();
+      for (const group of p.collapsed) {
+        collapsed.add(group);
+      }
+      rebuild(true);
+    },
     setFilter(text) {
       if (text === filterText) {
         return;

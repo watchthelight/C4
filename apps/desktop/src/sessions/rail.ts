@@ -1,7 +1,8 @@
 // <wtl> project: c4 | file: apps/desktop/src/sessions/rail.ts | author: watchthelight </wtl>
-// The sidebar folded: a 36px rail with one state square per session, pinned sessions first and the
-// rest in the core's attention order, a button at the top that opens the sidebar again and the
-// count of sessions that need you at the bottom. A square carries the session's name and state in
+// The sidebar folded, or away in its own window: a 36px rail with one state square per session,
+// pinned sessions first and the rest in the core's attention order, a button at the top that opens
+// the sidebar again (or brings it back from its window) and the count of sessions that need you at
+// the bottom. A square carries the session's name and state in
 // its tooltip and its accessible name, a click selects the session, and the arrow keys move the
 // selection. The rail follows the list's two rules: a reorder from the core waits while the pointer
 // is inside or the rail has keyboard focus, and the pointer resting on a square for 350 ms asks for
@@ -14,7 +15,7 @@ import type { SessionView } from "../bridge/types";
 
 export interface RailOptions {
   onSelect(id: string): void;
-  /** The button at the top: open the sidebar in place of the rail. */
+  /** The button at the top: open the sidebar in place of the rail, or bring it back from its window. */
   onExpand(): void;
   /** As the list's: a square once the pointer has rested on it, nulls when the card should close. */
   onHover?(id: string | null, anchor: HTMLElement | null): void;
@@ -26,6 +27,8 @@ export interface Rail {
   update(views: readonly SessionView[], selected: string | null, isPinned: (id: string) => boolean): void;
   /** Focus the squares, so the arrow keys move the selection. */
   focus(): void;
+  /** Say whether the sidebar is away in its own window: the button at the top then brings it back. */
+  setDetached(detached: boolean): void;
   dispose(): void;
 }
 
@@ -49,13 +52,21 @@ function holdOrder(order: readonly string[], next: readonly string[]): string[] 
 export function createRail(options: RailOptions): Rail {
   const root = el("nav", "rail");
   root.setAttribute("aria-label", "sessions, folded");
+  root.dataset.detached = "false";
   const unfold = el("button", "unfold");
   unfold.type = "button";
-  unfold.setAttribute("aria-label", "open the sidebar");
-  unfold.title = "open the sidebar (Ctrl+Shift+B)";
   const glyph = el("span", "glyph-sidebar");
   glyph.setAttribute("aria-hidden", "true");
   unfold.append(glyph);
+
+  function setDetached(detached: boolean): void {
+    root.dataset.detached = String(detached);
+    const what = detached ? "bring the sidebar back from its window" : "open the sidebar";
+    unfold.setAttribute("aria-label", what);
+    unfold.title = `${what} (Ctrl+Shift+B)`;
+    glyph.className = detached ? "glyph-window" : "glyph-sidebar";
+  }
+  setDetached(false);
   const items = el("div", "items");
   items.setAttribute("role", "listbox");
   items.setAttribute("aria-label", "sessions");
@@ -341,6 +352,7 @@ export function createRail(options: RailOptions): Rail {
     focus() {
       items.focus();
     },
+    setDetached,
     dispose() {
       hideHover();
       root.removeEventListener("pointerenter", onPointerEnter);

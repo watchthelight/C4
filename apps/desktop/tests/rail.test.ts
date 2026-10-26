@@ -136,6 +136,40 @@ describe("rail", () => {
     rail.dispose();
   });
 
+  it("says when the sidebar is away in its own window, and its button then brings it back", () => {
+    let expanded = 0;
+    const rail = createRail({
+      onSelect: () => {},
+      onExpand: () => {
+        expanded += 1;
+      },
+    });
+    document.body.append(rail.el);
+    const unfold = rail.el.querySelector<HTMLButtonElement>(".unfold");
+    if (!unfold) {
+      throw new Error("no unfold button");
+    }
+    expect(rail.el.dataset.detached).toBe("false");
+    expect(unfold.getAttribute("aria-label")).toBe("open the sidebar");
+    expect(unfold.title).toBe("open the sidebar (Ctrl+Shift+B)");
+    expect(unfold.querySelector(".glyph-sidebar")?.getAttribute("aria-hidden")).toBe("true");
+
+    rail.setDetached(true);
+    expect(rail.el.dataset.detached).toBe("true");
+    expect(unfold.getAttribute("aria-label")).toBe("bring the sidebar back from its window");
+    expect(unfold.title).toBe("bring the sidebar back from its window (Ctrl+Shift+B)");
+    expect(unfold.querySelector(".glyph-window")).not.toBeNull();
+    expect(unfold.querySelector(".glyph-sidebar")).toBeNull();
+    unfold.click();
+    expect(expanded).toBe(1);
+
+    rail.setDetached(false);
+    expect(rail.el.dataset.detached).toBe("false");
+    expect(unfold.getAttribute("aria-label")).toBe("open the sidebar");
+    expect(unfold.querySelector(".glyph-sidebar")).not.toBeNull();
+    rail.dispose();
+  });
+
   it("holds a reorder while the pointer is inside and applies it on leave or after a rest", () => {
     vi.useFakeTimers();
     vi.setSystemTime(NOW);

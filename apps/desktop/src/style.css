@@ -43,6 +43,29 @@
   display: none;
 }
 
+/* The sidebar away in its own window: the main window shows the rail in its place, as when folded,
+   and the rail's button brings the sidebar back. */
+
+#app[data-sidebar="away"] {
+  grid-template-columns: var(--rail-w) 1fr;
+}
+
+#app[data-sidebar="away"] .sidebar,
+#app[data-sidebar="away"] .splitter {
+  display: none;
+}
+
+/* The sidebar's own window: the page is the sidebar alone, edge to edge, over the starfield. */
+
+#app[data-window="sidebar"] {
+  grid-template-rows: 1fr;
+  grid-template-columns: 1fr;
+}
+
+#app[data-window="sidebar"] .sidebar {
+  border-right: 0;
+}
+
 /* the sidebar glyph on the fold and unfold buttons: a 10 by 8 frame with a bar at its left */
 
 .glyph-sidebar {
@@ -62,6 +85,31 @@
   bottom: 0;
   width: 1px;
   background: currentColor;
+}
+
+/* the window glyph on the detach, attach and bring-back buttons: a 10 by 8 frame with a second,
+   smaller frame over its lower right corner */
+
+.glyph-window {
+  position: relative;
+  display: inline-block;
+  width: 10px;
+  height: 8px;
+  margin-right: 2px;
+  margin-bottom: 2px;
+  border: 1px solid currentColor;
+  vertical-align: middle;
+}
+
+.glyph-window::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 2px;
+  width: 6px;
+  height: 5px;
+  border: 1px solid currentColor;
+  background: var(--bg);
 }
 
 /* top bar */
@@ -203,7 +251,8 @@
   outline-offset: -1px;
 }
 
-.filterbar .fold {
+.filterbar .fold,
+.filterbar .window {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
@@ -217,12 +266,14 @@
   cursor: default;
 }
 
-.filterbar .fold:hover {
+.filterbar .fold:hover,
+.filterbar .window:hover {
   border-color: var(--dim);
   color: var(--text);
 }
 
-.filterbar .fold:focus-visible {
+.filterbar .fold:focus-visible,
+.filterbar .window:focus-visible {
   outline: 1px solid var(--sage-hi);
   outline-offset: -1px;
 }

@@ -12,7 +12,10 @@ export interface CorePayload {
 
 /** What the preload script puts on the window. */
 export interface C4Window {
+  /** A request for the core; `prefs_set` and the others ipc.ts allows. */
   invoke(method: string, params?: unknown): Promise<unknown>;
+  /** A request the main process answers itself: where the sidebar is, and words for the other window. */
+  shell(request: unknown): Promise<unknown>;
   on(listener: (payload: CorePayload) => void): () => void;
   platform: string;
   versions: { electron: string; chrome: string; node: string };
@@ -29,7 +32,7 @@ export const SESSIONS_EVENT = "sessions";
 /** Electron wraps a rejection from the main process in its own words; the core's text is enough. */
 const WRAPPER = /^Error invoking remote method '[^']*': (?:Error: )?/;
 
-function unwrap(error: unknown): Error {
+export function unwrapError(error: unknown): Error {
   const text = error instanceof Error ? error.message : String(error);
   return new Error(text.replace(WRAPPER, ""));
 }
@@ -47,7 +50,7 @@ export function electronBridge(c4: C4Window | undefined = globalThis.window?.c4)
     return api.invoke(method, params).then(
       (value) => value as T,
       (error: unknown) => {
-        throw unwrap(error);
+        throw unwrapError(error);
       },
     );
   }

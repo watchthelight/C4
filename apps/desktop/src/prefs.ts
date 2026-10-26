@@ -1,11 +1,12 @@
 // <wtl> project: c4 | file: apps/desktop/src/prefs.ts | author: watchthelight </wtl>
 // What the window keeps between runs. The core stores one JSON object under the C4 home with a
 // schema number and a section per part of the window; the sidebar section holds the list's
-// preferences, the sidebar's width and whether it is folded to its rail. Reading is tolerant: a
-// missing or malformed value falls back
-// to its default and an unknown key is left alone, so a file from another version never stops the
-// window. Writes go to the core one section at a time, after a short quiet, so a splitter drag
-// costs one write; the store flushes on demand when the page is about to go away.
+// preferences, the sidebar's width and whether it is folded to its rail, and the `windows` section,
+// which the main process writes, says whether the sidebar was in its own window. Reading is
+// tolerant: a missing or malformed value falls back to its default and an unknown key is left
+// alone, so a file from another version never stops the window. Writes go to the core one section
+// at a time, after a short quiet, so a splitter drag costs one write; the store flushes on demand
+// when the page is about to go away.
 
 import type { Bridge, PrefsDoc } from "./bridge/types";
 import { GROUP_BYS } from "./sessions/arrange";
@@ -83,6 +84,12 @@ export function readSidebar(doc: unknown): SidebarPrefs {
     width: Math.max(SIDEBAR_MIN, Math.round(width)),
     view: oneOf(s.view, SIDEBAR_VIEWS, SIDEBAR_DEFAULTS.view),
   };
+}
+
+/** True when the `windows` section of `doc` has the sidebar in its own window. */
+export function readDetached(doc: unknown): boolean {
+  const w = isRecord(doc) && isRecord(doc.windows) && isRecord(doc.windows.sidebar) ? doc.windows.sidebar : {};
+  return w.detached === true;
 }
 
 /** The section as the file holds it: snake_case keys, the sets as arrays. */

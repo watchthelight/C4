@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 import { relayArgs } from "../cli.js";
-import { fromPage } from "../ipc.js";
+import { ID_MAX, fromPage, shellRequest } from "../ipc.js";
 import { fileFor } from "../protocol.js";
 
 describe("the command line rule", () => {
@@ -59,6 +59,28 @@ describe("the page check", () => {
     expect(fromPage("c4://apps/index.html", origins)).toBe(false);
     expect(fromPage("https://example.com/c4://app/", origins)).toBe(false);
     expect(fromPage(undefined, origins)).toBe(false);
+  });
+});
+
+describe("a request for the shell", () => {
+  it("takes the three kinds and refuses the rest", () => {
+    expect(shellRequest({ kind: "windows" })).toEqual({ kind: "windows" });
+    expect(shellRequest({ kind: "windows", extra: 1 })).toEqual({ kind: "windows" });
+    expect(shellRequest({ kind: "sidebar", action: "detach" })).toEqual({ kind: "sidebar", action: "detach" });
+    expect(shellRequest({ kind: "sidebar", action: "attach" })).toEqual({ kind: "sidebar", action: "attach" });
+    expect(shellRequest({ kind: "sidebar", action: "focus" })).toEqual({ kind: "sidebar", action: "focus" });
+    expect(shellRequest({ kind: "sidebar", action: "close" })).toBeNull();
+    expect(shellRequest({ kind: "sidebar" })).toBeNull();
+    expect(shellRequest({ kind: "select", id: "abc" })).toEqual({ kind: "select", id: "abc" });
+    expect(shellRequest({ kind: "select", id: null })).toEqual({ kind: "select", id: null });
+    expect(shellRequest({ kind: "select", id: "" })).toBeNull();
+    expect(shellRequest({ kind: "select", id: "x".repeat(ID_MAX + 1) })).toBeNull();
+    expect(shellRequest({ kind: "select", id: 5 })).toBeNull();
+    expect(shellRequest({ kind: "select" })).toBeNull();
+    expect(shellRequest({ kind: "quit" })).toBeNull();
+    expect(shellRequest("windows")).toBeNull();
+    expect(shellRequest(null)).toBeNull();
+    expect(shellRequest(["windows"])).toBeNull();
   });
 });
 

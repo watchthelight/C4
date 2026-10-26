@@ -2,19 +2,20 @@
 // The `c4` executable. With arguments it is the command line (`c4 sessions`, `c4 doctor`,
 // `c4 install`, ...): the arguments go to c4-cli in this console, its exit code comes back, and no
 // window opens. Without any it is the window: one instance, the core started as a child, the page
-// served from the app's own scheme, the core stopped before the process leaves.
+// served from the app's own scheme, the sidebar's own window put back where the last run left it,
+// the core stopped before the process leaves.
 
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { BrowserWindow, Menu, app, dialog, session } from "electron";
+import { Menu, app, dialog, session } from "electron";
 import { relayArgs } from "./cli.js";
-import { installIpc } from "./ipc.js";
+import { START_WAIT_MS, installIpc } from "./ipc.js";
 import { log } from "./log.js";
 import { c4Home, cliPath, devUrl, preloadPath, rendererDir } from "./paths.js";
 import { ORIGIN, registerScheme, serveRenderer } from "./protocol.js";
 import { Sidecar } from "./sidecar.js";
-import { createMainWindow } from "./window.js";
+import { Windows } from "./windows.js";
 
 const relay = relayArgs(process.argv, process.defaultApp === true);
 if (relay !== null) {
@@ -56,17 +57,12 @@ function runWindow(): void {
   const core = new Sidecar(exe);
   const dev = devUrl();
   const url = dev ?? `${ORIGIN}/index.html`;
+  const windows = new Windows(core, { url, preload: preloadPath(), devtools: process.env.C4_DEVTOOLS === "1" });
   let stopped = false;
   let quitting = false;
 
   app.on("second-instance", () => {
-    const [win] = BrowserWindow.getAllWindows();
-    if (win !== undefined) {
-      if (win.isMinimized()) {
-        win.restore();
-      }
-      win.focus();
-    }
+    windows.focusMain();
   });
   app.on("window-all-closed", () => {
     app.quit();
@@ -82,9 +78,7 @@ function runWindow(): void {
       return;
     }
     quitting = true;
-    for (const win of BrowserWindow.getAllWindows()) {
-      win.close();
-    }
+    windows.closeAll();
     void core.stop().then(() => {
       stopped = true;
       app.quit();
@@ -94,6 +88,16 @@ function runWindow(): void {
     dialog.showErrorBox("c4: the core cannot be used", why);
     stopped = true;
     app.exit(1);
+  });
+  // Chromium replaces a GPU process that crashed or hung and falls back to software rendering on
+  // its own; until then the window paints nothing, so the log says when it happened and why
+  app.on("child-process-gone", (_event, details) => {
+    if (details.type === "GPU") {
+      log("warn", "the GPU process is gone; Chromium falls back to software rendering", {
+        reason: details.reason,
+        exitCode: details.exitCode,
+      });
+    }
   });
 
   void app.whenReady().then(() => {
@@ -110,9 +114,18 @@ function runWindow(): void {
     });
     session.defaultSession.setPermissionCheckHandler(() => false);
     serveRenderer(rendererDir());
-    installIpc(core, dev === null ? [ORIGIN] : [ORIGIN, dev]);
+    installIpc(core, dev === null ? [ORIGIN] : [ORIGIN, dev], windows);
     core.start();
-    createMainWindow({ url, preload: preloadPath(), devtools: process.env.C4_DEVTOOLS === "1" });
+    windows.openMain();
+    // the sidebar window of the last run comes back once the core can say where it was; the main
+    // window does not wait for that
+    windows.ready = core
+      .whenRunning(START_WAIT_MS)
+      .then(() => core.invoke("prefs_get", null))
+      .then((doc) => windows.restore(doc))
+      .catch((error: unknown) => {
+        log("warn", "could not put the window layout back", { error: String(error) });
+      });
     log("info", "window open", { url, core: exe, userData: app.getPath("userData") });
   });
 }

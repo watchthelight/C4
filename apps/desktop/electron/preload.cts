@@ -1,13 +1,15 @@
 // <wtl> project: c4 | file: apps/desktop/electron/preload.cts | author: watchthelight </wtl>
-// The only door between the page and the main process: `window.c4` with a request function, an
-// event subscription and two facts. The page runs sandboxed with context isolation, so this file
-// is CommonJS and nothing of Node reaches the page. The channel names repeat ipc.ts.
+// The only door between a page and the main process: `window.c4` with a request function for the
+// core, one for the shell itself, an event subscription and two facts. The page runs sandboxed with
+// context isolation, so this file is CommonJS and nothing of Node reaches the page. The channel
+// names repeat ipc.ts.
 
 import electron = require("electron");
 
 const { contextBridge, ipcRenderer } = electron;
 
 const INVOKE = "c4:invoke";
+const SHELL = "c4:shell";
 const EVENT = "c4:event";
 
 interface Payload {
@@ -18,6 +20,7 @@ interface Payload {
 contextBridge.exposeInMainWorld("c4", {
   invoke: (method: string, params?: unknown): Promise<unknown> =>
     ipcRenderer.invoke(INVOKE, method, params ?? null),
+  shell: (request: unknown): Promise<unknown> => ipcRenderer.invoke(SHELL, request),
   on: (listener: (payload: Payload) => void): (() => void) => {
     const handler = (_event: Electron.IpcRendererEvent, payload: Payload): void => {
       listener(payload);

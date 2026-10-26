@@ -1,9 +1,9 @@
 // <wtl> project: c4 | file: apps/desktop/src/sessions/filter.ts | author: watchthelight </wtl>
-// The line above the session list: the filter box, the grouping button and, in the main window,
-// the button that folds the sidebar to its rail. `/` anywhere in the window focuses the box;
-// Escape clears it, then leaves it; Enter and the down arrow leave it for the list with the filter
-// kept. The box is the only text input in the sidebar and it reaches no session: it only narrows
-// what the list shows.
+// The line above the session list: the filter box, the grouping button, the button that moves the
+// sidebar into its own window or back, and, in the main window, the button that folds the sidebar
+// to its rail. `/` anywhere in the window focuses the box; Escape clears it, then leaves it; Enter
+// and the down arrow leave it for the list with the filter kept. The box is the only text input in
+// the sidebar and it reaches no session: it only narrows what the list shows.
 
 import { el } from "../dom";
 import { GROUP_BYS, nextGroupBy } from "./arrange";
@@ -20,6 +20,12 @@ export function groupLabel(g: GroupBy): string {
   return GROUP_LABEL[g];
 }
 
+/** The button that moves the sidebar: out into its own window from the main one, or back. */
+export interface WindowButton {
+  kind: "detach" | "attach";
+  onClick(): void;
+}
+
 export interface FilterBarOptions {
   groupBy: GroupBy;
   onFilter(text: string): void;
@@ -28,6 +34,8 @@ export interface FilterBarOptions {
   onLeave(): void;
   /** When given, a button at the right end folds the sidebar to its rail. */
   onFold?(): void;
+  /** When given, a button before the fold button moves the sidebar between the windows. */
+  windowButton?: WindowButton;
 }
 
 export interface FilterBar {
@@ -88,6 +96,23 @@ export function createFilterBar(options: FilterBarOptions): FilterBar {
     options.onGroupBy(groupBy);
   });
   root.append(input, button);
+  const windowButton = options.windowButton;
+  if (windowButton) {
+    const move = el("button", "window");
+    move.type = "button";
+    move.dataset.kind = windowButton.kind;
+    const what =
+      windowButton.kind === "detach" ? "open the sidebar in its own window" : "put the sidebar back in the main window";
+    move.setAttribute("aria-label", what);
+    move.title = `${what} (Ctrl+Shift+O)`;
+    const glyph = el("span", "glyph-window");
+    glyph.setAttribute("aria-hidden", "true");
+    move.append(glyph);
+    move.addEventListener("click", () => {
+      windowButton.onClick();
+    });
+    root.append(move);
+  }
   const onFold = options.onFold;
   if (onFold) {
     const fold = el("button", "fold");

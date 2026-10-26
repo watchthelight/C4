@@ -31,6 +31,10 @@ function fake(answer: (method: string, params: unknown) => unknown): C4Window & 
         return Promise.reject(error);
       }
     },
+    shell: (request) => {
+      calls.push(["shell", request]);
+      return Promise.resolve({ sidebar: "attached" });
+    },
     on: (listener) => {
       listeners.add(listener);
       return () => {
@@ -58,7 +62,7 @@ describe("electron bridge", () => {
     expect(selectBridge().kind).toBe("mock");
   });
 
-  it("names the four methods and passes prefs_set its section and value", async () => {
+  it("names the four methods, passes prefs_set its section and value, and never asks the shell", async () => {
     const c4 = fake((method) => ({ method }));
     const bridge = electronBridge(c4);
     await bridge.listSessions();
