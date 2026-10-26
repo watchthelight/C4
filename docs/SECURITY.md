@@ -33,9 +33,13 @@ user exports them on purpose.
 
 ## Local sockets
 
-The ingest socket is a named pipe with a DACL for the current user on Windows and a Unix socket with
-mode 0600 in a private directory elsewhere. Remote clients are rejected. Managed session hosts use the
-same rules.
+The ingest socket is a named pipe in the per-session `LOCAL` namespace with a DACL for the current
+user on Windows and a Unix socket with mode 0600 in a private directory elsewhere. Remote clients are
+rejected. Managed session hosts use the same rules. The shim connects only to the endpoint derived
+from its own C4 home and sends one line per payload. Hook payloads include tool inputs, which can hold
+whatever the session typed, so the spool that keeps undelivered lines (`~/.c4/spool/`) is created
+with mode 0700 and its files with 0600 on Unix, lives under the user's own profile on Windows, and
+each file is removed once C4 has replayed it.
 
 ## Control
 

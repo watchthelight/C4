@@ -4,8 +4,9 @@
 
 How C4 plugs into an existing Claude Code setup, what it changes, and how to take it out again.
 
-Status: `c4 install` ships in Milestone 2. Until then C4 runs in the coarse mode described in
-docs/HOW-IT-WORKS.md: registry, transcripts and the status line's cache files, no hooks.
+Status: the shim exists (`crates/c4-shim`); the ingest server and `c4 install` follow in Milestone 2.
+Until they land C4 runs in the coarse mode described in docs/HOW-IT-WORKS.md: registry, transcripts
+and the status line's cache files, no hooks.
 
 ## What `c4 install` changes
 
@@ -62,6 +63,45 @@ something.
 
 The shim adds about 2 ms before the original status line command runs. The status line's own output,
 cache files and everything that reads them keep working exactly as before.
+
+## The shim
+
+`c4-shim` is a small executable with no dependencies that `c4 install` copies to `~/.c4/bin/`. It has
+four subcommands:
+
+| Command | What it does |
+|---|---|
+| `c4-shim statusline -- <command> [args]` | Reads the status line payload from stdin, starts the original command at once with that same stdin, and lets its stdout, stderr and exit code through untouched. The copy to C4 runs on a thread beside the command, so it costs the status line nothing but the shim's own startup. |
+| `c4-shim hook` | Reads the hook payload from stdin, copies it to C4, prints nothing and exits 0, whatever happened. A word after `hook` (an event name) is accepted and ignored. |
+| `c4-shim endpoint` | Prints where this shim would connect, for `c4 doctor` to compare with the app's own answer. |
+| `c4-shim --version` | Prints its version, so the installer can tell a stale copy from the current one. |
+
+Each payload becomes one line of newline-delimited JSON:
+
+```json
+{"kind":"hook","recv_at":1792972800123,"pid":4242,"payload":{"session_id":"...","hook_event_name":"Stop","cwd":"..."}}
+```
+
+`kind` is `statusline` or `hook`, `recv_at` is when the shim read the payload in milliseconds since
+the epoch, `pid` is the shim's own process id, and `payload` is Claude Code's JSON as it arrived, on
+one line. A payload that is not a JSON object or array travels as `{"raw": "<text>"}`.
+
+The line goes to the ingest endpoint of the C4 home (`C4_HOME`, else `~/.c4`): on Windows the named
+pipe `\\.\pipe\LOCAL\c4-ingest-<hash>`, where the hash is the 64-bit FNV-1a of the home path in
+lowercase with forward slashes, so two C4 homes on one machine never share a pipe; elsewhere the
+socket file `~/.c4/ingest.sock`. The shim and `c4-core` each carry this rule and a test keeps them
+equal. When nothing is listening the line is appended to `~/.c4/spool/<UTC date>.jsonl` instead
+(one line per payload, at most 20 MiB per file, after which further lines for that day are dropped),
+for the ingest server to replay when C4 starts; that server is the next piece of Milestone 2, so
+until it lands the spool only fills. A payload over 1 MiB is passed to the original command whole
+and not copied at all. The shim never waits long: a hook exits 900 ms after reading its payload at
+the latest, inside the 1 s timeout of the synchronous SessionEnd hook, and the status line, once the
+original command has finished, waits for a delivery still in progress only until 250 ms have passed
+since the payload was read. Past those points the shim exits and leaves the delivery to fail on its
+own. If the original command cannot be started, the reason becomes the status line text and
+the shim exits 0, because a message is more use than an empty line. Setting `C4_SHIM_LOG=1` writes
+one line per run to `~/.c4/logs/shim.log` with the byte count, the outcome and the exit code, never
+the payload.
 
 ## Backups and removal
 

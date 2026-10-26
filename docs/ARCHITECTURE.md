@@ -8,9 +8,9 @@ shell renders those views with vanilla TypeScript and hosts xterm.js panes whose
 from a per-session host process.
 
 Status: Milestone 1 delivers `c4-core`, `c4-discovery`, `c4-transcript` (tailer, parser, follower,
-index and watcher), `c4-testkit`, `c4-cli` and `c4-desktop`, whose window lists sessions. The other
-crates are named below with the milestone that brings them; solid edges in the crate graph are in the
-tree, dotted ones are planned.
+index and watcher), `c4-testkit`, `c4-cli` and `c4-desktop`, whose window lists sessions. Milestone 2
+has so far added `c4-shim`. The other crates are named below with the milestone that brings them;
+solid edges in the crate graph are in the tree, dotted ones are planned.
 
 ## Processes
 
@@ -39,7 +39,7 @@ graph TD
     desktop --> discovery
     ingest[c4-ingest, M2] -.-> core
     store[c4-store, M2] -.-> core
-    shim[c4-shim, M2: no dependencies]
+    shim[c4-shim: no dependencies]
     adapters[c4-adapters, M3] -.-> core
     host[c4-host, M3] -.-> core
     controls[c4-controls, M3] -.-> adapters
@@ -51,7 +51,7 @@ graph TD
 
 | Crate | Responsibility | Milestone |
 |---|---|---|
-| `c4-core` | `SessionId`, `ProcessRef {pid, proc_start}`, `Evidence {source, observed or heuristic, at}`, the nine-state `SessionState`, `Observation` (registry, agents command, daemon, process, transcript, hook, OSC), `SessionView`, `SessionTable`, `reduce` with its rules, the versioned event `Envelope`, `redact`. No I/O. | 1 |
+| `c4-core` | `SessionId`, `ProcessRef {pid, proc_start}`, `Evidence {source, observed or heuristic, at}`, the nine-state `SessionState`, `Observation` (registry, agents command, daemon, process, transcript, hook, OSC, status line), `SessionView`, `SessionTable`, `reduce` with its rules, the versioned event `Envelope`, `redact`, and `home` (where C4 keeps its own files and how its ingest endpoint is named). No I/O. | 1, 2 |
 | `c4-discovery` | `ClaudeHome` resolution (`C4_CLAUDE_HOME`, `CLAUDE_CONFIG_DIR`, `~/.claude`), the registry reader, the `claude agents --json` runner with a timed capture, daemon and job enrichment with the auth fields dropped, the process probe (sysinfo) with the liveness ladder (pid, creation time, executable name), terminal host identification from the process environment, the transcript existence check, and `Discovery`, which folds one pass into the table and reports the transitions. | 1 |
 | `c4-transcript` | The byte-offset tailer, the tolerant record parser gated on the major `version`, the record-to-event map, the subagent and workflow directory scanner, the project index built from metadata only, `SessionFollower` (one session's main transcript and agent files, folded into observations, usage max-merged per message id) and the file watcher. The workflow graph comes in Milestone 5. | 1 (reader), 5 (graph) |
 | `c4-testkit` | `ScratchHome` (a Claude home in a temp dir, seeded from `fixtures/home`), `FakeClaude` (a real process registered with its pid and creation time, so liveness tests run on a real process table), the discovery tests A and B. | 1 |
@@ -59,7 +59,7 @@ graph TD
 | `c4-desktop` | The Tauri app: the refresh thread, two commands, one event, the Windows console attach for headless use. The window itself is `apps/desktop/src`. | 1 |
 | `c4-ingest` | Local socket server (named pipe with a current-user DACL on Windows, mode 0600 Unix socket elsewhere), spool replay, bounded queues that drop the oldest item and count drops instead of blocking a producer. | 2 |
 | `c4-store` | SQLite schema and queries: sessions, identities, events, cursors, usage samples, agents, tasks, config transactions, audit, hosts, layouts, searchable scrollback. | 2 |
-| `c4-shim` | The sidecar. | 2 |
+| `c4-shim` | The sidecar: the `statusline -- <command>` and `hook` subcommands, the one-line JSON envelope, the endpoint rule (repeated from `c4-core::home` and held equal by a test), the spool and the run log. Standard library only. docs/SESSION-INTEGRATION.md has the wire format. | 2 |
 | `c4-adapters` | The `HostAdapter` trait and one implementation per terminal host. | 3, 7 |
 | `c4-host` | The managed session host: pty, ring buffer, screen model, lease, socket framing. | 3 |
 | `c4-controls` | The command router: target validation, leases, the audit log. | 3 |

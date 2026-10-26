@@ -1,0 +1,41 @@
+# <wtl> project: c4 | file: crates/c4-shim/Cargo.toml | author: watchthelight </wtl>
+
+[package]
+name = "c4-shim"
+description = "The C4 sidecar: tees status line and hook payloads to C4 and runs the original command"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "c4-shim"
+path = "src/main.rs"
+
+# No dependencies on purpose: the shim starts on every hook event and every status line refresh, so
+# it stays a small static binary with nothing to resolve at startup. The few rules it shares with the
+# rest of C4 are repeated in src/lib.rs and a test holds them in step with c4-core.
+[dependencies]
+
+[dev-dependencies]
+c4-core = { path = "../c4-core" }
+serde_json = { workspace = true }
+tempfile = { workspace = true }
+
+# A named pipe server for the Windows tee test; the shim itself never links tokio.
+[target.'cfg(windows)'.dev-dependencies]
+tokio = { workspace = true }
+
+# The pass-through test runs without the libtest harness: its executable doubles as the command the
+# shim wraps (see tests/passthrough.rs).
+[[test]]
+name = "passthrough"
+harness = false
+
+[lints]
+workspace = true

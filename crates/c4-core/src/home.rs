@@ -9,8 +9,9 @@ use std::path::{Path, PathBuf};
 /// Overrides the C4 home. Tests point it at a scratch directory.
 pub const HOME_ENV: &str = "C4_HOME";
 /// The named pipe prefix on Windows; the hash of the home path follows it, so two homes on one
-/// machine never share a pipe.
-pub const PIPE_PREFIX: &str = r"\\.\pipe\c4-ingest-";
+/// machine never share a pipe. `LOCAL` keeps the name to the login session, the convention Claude
+/// Code's own peer-message pipes follow.
+pub const PIPE_PREFIX: &str = r"\\.\pipe\LOCAL\c4-ingest-";
 /// The socket file under the home on Unix.
 pub const SOCKET_NAME: &str = "ingest.sock";
 
