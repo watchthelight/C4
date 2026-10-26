@@ -50,11 +50,11 @@ mac:
   darkModeSupport: true
   hardenedRuntime: false
   gatekeeperAssess: false
+  # one dmg, for the architecture of the machine that builds (`--arm64` or `--x64` after `package`
+  # names the other, with a core built for it staged first): the release workflow builds on an
+  # arm64 runner and an x64 runner, each with the core it compiled
   target:
-    - target: dmg
-      arch:
-        - arm64
-        - x64
+    - dmg
 linux:
   category: Development
   icon: icon.png

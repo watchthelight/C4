@@ -21,7 +21,7 @@ and passes; "manual" means someone ran the checklist on real hardware; "unverifi
 | I | a session that cannot be attached is Observed with no input affordance | registry entry with an unmatched host; the window renders no input control for any session (`apps/desktop/tests/list.test.ts`) | in part: the window side is verified, the host match lands with the adapters (Milestone 3) |
 | J | organization and layouts survive a restart | the preferences file round trip (`crates/c4-cli/src/serve/prefs.rs` unit tests: an absent file, a section round trip, a newer schema number and an unknown section kept, a file that is not a JSON object moved aside, the size cap, section names), the window's read of it and its store (`apps/desktop/tests/prefs.test.ts`), the mock bridge's copy in local storage (`apps/desktop/tests/mock.test.ts`); layouts and the relaunch smoke test come with the terminal workspace | in part: the sidebar's pins, grouping, folded groups, density and width are verified headless and were seen surviving a reload in Chromium against the mock bridge (Results); layouts planned (Milestone 3) |
 | K | performance targets | criterion benches, `c4 perf`, a 40-session load generator | planned (Milestone 7) |
-| L | releases are published with checksums and attestations | `scripts/verify_release.py` after each tag | planned (Milestone 2) |
+| L | releases are published with checksums and attestations | the release workflow (a gate on the version and the commit's verify run, the installers on four runners with the Playwright check over each, one drafted release with `SHA256SUMS` and an attestation per asset, public when complete) and the post-release workflow (every asset downloaded again on each runner, checked against the checksums and its attestation, installed and run; `scripts/verify_release.py <tag>` on Linux, which anyone can run by hand) | in part: the workflows and the script exist; the build side's dry run goes in Results; the first tag runs the rest |
 | M | an existing Claude Code setup keeps working after install | scratch home seeded with `fixtures/settings/full.json`; `c4 install`, the agents repo's installer twice (`python -I install/install.py --home <scratch>`; the repo is checked out at a pinned commit in CI, `~/src/agents` or `C4_AGENTS_REPO` locally), `c4 install` again, `c4 uninstall` (`crates/c4-cli/tests/install.rs`) | verified, headless, on every runner; the test skips with a notice where the agents repo is not reachable; run against the real home on Windows (Results, item 3) |
 
 ## Platform status
@@ -57,8 +57,9 @@ result below the list when you run it.
    window, reopen: the session is still there with its scrollback.
 5. (K) Run the load generator with 40 sessions at 3,000 events per minute and `c4 perf`; record
    discovery time, hook-to-UI p95, FPS, idle CPU and RSS.
-6. (L) After each tag: `scripts/verify_release.py <tag>`, then `sha256sum -c SHA256SUMS` and
-   `gh attestation verify` on a downloaded asset.
+6. (L) After each tag: `python scripts/verify_release.py <tag>` with `gh` signed in (or the
+   post-release run's record), then `sha256sum -c SHA256SUMS` and `gh attestation verify` on an
+   asset downloaded by hand.
 7. (G) In a scratch project: Suggest shows REA with its reason, Prepare shows the exact diffs and
    backup paths, Apply writes them, the session shows restart required, Revert restores.
 

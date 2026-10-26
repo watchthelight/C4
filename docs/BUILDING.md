@@ -134,18 +134,20 @@ pnpm -C apps/desktop package         # the installers for this platform under ap
 
 `package` refuses to run until both binaries are staged (`electron/package.mjs` checks), so a package
 never ships without its core; `python scripts/stage_bin.py --profile debug` stages the debug build,
-which is what CI packages. electron-builder builds for the platform it runs on: NSIS and MSI
-installers on Windows (`c4-<version>-win-x64.exe` and `.msi`), a dmg for arm64 and one for x64 on
-macOS (`c4-<version>-mac-arm64.dmg`, `c4-<version>-mac-x64.dmg`), an AppImage and a deb on Linux
-(`c4-<version>-linux-x64.AppImage` and `.deb`). The version is the one in `apps/desktop/package.json`,
+which is what CI packages. electron-builder builds for the platform and the architecture it runs on:
+NSIS and MSI installers on Windows (`c4-<version>-win-x64.exe` and `.msi`), a dmg on macOS for the
+machine's architecture (`c4-<version>-mac-arm64.dmg` or `c4-<version>-mac-x64.dmg`; `--arm64` or
+`--x64` after `package` picks the other, with a core built for it staged first), an AppImage and a
+deb on Linux (`c4-<version>-linux-x86_64.AppImage` and `c4-<version>-linux-amd64.deb`, the
+architecture spelled as each format spells it). The version is the one in `apps/desktop/package.json`,
 kept equal to the workspace version in `Cargo.toml`; the icons come from `apps/desktop/icons/`
 (`icon.ico`, `icon.icns`, `icon.png`). Nothing is signed: there is no certificate for Windows or Linux
 and no Apple identity, so Windows shows its unknown-publisher warning for the installer. The unsigned
 macOS build starts on both macOS runners, where nothing marks it as downloaded; a dmg from a release
 carries the quarantine attribute, and what Gatekeeper then says about an unsigned app is not verified
 here (no macOS hardware is in reach). The verify workflow packages the unpacked app with the debug
-core on every runner, which proves the configuration on all four platforms; the release workflow that
-builds the installers is the next step.
+core on every runner, which proves the configuration on all four platforms; the release workflow
+(Releasing, below) builds the installers with the release core.
 
 On Linux, Chromium's sandbox needs one of two things from the system: a kernel that lets an
 unprivileged process create user namespaces, or the setuid helper `chrome-sandbox` beside the
@@ -170,6 +172,46 @@ session list command replaced with one that prints an empty list, keep the real 
 does (`chromiumSandbox: true`; Playwright's Electron launcher adds `--no-sandbox` on Linux otherwise),
 and a relay that fails reports its signal and stderr. The verify workflow runs it on every runner after
 the package step, under xvfb and with the AppArmor profile above on Linux.
+
+## Releasing
+
+A release is a tag `v<version>` on a commit of main that the verify workflow has passed. The version
+lives in `Cargo.toml` (the workspace) and `apps/desktop/package.json`, kept equal by hand until a bump
+script lands, and the tag must name it: the release workflow (`.github/workflows/release.yml`) stops
+at once when the two differ or the tag names another version, waits for the commit's verify run, and
+stops when there is none or it failed. It then builds the release core and shim and the installers
+on four runners (windows-latest; ubuntu-22.04, the oldest Ubuntu GitHub hosts, so the core asks for
+no newer glibc than it has to; macos-latest for arm64 and macos-15-intel for x64), runs the
+Playwright check over each unpacked release build, and publishes one GitHub release: every
+installer, `SHA256SUMS`, and a build provenance attestation per asset through GitHub's attest
+action, drafted until all of it is up, so a half-built release is never visible. A tag with a hyphen
+(`v0.1.0-rc.1`) makes a pre-release. The body is the version's section of CHANGELOG.md followed by
+`.github/release-notes.md` (`scripts/changelog_section.py` joins them, dropping the comments), so
+the changelog section has to exist before the tag.
+
+```sh
+# set version in Cargo.toml and apps/desktop/package.json, add the section to CHANGELOG.md, commit
+git tag v0.1.0 && git push origin v0.1.0
+gh run watch                     # the release run; the release appears when it ends
+```
+
+A dry run builds the same assets without a release: `gh workflow run release.yml` on main keeps
+them, with the checksums and the notes, as the `release-assets` artifact of that run, which is how
+the asset names and the installers are checked before a tag.
+
+Once the release is public, `.github/workflows/post-release.yml` downloads every asset again on each
+of the four runners, checks it against `SHA256SUMS` and its attestation, installs it the way a user
+would (the NSIS installer silently and the msi's files through an administrative install, the dmg
+mounted and the app started, the deb through apt with the AppArmor profile its post-install script
+loads, the AppImage extracted and run with `--no-sandbox`) and runs `c4 --version` from the result.
+On Linux it also runs `scripts/verify_release.py <tag>`, the whole of test L (the release and its
+asset set, the checksums, the attestations, the verify and release runs, the required documents at
+the tag), which anyone can run by hand with `gh` signed in. To check a download yourself:
+
+```sh
+sha256sum --ignore-missing -c SHA256SUMS
+gh attestation verify c4-0.1.0-win-x64.exe --repo watchthelight/C4
+```
 
 ## Headless commands
 

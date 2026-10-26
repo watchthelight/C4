@@ -196,5 +196,24 @@ stay at 0.y.z while the interfaces settle.
   binary, since Ubuntu 24.04 and later restrict user namespaces and Chromium stops without it.
   Found by it: a quit stopped the core before the windows closed, so a preference the page still
   held was lost; the windows now close first.
+- The release workflow (`.github/workflows/release.yml`). On a `v<version>` tag it checks that
+  `Cargo.toml` and `apps/desktop/package.json` carry that version and that the commit's verify run
+  passed, builds the release core and the installers on four runners (ubuntu-22.04 for Linux, so
+  the core asks for no newer glibc than it has to), runs the Playwright check over each unpacked
+  release build, and publishes one GitHub release with every installer, `SHA256SUMS` and a build
+  provenance attestation per asset, drafted until all of it is up; a hyphen in the tag makes a
+  pre-release. A dispatch run on a branch builds the same set and keeps it as a workflow artifact,
+  the dry run. The body is the version's changelog section and `.github/release-notes.md` (the
+  install notes per platform, the unsigned state, the Linux sandbox caveat), joined by
+  `scripts/changelog_section.py`. electron-builder now builds one dmg, for the architecture of the
+  machine, so each macOS runner packages the core it compiled.
+- The post-release workflow (`.github/workflows/post-release.yml`), on a published release and on
+  request for any tag: every asset downloaded again on each of the four runners and checked against
+  `SHA256SUMS` and its attestation, then installed and run the way a user would (the NSIS installer
+  silently and the msi's files, the dmg mounted and the app started, the deb through apt with the
+  AppArmor profile its post-install script loads and Chromium's sandbox on, the AppImage extracted
+  and run with `--no-sandbox`); and `scripts/verify_release.py <tag>`, test L, which checks the
+  release and its asset set, the checksums, the attestations, the verify and release runs and the
+  required documents at the tag, through `gh`.
 
 [Unreleased]: https://github.com/watchthelight/C4/compare/c3a0a47...HEAD

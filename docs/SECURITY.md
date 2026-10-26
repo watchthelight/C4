@@ -111,6 +111,18 @@ needs user namespaces or Chromium's setuid helper, which the deb sets up and the
 `--no-sandbox` on the command line runs the page without it, and BUILDING.md says when a system asks
 for that and what to do instead.
 
+## Releases
+
+Nothing that ships is signed: there is no Windows certificate, no Apple identity and no Linux key,
+and the release notes say so. What a release carries instead is `SHA256SUMS` and a build provenance
+attestation per asset, recorded by GitHub's attest action inside the release workflow, which
+`gh attestation verify <file> --repo watchthelight/C4` checks against this repository and the
+workflow that built the file. The release workflow runs only on a commit whose verify run passed,
+and the post-release workflow downloads, checks and installs every asset again on each platform. On
+Linux the deb installs an AppArmor profile so that Chromium's sandbox works where user namespaces
+are restricted; the AppImage cannot, and started with `--no-sandbox` it runs the page without the
+renderer sandbox (The shell, above).
+
 ## Reporting
 
 Use GitHub's private vulnerability reporting on this repository. Include the C4 version, the platform

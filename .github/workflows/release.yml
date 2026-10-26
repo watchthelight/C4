@@ -1,0 +1,232 @@
+# <wtl> project: c4 | file: .github/workflows/release.yml | author: watchthelight </wtl>
+# The release. On a tag v<version>: the version in the tree must be the tag's and the commit green on
+# verify; then the installers for Windows, Linux, macOS arm64 and macOS x64, each on its own runner
+# with the release core it compiled, each unpacked build run through the Playwright check; then one
+# GitHub release with every asset, a SHA256SUMS file and a build provenance attestation per asset,
+# drafted until all of it is up. A dispatch run on a branch builds the same set and keeps it as a
+# workflow artifact instead of a release: the dry run that checks the names and the installers.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# a second tag waits for the first; nothing here is cancelled
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: 1
+  # the electron package without its binary: electron-builder fetches the build it packages itself
+  ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+
+jobs:
+  # the tag names the version the tree carries, and the commit passed verify
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: one version in Cargo.toml and package.json, named by the tag
+        id: version
+        shell: bash
+        run: |
+          version=$(python3 -I -c "import json; print(json.load(open('apps/desktop/package.json'))['version'])")
+          cargo=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)
+          echo "package.json $version, Cargo.toml $cargo, $GITHUB_REF_TYPE $GITHUB_REF_NAME"
+          if [ "$version" != "$cargo" ]; then
+            echo "the versions differ: bump both files to the same value"
+            exit 1
+          fi
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "the tag $GITHUB_REF_NAME does not name version $version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: the commit is green on verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          sha=$(git rev-parse HEAD)
+          run=$(gh run list --repo "$GITHUB_REPOSITORY" --commit "$sha" --workflow verify.yml --event push \
+            --json databaseId,status,conclusion --jq '.[0]')
+          if [ -z "$run" ] || [ "$run" = null ]; then
+            echo "no verify run for $sha: push the commit to main first"
+            exit 1
+          fi
+          id=$(jq -r .databaseId <<<"$run")
+          if [ "$(jq -r .status <<<"$run")" != completed ]; then
+            echo "verify run $id is still going; waiting for it"
+            gh run watch "$id" --repo "$GITHUB_REPOSITORY" --interval 30 >/dev/null
+          fi
+          conclusion=$(gh run view "$id" --repo "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)
+          echo "verify run $id for $sha: $conclusion"
+          [ "$conclusion" = success ]
+
+  build:
+    needs: gate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows-x64
+          # the oldest Ubuntu GitHub hosts, so the core asks for no newer glibc than it has to
+          - os: ubuntu-22.04
+            name: linux-x64
+          - os: macos-latest
+            name: macos-arm64
+          - os: macos-15-intel
+            name: macos-x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: read the toolchain pin
+        id: pin
+        shell: bash
+        run: echo "channel=$(sed -n 's/^channel = "\(.*\)"/\1/p' rust-toolchain.toml)" >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.pin.outputs.channel }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release
+      - name: the release core and shim
+        run: cargo build --release -p c4-cli -p c4-shim
+      - run: python -I scripts/stage_bin.py
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: the page bundle and the main process
+        run: pnpm -r build
+      # electron-builder fetches the Electron build and its tools from GitHub; nothing is signed, so
+      # no identity lookup (there is none to find)
+      - name: the installers for this platform and architecture
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: pnpm -C apps/desktop package
+      - name: what was built
+        shell: bash
+        run: ls -l apps/desktop/release
+      # the Playwright check verify runs over the debug build, here over the release build before it
+      # ships: the window with the core from its resources, the fold chord, the relay. Linux gets
+      # xvfb, and the deb's AppArmor profile for the unpacked path where the kernel restricts user
+      # namespaces (verify.yml says why; Ubuntu 22.04 does not, so the profile is skipped there)
+      - name: the built app runs (playwright over the unpacked app)
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            command -v xvfb-run >/dev/null || sudo apt-get install -y xvfb
+            if [ "$(sysctl -n kernel.apparmor_restrict_unprivileged_userns 2>/dev/null)" = 1 ]; then
+              exe="$PWD/apps/desktop/release/linux-unpacked/c4"
+              printf 'abi <abi/4.0>,\ninclude <tunables/global>\n\nprofile c4-unpacked "%s" flags=(unconfined) {\n  userns,\n}\n' "$exe" \
+                | sudo tee /etc/apparmor.d/c4-unpacked
+              sudo apparmor_parser --replace --skip-read-cache /etc/apparmor.d/c4-unpacked
+            fi
+            xvfb-run -a pnpm -C apps/desktop e2e
+          else
+            pnpm -C apps/desktop e2e
+          fi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: installers-${{ matrix.name }}
+          path: |
+            apps/desktop/release/c4-*.exe
+            apps/desktop/release/c4-*.msi
+            apps/desktop/release/c4-*.dmg
+            apps/desktop/release/c4-*.AppImage
+            apps/desktop/release/c4-*.deb
+          if-no-files-found: error
+          compression-level: 0
+
+  # one release from the four builds, drafted until every asset, the checksums and the attestations
+  # are up; a dispatch run keeps the same set as a workflow artifact and makes no release
+  publish:
+    needs: [gate, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ needs.gate.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: installers-*
+          merge-multiple: true
+          path: assets
+      - name: checksums
+        shell: bash
+        working-directory: assets
+        run: |
+          sha256sum c4-* > SHA256SUMS
+          cat SHA256SUMS
+      # the version's section of CHANGELOG.md and the install notes; a dry run has no section yet
+      - name: release notes
+        shell: bash
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            python -I scripts/changelog_section.py "$VERSION" --footer .github/release-notes.md > notes.md
+          else
+            python -I scripts/changelog_section.py "$VERSION" --footer .github/release-notes.md --or-unreleased > notes.md
+          fi
+          cat notes.md
+      - name: the dry run's assets, kept with the run
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-assets
+          path: |
+            assets
+            notes.md
+          compression-level: 0
+      - name: a draft release with every asset
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          case "$GITHUB_REF_NAME" in
+            *-*) pre=--prerelease ;;
+            *) pre= ;;
+          esac
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "the release exists (a run before this one made it); replacing its assets"
+            gh release upload "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --clobber assets/*
+          else
+            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft $pre --verify-tag \
+              --title "C4 $VERSION" --notes-file notes.md assets/*
+          fi
+      - name: build provenance for every asset
+        if: github.ref_type == 'tag'
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-checksums: assets/SHA256SUMS
+      - name: the release goes public
+        if: github.ref_type == 'tag'
+        run: gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false

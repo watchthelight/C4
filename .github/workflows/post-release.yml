@@ -1,0 +1,133 @@
+# <wtl> project: c4 | file: .github/workflows/post-release.yml | author: watchthelight </wtl>
+# After a release is public: every asset downloaded again on each of the four runners, checked
+# against SHA256SUMS and its attestation, then installed and run the way a user would; and, on
+# Linux, scripts/verify_release.py over the release as a whole (test L). Also on request for any
+# tag, by hand from the Actions page.
+name: post-release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: the tag of the release to check (v0.1.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: the assets, downloaded again
+        shell: bash
+        run: |
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir assets
+          ls -l assets
+      - name: every asset matches SHA256SUMS
+        shell: bash
+        working-directory: assets
+        run: |
+          if [ "$RUNNER_OS" = macOS ]; then shasum -a 256 -c SHA256SUMS; else sha256sum -c SHA256SUMS; fi
+      - name: every asset has its attestation
+        shell: bash
+        run: |
+          for f in assets/c4-*; do
+            gh attestation verify "$f" --repo "$GITHUB_REPOSITORY"
+          done
+      # the NSIS installer silently, for the current user, then c4 --version from where it put the
+      # app (the output piped, so the shell waits for the windowed executable); the msi's files
+      # through an administrative install, which extracts without registering anything
+      - name: the installer installs and the app runs (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem assets -Filter 'c4-*-win-x64.exe' | Select-Object -First 1
+          Start-Process -FilePath $setup.FullName -ArgumentList '/S' -Wait
+          $exe = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Depth 2 -Filter c4.exe | Select-Object -First 1
+          if (-not $exe) { throw "c4.exe not found under $env:LOCALAPPDATA\Programs after the install" }
+          "installed: $($exe.FullName)"
+          $out = & $exe.FullName --version | Out-String
+          "c4 --version: exit $LASTEXITCODE, $($out.Trim())"
+          if ($LASTEXITCODE -ne 0 -or $out -notmatch '(?m)^c4 \d') { throw "c4 --version failed" }
+          $cli = Join-Path $exe.DirectoryName 'resources\bin\c4-cli.exe'
+          $out = & $cli --version | Out-String
+          "c4-cli --version: exit $LASTEXITCODE, $($out.Trim())"
+          if ($LASTEXITCODE -ne 0) { throw "c4-cli --version failed" }
+          $msi = Get-ChildItem assets -Filter 'c4-*-win-x64.msi' | Select-Object -First 1
+          $dir = Join-Path $env:RUNNER_TEMP 'c4-msi'
+          $p = Start-Process msiexec.exe -ArgumentList "/a `"$($msi.FullName)`" /qn TARGETDIR=`"$dir`"" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "msiexec /a exit $($p.ExitCode)" }
+          $fromMsi = Get-ChildItem $dir -Recurse -Filter c4.exe | Select-Object -First 1
+          if (-not $fromMsi) { throw "c4.exe not found among the msi's files" }
+          $out = & $fromMsi.FullName --version | Out-String
+          "msi, $($fromMsi.FullName): exit $LASTEXITCODE, $($out.Trim())"
+          if ($LASTEXITCODE -ne 0 -or $out -notmatch '(?m)^c4 \d') { throw "c4 --version from the msi's files failed" }
+      # the dmg for this runner's architecture mounted, the app copied out and started. A dmg a
+      # browser downloaded would carry the quarantine attribute, which this download does not, so
+      # what Gatekeeper says to an unsigned app is not checked here
+      - name: the dmg mounts and the app runs (macos)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          case "$(uname -m)" in arm64) want=arm64 ;; *) want=x64 ;; esac
+          dmg=$(ls assets/c4-*-mac-"$want".dmg)
+          mount="$RUNNER_TEMP/c4-dmg"
+          hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mount"
+          app=$(ls -d "$mount"/*.app | head -n 1)
+          cp -R "$app" "$RUNNER_TEMP/"
+          hdiutil detach "$mount"
+          exe=$(ls "$RUNNER_TEMP"/*.app/Contents/MacOS/c4)
+          echo "app: $exe"
+          codesign -dv "$(dirname "$(dirname "$(dirname "$exe")")")" 2>&1 || true
+          out=$("$exe" --version)
+          echo "c4 --version: $out"
+          [[ "$out" =~ ^c4\ [0-9] ]]
+          "$(dirname "$exe")/../Resources/bin/c4-cli" --version
+      # the deb through apt, which runs electron-builder's post-install script (the /usr/bin link,
+      # and the AppArmor profile where the kernel restricts user namespaces), then c4 --version
+      # with Chromium's sandbox on; the AppImage extracted and run with --no-sandbox, the way the
+      # release notes say it has to be on Ubuntu 24.04 and later, after a look at what it does
+      # without the switch
+      - name: the deb installs and the app runs (linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get install -y ./assets/c4-*.deb xvfb
+          ls -l /opt/C4/c4 /opt/C4/chrome-sandbox /usr/bin/c4
+          sysctl kernel.apparmor_restrict_unprivileged_userns || true
+          ls -l /etc/apparmor.d/c4 || echo "no AppArmor profile installed (none needed on this kernel)"
+          out=$(xvfb-run -a c4 --version)
+          echo "c4 --version: $out"
+          [[ "$out" =~ ^c4\ [0-9] ]]
+          /opt/C4/resources/bin/c4-cli --version
+          chmod +x assets/c4-*.AppImage
+          (cd "$RUNNER_TEMP" && "$GITHUB_WORKSPACE"/assets/c4-*.AppImage --appimage-extract >/dev/null)
+          set +e
+          xvfb-run -a "$RUNNER_TEMP/squashfs-root/AppRun" --version
+          echo "the AppImage without --no-sandbox: exit $? (stops where user namespaces are restricted; documented)"
+          set -e
+          out=$(xvfb-run -a "$RUNNER_TEMP/squashfs-root/AppRun" --no-sandbox --version)
+          echo "AppImage c4 --no-sandbox --version: $out"
+          [[ "$out" =~ ^c4\ [0-9] ]]
+      - uses: actions/setup-python@v7
+        if: runner.os == 'Linux'
+        with:
+          python-version: "3.11"
+      - name: the release as a whole (test L)
+        if: runner.os == 'Linux'
+        run: python -I scripts/verify_release.py "$TAG" --repo "$GITHUB_REPOSITORY" --assets assets
