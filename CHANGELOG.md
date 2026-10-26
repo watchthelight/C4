@@ -141,6 +141,16 @@ stay at 0.y.z while the interfaces settle.
   the rail, the chord again or `/` opens the sidebar back up. A reorder waits while the pointer or
   the keyboard is in the rail, as in the list. The fold is kept in `prefs.json` with the rest of
   the sidebar's organization (`apps/desktop/src/sessions/rail.ts`).
+- A sidebar window. The button beside the fold button, or Ctrl+Shift+O, moves the sidebar into a
+  window of its own ("c4 sessions": the filter line, the list and the hover card over the
+  starfield, nothing else); the main window shows the rail in its place, and the rail's button,
+  Ctrl+Shift+B or Ctrl+Shift+O in either window, the button in the sidebar window's filter line, or
+  closing that window puts it back. A session chosen in either window is the one both show, and the
+  sidebar's organization is one file for both. The window opens where it last sat when enough of
+  that place is still on a display, else over the main window, and opens again at the next start
+  when it was open at the last close; its placement and bounds go to the `windows` section of
+  `prefs.json`, which the main process writes (`apps/desktop/electron/windows.ts`,
+  `apps/desktop/electron/bounds.ts`, `apps/desktop/src/shell.ts`).
 - `c4-cli serve`, the window's core as a child process. A shell starts it with pipes on stdin and
   stdout and talks JSON lines: a request `{"id", "method", "params"}` on stdin gets `{"id", "ok"}`
   or `{"id", "error"}` back with the same id, and every refresh pass and every batch the ingest

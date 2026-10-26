@@ -96,9 +96,12 @@ validation as local ones.
 The window is Electron. The page runs in Chromium's renderer sandbox with context isolation on and
 Node integration off; its one way out is `window.c4`, which the preload script exposes: a request
 function for the four methods the core answers (`list_sessions`, `about`, `prefs_get`, `prefs_set`),
-an event subscription, the platform and the versions. The main process takes a request only from a
-frame of the app's own page and only for those four names, so a page that was somehow replaced could
-ask for nothing else. The page is served from the app's own scheme, `c4://app/`, from the renderer
+a second for the three requests the main process answers itself (where the sidebar is, moving it
+between the main window and a window of its own, and the session chosen by hand, passed to the
+other window), an event subscription, the platform and the versions. The main process takes a
+request only from a frame of the app's own page and only for those seven names, so a page that was
+somehow replaced could ask for nothing else; a shell request never reaches the core, and the sidebar
+window is a second window on the same page with the same settings. The page is served from the app's own scheme, `c4://app/`, from the renderer
 build alone (a path that leaves that directory is refused), and every answer carries a content
 security policy that allows the page's own origin for scripts, styles, images and fonts, inline
 styles, and nothing else: no connection to anywhere, no plugins, no frames. No remote URL is ever

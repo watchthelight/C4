@@ -133,8 +133,12 @@ stderr and the window runs without hooks.
 | `about` | page to core (request) | C4 version, the Claude home and what chose it, the C4 home and what chose it, the ingest endpoint, the preferences file and what was wrong with it at startup if anything, refresh period, agents cadence, operating system |
 | `prefs_get` | page to core (request) | the preferences document as the core holds it |
 | `prefs_set` | page to core (request) | `section`, `value`: replaces one section, writes the file, returns the document as written; an error string when the name is not a section name, the result would pass 1 MiB or the write failed |
+| `windows` | page to shell (request on `c4:shell`) | where the sidebar is, `attached` or `detached`, once the placement of the last run has been put back |
+| `sidebar` | page to shell (request on `c4:shell`) | `action`: `detach` opens the sidebar window (where it last sat, or over the main window) and answers `detached`; `attach` closes it and answers `attached`; `focus` brings it up and asks its page for the filter box |
+| `select` | page to shell (request on `c4:shell`) | `id` or null: the session chosen by hand, passed to the other window as a `shell` event |
 | `sessions` | core to page (event) | the document, after every pass and after every batch of ingested lines |
 | `core` | shell to page (event) | the core as the shell sees it: `starting` with the attempt, `running` with its pid, version and schema, or `stopped` with the exit and the pause before the next start, when one is coming |
+| `shell` | shell to page (event) | a word from the main process: `windows` with the placement after a change, `select` with the id the other window chose, `prefs` with the document after the other window wrote a section, `focus` to put the focus in the filter box |
 
 The document is what `c4 sessions --json` prints (`schema`, `at`, `home`, `sessions[]`, `report`)
 plus `tick` (the pass counter), `agents` (when the session list command last ran, how many entries it
@@ -150,15 +154,21 @@ problem of this run, a one-second `clock`) feed one render per animation frame; 
 while the window is hidden. Every change by hand in the sidebar (a pin, the grouping, a folded
 group, the density, the splitter, the fold to the rail) goes to a store that writes the `sidebar`
 section a quarter of a second after the last change, one write in flight at a time, and flushes on
-`pagehide`. The app root carries `data-sidebar`, `full` or `rail`, and the grid follows it: the
-sidebar and the splitter leave the layout while the rail (`apps/desktop/src/sessions/rail.ts`)
-shows, and the list is painted again when it comes back.
+`pagehide`. The app root carries `data-sidebar`, `full`, `rail` or `away`, and the grid follows it:
+the sidebar and the splitter leave the layout while the rail (`apps/desktop/src/sessions/rail.ts`)
+shows, in place of a folded sidebar or of one that is away in its own window, and the list is
+painted again when it comes back. The same page serves the sidebar window (`?window=sidebar`,
+`data-window` on the root): the sidebar alone, built by the same code (`apps/desktop/src/main.ts`),
+with the shell (`apps/desktop/src/shell.ts`) carrying what the two windows tell each other.
 The page reaches the core through `window.c4`, which the preload script
 (`apps/desktop/electron/preload.cts`) exposes over Electron's context bridge: `invoke(method,
-params)`, `on(listener)`, the platform and the versions. The main process (`ipc.ts`) takes a request
-only from a frame of the app's own page (the `c4://app` origin, plus the Vite server's in
-development) and only for the four methods above, waits up to 15 s for the core's hello when the
-page asked before the core was up, and sends it on; every line from the core goes to every window.
+params)`, `shell(request)`, `on(listener)`, the platform and the versions. The main process
+(`ipc.ts`) takes a request only from a frame of the app's own page (the `c4://app` origin, plus the
+Vite server's in development) and only for the four methods and the three shell requests above. A
+method waits up to 15 s for the core's hello when the page asked before the core was up and goes on
+to the core; a shell request is answered by the main process itself (`windows.ts`: the sidebar
+window, its placement and its bounds in the `windows` section of the preferences) and never reaches
+the core. Every line from the core goes to every window.
 `selectBridge()` picks that bridge when `window.c4` exists and the mock bridge (eight synthetic
 sessions on a scripted timeline) in a plain browser, so the layout can be worked on and tested
 without Claude Code; `VITE_C4_BRIDGE=mock|electron` forces either. `fixtures/labels.json` is the
@@ -169,9 +179,9 @@ The page is served from the app's own scheme, `c4://app/` (`protocol.ts`): the r
 nothing else, a path that leaves the directory refused, every answer carrying the content security
 policy (the page's own origin for scripts, styles, images and fonts, inline styles, and no
 connections, objects or frames). The window runs with Chromium's sandbox and context isolation on
-and Node integration off, opens no popups and does not navigate away from the page. The four methods
-above are the whole surface between the page and the rest of the machine; docs/SECURITY.md has the
-rest.
+and Node integration off, opens no popups and does not navigate away from the page; the sidebar
+window runs with the same settings. The four methods and the three shell requests above are the
+whole surface between the page and the rest of the machine; docs/SECURITY.md has the rest.
 
 ## Event flow
 

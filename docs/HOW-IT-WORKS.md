@@ -236,13 +236,27 @@ it opens the same card the rows have. The button at the top of the rail, the cho
 opens the sidebar back up. The rail follows the list's rule for reorders: a square changes its
 glyph at once, its place waits while the pointer or the keyboard is in the rail.
 
+The button beside the fold button, or Ctrl+Shift+O, moves the sidebar into a window of its own,
+"c4 sessions": the same filter line, list and hover card, edge to edge over the starfield, and
+nothing else. The main window shows the rail in the sidebar's place, and the button at the top of
+the rail brings the sidebar back; so does Ctrl+Shift+B or Ctrl+Shift+O in either window, the button
+at the right end of the sidebar window's filter line, or closing that window. A session chosen in
+either window is the one both show, so the inspector in the main window follows a click in the
+sidebar window, and `/` in the main window brings the sidebar window up with its filter box
+focused. The sidebar's organization is one file shared by both windows: a pin, a grouping or a
+density change made in one shows in the other. The sidebar window opens where it last sat, as long
+as enough of that place is still on a display, and over the main window otherwise; the next start
+opens it again when it was open at the last close.
+
 Nothing in the window types into any session (the filter box narrows the list and reaches nothing
 else). The sidebar's organization survives a restart: the pins, the grouping, the folded groups, the
-density, the width and whether it is folded to its rail go to `prefs.json` under the C4 home (`~/.c4/` unless `C4_HOME` or
+density, the width, whether it is folded to its rail and whether it is away in its own window (and
+where that window sat) go to `prefs.json` under the C4 home (`~/.c4/` unless `C4_HOME` or
 `--c4-home` says otherwise) a quarter of a second after each change by hand (a change made in the
 quarter second before the window closes may not reach the file), and the next start builds the
 sidebar from them before the first pass. The file is one JSON object with a `schema`
-number and one section per part of the window (`sidebar` today). The core keeps it whole and
+number and one section per part of the window: `sidebar`, which the page writes, and `windows`,
+which the main process writes with the sidebar window's placement and bounds. The core keeps it whole and
 replaces one section at a time through a temporary file and a rename; a section or a schema number
 another version wrote survives. A file that is not a JSON object is moved aside as
 `prefs.json.bad-<stamp>` and the status strip says so; a value the window does not understand falls

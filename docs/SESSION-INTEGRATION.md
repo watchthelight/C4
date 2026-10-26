@@ -11,8 +11,7 @@ starts the server when it starts, replays what the shim spooled while no C4 ran,
 hook event and status line payload into the session list as it arrives. A session the shim has not reported yet runs in the coarse mode described
 in docs/HOW-IT-WORKS.md: registry, transcripts and the status line's cache files, no hooks. The
 sidebar's organization is kept in `prefs.json` under the C4 home, never under the Claude home
-(docs/HOW-IT-WORKS.md, "The window today"). The detached sidebar window and notifications come with
-later Milestone 2 commits.
+(docs/HOW-IT-WORKS.md, "The window today"). Notifications come with a later Milestone 2 commit.
 
 ## What `c4 install` changes
 
