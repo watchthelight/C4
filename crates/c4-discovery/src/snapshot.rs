@@ -119,7 +119,7 @@ pub fn take_snapshot(
     let started = Instant::now();
     let mut report = SnapshotReport::default();
     let mut observations = Vec::new();
-    let mut targets: BTreeMap<u32, KnownProcess> = BTreeMap::new();
+    let mut targets: BTreeMap<u32, Vec<Claim>> = BTreeMap::new();
     let mut orphans: Vec<SessionId> = Vec::new();
     let mut registry_sessions = BTreeSet::new();
 
@@ -131,11 +131,15 @@ pub fn take_snapshot(
         let session = entry.session();
         registry_sessions.insert(session.clone());
         observations.push(entry.observation(now));
-        targets.entry(entry.pid).or_insert(KnownProcess {
-            session,
-            process: entry.process(),
-            kind: entry.session_kind(),
-        });
+        claim(
+            &mut targets,
+            KnownProcess {
+                session,
+                process: entry.process(),
+                kind: entry.session_kind(),
+            },
+            true,
+        );
     }
 
     if let Some(command) = &opts.agents {
@@ -147,11 +151,15 @@ pub fn take_snapshot(
                         continue;
                     };
                     if let Some(pid) = entry.pid {
-                        targets.entry(pid).or_insert(KnownProcess {
-                            session: obs.session.clone(),
-                            process: ProcessRef::pid_only(pid),
-                            kind: entry.session_kind(),
-                        });
+                        claim(
+                            &mut targets,
+                            KnownProcess {
+                                session: obs.session.clone(),
+                                process: ProcessRef::pid_only(pid),
+                                kind: entry.session_kind(),
+                            },
+                            true,
+                        );
                     }
                     observations.push(obs);
                 }
@@ -169,13 +177,15 @@ pub fn take_snapshot(
             continue;
         };
         match job.process() {
-            Some(process) => {
-                targets.entry(process.pid).or_insert(KnownProcess {
+            Some(process) => claim(
+                &mut targets,
+                KnownProcess {
                     session: obs.session.clone(),
                     process,
                     kind: SessionKind::Background,
-                });
-            }
+                },
+                true,
+            ),
             None => orphans.push(obs.session.clone()),
         }
         observations.push(obs);
@@ -215,41 +225,76 @@ pub fn take_snapshot(
     }
 
     for k in known {
-        targets.entry(k.process.pid).or_insert_with(|| k.clone());
+        claim(&mut targets, k.clone(), false);
     }
 
-    for (pid, target) in &targets {
+    for (pid, claims) in &targets {
         report.probed += 1;
         let info = probe.probe(*pid);
-        let verdict = check_liveness(info.as_ref(), &target.process);
-        tracing::trace!(pid, session = %target.session, ?verdict, "probed");
-        match verdict {
-            Liveness::Alive | Liveness::AliveUnverified => {
-                report.alive += 1;
-                observations.push(Observation::new(
-                    target.session.clone(),
-                    now,
-                    ObservationBody::ProcessAlive {
-                        process: target.process,
-                    },
-                ));
-                if target.kind == SessionKind::Interactive
-                    && let Some(info) = &info
-                {
-                    let hint = identify_host(&info.env);
+        let is_alive = |c: &Claim| {
+            matches!(
+                check_liveness(info.as_ref(), &c.target.process),
+                Liveness::Alive | Liveness::AliveUnverified
+            )
+        };
+        // The first file-named session the live process matches owns the pid. Any other session
+        // that matches it had the process before `/clear` or `/resume` gave it a new session id,
+        // and that conversation is over.
+        let owner = claims
+            .iter()
+            .find(|c| c.from_file && is_alive(c))
+            .map(|c| &c.target);
+        let mut pid_alive = false;
+        for c in claims {
+            let target = &c.target;
+            let verdict = check_liveness(info.as_ref(), &target.process);
+            tracing::trace!(pid, session = %target.session, ?verdict, "probed");
+            match verdict {
+                Liveness::Alive | Liveness::AliveUnverified => {
+                    pid_alive = true;
+                    if let Some(owner) = owner.filter(|o| o.session != target.session) {
+                        observations.push(Observation::new(
+                            target.session.clone(),
+                            now,
+                            ObservationBody::Superseded {
+                                process: target.process,
+                                by: owner.session.clone(),
+                            },
+                        ));
+                        continue;
+                    }
                     observations.push(Observation::new(
                         target.session.clone(),
                         now,
-                        ObservationBody::Linked {
-                            host: hint.host,
-                            attachment: Attachment::Observed,
-                            pane: hint.pane,
+                        ObservationBody::ProcessAlive {
+                            process: target.process,
                         },
                     ));
+                    if target.kind == SessionKind::Interactive
+                        && let Some(info) = &info
+                    {
+                        let hint = identify_host(&info.env);
+                        observations.push(Observation::new(
+                            target.session.clone(),
+                            now,
+                            ObservationBody::Linked {
+                                host: hint.host,
+                                attachment: Attachment::Observed,
+                                pane: hint.pane,
+                            },
+                        ));
+                    }
+                }
+                Liveness::Gone => {
+                    observations.push(dead(target, DisconnectReason::ProcessGone, now));
+                }
+                Liveness::Reused => {
+                    observations.push(dead(target, DisconnectReason::PidReused, now));
                 }
             }
-            Liveness::Gone => observations.push(dead(target, DisconnectReason::ProcessGone, now)),
-            Liveness::Reused => observations.push(dead(target, DisconnectReason::PidReused, now)),
+        }
+        if pid_alive {
+            report.alive += 1;
         }
     }
     for session in orphans {
@@ -281,6 +326,21 @@ fn dead(target: &KnownProcess, reason: DisconnectReason, now: Timestamp) -> Obse
             reason,
         },
     )
+}
+
+/// One session's claim on a pid in this pass: named by a file read now, or remembered from an
+/// earlier pass.
+struct Claim {
+    target: KnownProcess,
+    from_file: bool,
+}
+
+/// Record a claim, unless the session already claims the pid.
+fn claim(targets: &mut BTreeMap<u32, Vec<Claim>>, target: KnownProcess, from_file: bool) {
+    let claims = targets.entry(target.process.pid).or_default();
+    if !claims.iter().any(|c| c.target.session == target.session) {
+        claims.push(Claim { target, from_file });
+    }
 }
 
 /// What one refresh changed.
@@ -633,6 +693,51 @@ mod tests {
 
         let r = d.refresh(&mut p, t0.plus_millis(15_000));
         assert_eq!(r.report.probed, 0, "a dead process is not probed again");
+    }
+
+    #[test]
+    fn a_registry_entry_rewritten_with_a_new_session_id_ends_the_old_session() {
+        let tmp = tempfile::tempdir().unwrap();
+        let sessions = tmp.path().join("sessions");
+        std::fs::create_dir_all(&sessions).unwrap();
+        let record = sessions.join("41001.json");
+        let source = fixtures().join("home").join("sessions").join("41001.json");
+        let text = std::fs::read_to_string(source).unwrap();
+        std::fs::write(&record, &text).unwrap();
+        let mut d = Discovery::new(DiscoveryOptions::files_only(ClaudeHome::at(tmp.path())));
+        let mut p = probe();
+        let old = SessionId::new("0a1b2c3d-0001-4000-8000-000000000001");
+        let new = SessionId::new("0a1b2c3d-0001-4000-8000-000000000077");
+        let t0 = Timestamp::from_millis(1_792_900_900_000);
+
+        d.refresh(&mut p, t0);
+        assert_eq!(d.table().get(&old).unwrap().state, SessionState::Working);
+
+        // `/clear`: the same process writes its registry entry again with a new session id.
+        std::fs::write(&record, text.replace(old.as_str(), new.as_str())).unwrap();
+        let r = d.refresh(&mut p, t0.plus_millis(5_000));
+        assert_eq!(r.report.probed, 1, "one pid, two sessions, one lookup");
+        assert_eq!(r.report.alive, 1);
+        let was = d.table().get(&old).unwrap();
+        assert_eq!(
+            was.state,
+            SessionState::Completed {
+                reason: format!("continued in {new}")
+            }
+        );
+        assert!(!was.alive);
+        assert!(was.ended);
+        let is = d.table().get(&new).unwrap();
+        assert_eq!(is.state, SessionState::Working);
+        assert!(is.alive);
+        assert_eq!(is.host, HostKind::WezTerm);
+
+        let r = d.refresh(&mut p, t0.plus_millis(10_000));
+        assert_eq!(r.report.probed, 1, "an ended session is not probed again");
+        assert_eq!(
+            d.table().get(&old).unwrap().state.kind(),
+            StateKind::Completed
+        );
     }
 
     #[test]

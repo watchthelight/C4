@@ -386,6 +386,14 @@ pub enum ObservationBody {
         /// Why it counts as gone.
         reason: DisconnectReason,
     },
+    /// The process this session had now runs another session: Claude Code wrote its registry entry
+    /// again with a new session id (`/clear`, `/resume`), so this conversation is over.
+    Superseded {
+        /// The process, as this session knew it.
+        process: ProcessRef,
+        /// The session the process runs now.
+        by: SessionId,
+    },
     /// A hook event.
     Hook(HookEvent),
     /// An OSC 7501 or OSC 21337 report from a pane C4 renders.

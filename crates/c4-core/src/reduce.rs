@@ -222,6 +222,26 @@ pub fn reduce(view: &mut SessionView, obs: &Observation) -> Option<Transition> {
                 set_state(view, SessionState::Disconnected { reason: *reason }, ev)
             }
         }
+        ObservationBody::Superseded { process, by } => {
+            if view
+                .process
+                .is_some_and(|known| !known.same_process(process))
+            {
+                // About a process this view no longer refers to.
+                return None;
+            }
+            view.alive = false;
+            view.ended = true;
+            view.current_tool = None;
+            close_everything(view, at);
+            set_state(
+                view,
+                SessionState::Completed {
+                    reason: format!("continued in {by}"),
+                },
+                Evidence::observed(Source::Registry, at),
+            )
+        }
         ObservationBody::Hook(event) => {
             view.hooks_seen = true;
             view.coarse = false;
@@ -1209,6 +1229,54 @@ mod tests {
         assert!(reduce(&mut v, &registry(RegistryStatus::Busy, None, 3000)).is_none());
         assert!(reduce(&mut v, &registry(RegistryStatus::Busy, None, 6000)).is_some());
         assert_eq!(v.state, SessionState::Working);
+    }
+
+    #[test]
+    fn a_process_that_moved_to_another_session_ends_this_one() {
+        let mut v = fresh();
+        reduce(&mut v, &registry(RegistryStatus::Busy, None, 1000));
+        hook(
+            &mut v,
+            1100,
+            HookEvent::SubagentStart {
+                agent_id: "a1".into(),
+                agent_type: None,
+                transcript_path: None,
+            },
+        );
+        assert_eq!(v.in_flight(), 1);
+        let other = SessionId::new("66666666-7777-8888-9999-aaaaaaaaaaaa");
+        let superseded = |at: i64, process: ProcessRef| {
+            Observation::new(
+                sid(),
+                Timestamp::from_millis(at),
+                ObservationBody::Superseded {
+                    process,
+                    by: other.clone(),
+                },
+            )
+        };
+
+        // A report about another process with the same pid says nothing about this session.
+        assert!(reduce(&mut v, &superseded(2000, ProcessRef::new(10, 2))).is_none());
+        assert!(v.alive);
+
+        let t = reduce(&mut v, &superseded(3000, ProcessRef::new(10, 1))).unwrap();
+        assert_eq!(
+            t.to,
+            SessionState::Completed {
+                reason: format!("continued in {other}")
+            }
+        );
+        assert!(t.evidence.is_observed());
+        assert!(!v.alive);
+        assert!(v.ended);
+        assert_eq!(
+            v.in_flight(),
+            0,
+            "the old conversation's agents end with it"
+        );
+        assert_eq!(v.agents[0].ended_at, Some(Timestamp::from_millis(3000)));
     }
 
     #[test]
