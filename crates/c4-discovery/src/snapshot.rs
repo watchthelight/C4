@@ -83,6 +83,8 @@ pub struct SnapshotReport {
     pub roster_workers: usize,
     /// Job directories read.
     pub jobs: usize,
+    /// Sessions whose main transcript exists where their working directory says it should.
+    pub transcripts: usize,
     /// Pids looked up in the process table.
     pub probed: usize,
     /// Pids found alive.
@@ -177,6 +179,39 @@ pub fn take_snapshot(
             None => orphans.push(obs.session.clone()),
         }
         observations.push(obs);
+    }
+
+    // A session's main transcript sits at a path derived from its working directory. The file is
+    // only checked for, never read here: the view carries the path from the first refresh so the
+    // transcript crate knows what to follow.
+    let mut cwds: BTreeMap<SessionId, String> = BTreeMap::new();
+    for obs in &observations {
+        let cwd = match &obs.body {
+            ObservationBody::Registry { cwd, .. }
+            | ObservationBody::Agents { cwd, .. }
+            | ObservationBody::Daemon { cwd, .. } => cwd.as_deref(),
+            _ => None,
+        };
+        if let Some(cwd) = cwd.filter(|c| !c.is_empty()) {
+            cwds.entry(obs.session.clone())
+                .or_insert_with(|| cwd.to_string());
+        }
+    }
+    for (session, cwd) in cwds {
+        let path = opts.home.transcript_path(&cwd, &session);
+        if path.is_file() {
+            report.transcripts += 1;
+            observations.push(Observation::new(
+                session,
+                now,
+                ObservationBody::Identity {
+                    cwd: None,
+                    name: None,
+                    transcript_path: Some(path.display().to_string()),
+                    version: None,
+                },
+            ));
+        }
     }
 
     for k in known {
@@ -418,6 +453,10 @@ mod tests {
             "4 registry pids, 2 workers, 1 agents-only pid"
         );
         assert_eq!(res.report.alive, 3);
+        assert_eq!(
+            res.report.transcripts, 4,
+            "alpha to delta have transcripts; the workers and the odd entry do not"
+        );
         assert_eq!(res.report.problems.len(), 1, "{:?}", res.report.problems);
         assert_eq!(disc.table().len(), 7);
 
@@ -429,6 +468,20 @@ mod tests {
         assert_eq!(alpha.pane.as_deref(), Some("7"));
         assert_eq!(alpha.attachment, Attachment::Observed);
         assert_eq!(alpha.display_name(), "proj-alpha");
+        assert_eq!(
+            alpha.transcript_path.as_deref(),
+            Some(
+                fixtures()
+                    .join("home")
+                    .join("projects")
+                    .join("-home-example-proj-alpha")
+                    .join("0a1b2c3d-0001-4000-8000-000000000001.jsonl")
+                    .display()
+                    .to_string()
+                    .as_str()
+            ),
+            "the transcript path is derived from the cwd and checked for"
+        );
 
         let beta = view("0a1b2c3d-0001-4000-8000-000000000002");
         assert_eq!(
@@ -478,6 +531,7 @@ mod tests {
 
         let odd = view("0a1b2c3d-0001-4000-8000-000000000099");
         assert_eq!(odd.state.kind(), StateKind::Disconnected);
+        assert_eq!(odd.transcript_path, None, "no file under its project dir");
 
         let order: Vec<&str> = disc.views().iter().map(|v| v.id.as_str()).collect();
         assert_eq!(order.len(), 7);

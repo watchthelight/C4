@@ -44,6 +44,10 @@ fn sessions_running_before_discovery_starts_are_listed() {
             .env("WEZTERM_PANE", "7"),
     )
     .unwrap();
+    // Only alpha has written a transcript so far.
+    alpha
+        .append_transcript(r#"{"type":"user","uuid":"u1","message":{"content":"hello"}}"#)
+        .unwrap();
 
     let mut disc = Discovery::new(scratch.files_only());
     let mut probe = SysinfoProbe::new();
@@ -58,6 +62,7 @@ fn sessions_running_before_discovery_starts_are_listed() {
     assert_eq!(res.report.registry_skipped, 0);
     assert_eq!(res.report.probed, 3);
     assert_eq!(res.report.alive, 3);
+    assert_eq!(res.report.transcripts, 1, "alpha's transcript exists");
     assert_eq!(res.report.problems, Vec::new());
     assert_eq!(disc.table().len(), 3);
 
@@ -78,10 +83,16 @@ fn sessions_running_before_discovery_starts_are_listed() {
     assert_eq!(a.host, HostKind::Unknown, "host variables are stripped");
     assert!(a.started_at.is_some());
     assert!(a.evidence.is_observed());
+    assert_eq!(
+        a.transcript_path.as_deref(),
+        Some(alpha.transcript_path().display().to_string().as_str()),
+        "the transcript alpha wrote is found by its derived path"
+    );
 
     let b = view(&disc, &beta_id);
     assert_eq!(b.state.kind(), StateKind::WaitingPermission);
     assert!(b.waiting_since.is_some());
+    assert_eq!(b.transcript_path, None, "beta has not written one");
     assert_eq!(
         b.display_name(),
         "beta",
