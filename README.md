@@ -21,7 +21,8 @@ working sidebar; see CHANGELOG.md for what each version adds.
 ## Quick start, headless
 
 Until the first release the headless commands are the way in. `c4-cli` is the
-same command line as the `c4` executable without the window:
+Rust core: the same command line as the `c4` executable without the window, and
+the process the window (an Electron shell, docs/ARCHITECTURE.md) runs underneath:
 
 ```sh
 cargo build --release -p c4-cli -p c4-shim

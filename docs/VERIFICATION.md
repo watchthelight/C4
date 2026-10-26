@@ -32,10 +32,10 @@ app yet; a Playwright smoke test that does is planned.
 
 | Platform | Built in CI | Tests in CI | Run on hardware |
 |---|---|---|---|
-| Windows x64 | debug app with the sidecar, verify run 40282296177 | `cargo test --workspace` and `pnpm -r test` green (windows-latest) | `c4 sessions`, `c4 doctor`, `c4 install` and `c4 uninstall` against the real home, and the window showing hook states and context figures from live sessions, see Results |
-| macOS arm64 | debug app with the sidecar, verify run 40282296177 | `cargo test --workspace` and `pnpm -r test` green (macos-latest) | no hardware in reach |
-| macOS x64 | debug app with the sidecar, verify run 40282296177 | `cargo test --workspace` and `pnpm -r test` green (macos-15-intel) | no hardware in reach |
-| Linux x64 | debug app with the sidecar, verify run 40282296177 | `cargo test --workspace` and `pnpm -r test` green (ubuntu-latest) | not yet |
+| Windows x64 | the crates, the page bundle and the Electron main process, verify run 40335232644 | `cargo test --workspace` and `pnpm -r test` green (windows-latest) | `c4 sessions`, `c4 doctor`, `c4 install` and `c4 uninstall` against the real home, the Tauri window showing hook states and context figures from live sessions, and the Electron window against the real home read only, see Results |
+| macOS arm64 | the crates, the page bundle and the Electron main process, verify run 40335232644 | `cargo test --workspace` and `pnpm -r test` green (macos-latest) | no hardware in reach |
+| macOS x64 | the crates, the page bundle and the Electron main process, verify run 40335232644 | `cargo test --workspace` and `pnpm -r test` green (macos-15-intel) | no hardware in reach |
+| Linux x64 | the crates, the page bundle and the Electron main process, verify run 40335232644 | `cargo test --workspace` and `pnpm -r test` green (ubuntu-latest) | not yet |
 
 ## Manual checklist
 
@@ -317,3 +317,6 @@ result below the list when you run it.
   `apps/desktop/icons/icon.ico` where Electron's own icon was, the fold through the DevTools
   protocol was kept as `view` rail and came back on the next start as before, and `pnpm dev`
   opened the window against Vite and took it down with exit 0.
+- 2026-10-26, the verify workflow for commit dd59861 (run 40335232644), the first without the
+  Tauri shell: the lint job and the four test jobs green, no system packages installed on any
+  runner, `pnpm -r build` writing the page bundle and the main process on all four.

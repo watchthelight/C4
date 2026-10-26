@@ -1,6 +1,6 @@
 // <wtl> project: c4 | file: crates/c4-core/src/envelope.rs | author: watchthelight </wtl>
 //! The versioned envelope that carries events between the core, the session hosts, the shim and
-//! the webview. Every message says which schema it speaks, so a newer C4 can read an older spool.
+//! the window. Every message says which schema it speaks, so a newer C4 can read an older spool.
 
 use crate::clock::Timestamp;
 use crate::evidence::Evidence;

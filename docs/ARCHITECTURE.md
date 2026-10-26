@@ -2,26 +2,30 @@
 
 # Architecture
 
-C4 is a Rust core with a Tauri 2 shell. The core discovers sessions, tails transcripts, ingests hook
-and status line payloads, reduces everything into typed session views and persists them in SQLite. The
-shell renders those views with vanilla TypeScript and hosts xterm.js panes whose bytes come straight
-from a per-session host process.
+C4 is a Rust core with an Electron shell. The core (`c4-cli serve`) discovers sessions, tails
+transcripts, ingests hook and status line payloads, reduces everything into typed session views and
+persists what must outlive a run (the preferences file today, SQLite from Milestone 3). The shell
+starts the core as a child process, speaks JSON lines with it over stdin and stdout, renders its
+documents with vanilla TypeScript in Chromium, and from Milestone 3 hosts xterm.js panes whose bytes
+come straight from a per-session host process.
 
 Status: Milestone 1 delivers `c4-core`, `c4-discovery`, `c4-transcript` (tailer, parser, follower,
-index and watcher), `c4-testkit`, `c4-cli` and `c4-desktop`, whose window lists sessions. Milestone 2
-has so far added `c4-shim`, `c4-ingest`, `Discovery::fold`, `c4 install` and `c4 uninstall`, the
-app's ingest worker, which runs the server and folds its lines, and the preferences file under the C4
-home with the two commands that read and write it. The other crates are named below with
-the milestone that brings them; solid edges in the crate graph are in the tree, dotted ones are
-planned.
+index and watcher), `c4-testkit`, `c4-cli` and a window that lists sessions. Milestone 2 has so far
+added `c4-shim`, `c4-ingest`, `Discovery::fold`, `c4 install` and `c4 uninstall`, the ingest worker,
+which runs the server and folds its lines, the preferences file under the C4 home with the two
+methods that read and write it, `c4-cli serve` (the core as a child process) and the Electron shell
+in `apps/desktop/electron` (the first shell was Tauri 2 over the platform webview; it went on
+2026-10-26, and the amendment at the end of docs/prompts/c4-plan.md says why). The other crates are
+named below with the milestone that brings them; solid edges in the crate graph are in the tree,
+dotted ones are planned.
 
 ## Processes
 
 | Process | Role | Since |
 |---|---|---|
-| `c4` | The desktop app. With no arguments it opens the window; with arguments it runs a headless command (`sessions`, `doctor`, `telemetry`, `install`, `uninstall` today; `perf` and `host` with their milestones) and exits before any webview exists. | 1 |
-| `c4-cli` | The same commands as a webview-free executable for development (`cargo run -p c4-cli -- sessions`). Not shipped. | 1 |
-| `c4-shim` | A standard-library-only sidecar. `c4-shim statusline -- <original command>` starts the original command at once with the same stdin and copies the payload to C4's local socket on a thread beside it (spooled to disk when nothing listens), passing output and exit code through. `c4-shim hook` does the same copy and always exits 0 with empty output, 900 ms after reading the payload at the latest. The status line pays the shim's own startup and nothing else. It ships beside `c4` as a Tauri sidecar (docs/BUILDING.md), which is where `c4 install` takes its copy from. | 2 |
+| `c4` | The desktop app: Electron's main process (`apps/desktop/electron`), with the page and `c4-cli` carried as resources once packaging lands (today `pnpm -C apps/desktop start` runs the same main process from the tree). With no arguments it opens the window and starts `c4-cli serve` as a child. With a word on the command line (`sessions`, `doctor`, `telemetry`, `install`, `uninstall` today; `perf` and `host` with their milestones), or `--help` or `--version`, it runs `c4-cli` with the same arguments in the same console, passes the exit code back and opens no window; switches alone (`--remote-debugging-port`, `--inspect`) open the window and reach Chromium. | 1 |
+| `c4-cli` | The Rust core: the headless commands, and `serve`, the window's core as a child process with pipes on stdin and stdout (JSON lines, `crates/c4-cli/src/serve/mod.rs`). Until the package lands it is the executable to run (`cargo run -p c4-cli -- sessions`); the packaged `c4` will carry a copy under its resources, and in development the shell finds `target/debug/c4-cli`, or whatever `C4_CLI` names. | 1, 2 (`serve`) |
+| `c4-shim` | A standard-library-only sidecar. `c4-shim statusline -- <original command>` starts the original command at once with the same stdin and copies the payload to C4's local socket on a thread beside it (spooled to disk when nothing listens), passing output and exit code through. `c4-shim hook` does the same copy and always exits 0 with empty output, 900 ms after reading the payload at the latest. The status line pays the shim's own startup and nothing else. It sits beside `c4-cli` (`target/<profile>/` in development; the packaged app's resources once packaging lands, docs/BUILDING.md), which is where `c4 install` takes its copy from. | 2 |
 | `c4 host --session <id>` | One detached process per managed session. It owns the pty, a 2 MiB raw ring buffer, a screen model, the controller lease and a local socket. The UI can crash or exit and the host keeps the session alive. | 3 |
 | `python -I hooks/c4_usage.py` | On demand: imports the user's `statusline.py` and prints its `parse_usage()` result as JSON for sessions whose status line has not run recently. | 4 |
 
@@ -34,18 +38,17 @@ graph TD
     transcript[c4-transcript] --> core
     testkit[c4-testkit, dev only] --> core
     testkit --> discovery
-    cli[c4-cli] --> core
+    cli[c4-cli: the commands and serve] --> core
     cli --> discovery
     cli --> transcript
-    desktop[c4-desktop: the c4 binary] --> cli
-    desktop --> core
-    desktop --> discovery
     ingest[c4-ingest] --> core
-    desktop --> ingest
+    cli --> ingest
+    shell[apps/desktop/electron: the c4 executable, TypeScript] -- child process, JSON lines --> cli
+    page[apps/desktop/src: the page, TypeScript] -- window.c4 --> shell
     store[c4-store, M2] -.-> core
     shim[c4-shim: no dependencies]
     ingest -. tests only .-> shim
-    desktop -. tests only .-> shim
+    cli -. tests only .-> shim
     adapters[c4-adapters, M3] -.-> core
     host[c4-host, M3] -.-> core
     controls[c4-controls, M3] -.-> adapters
@@ -55,14 +58,16 @@ graph TD
     remote[c4-remote, M7] -.-> core
 ```
 
+The shell and the page are TypeScript, not crates; they are in the graph because the shell runs
+`c4-cli serve` and the page reaches the core through the shell alone.
+
 | Crate | Responsibility | Milestone |
 |---|---|---|
 | `c4-core` | `SessionId`, `ProcessRef {pid, proc_start}`, `Evidence {source, observed or heuristic, at}`, the nine-state `SessionState`, `Observation` (registry, agents command, daemon, process, transcript, hook, OSC, status line), `SessionView`, `SessionTable`, `reduce` with its rules, the versioned event `Envelope`, `redact`, and `home` (where C4 keeps its own files and how its ingest endpoint is named). No I/O. | 1, 2 |
 | `c4-discovery` | `ClaudeHome` resolution (`C4_CLAUDE_HOME`, `CLAUDE_CONFIG_DIR`, `~/.claude`), the registry reader, the `claude agents --json` runner with a timed capture, daemon and job enrichment with the auth fields dropped, the process probe (sysinfo) with the liveness ladder (pid, creation time, executable name), terminal host identification from the process environment, the transcript existence check, and `Discovery`, which folds one pass into the table and reports the transitions, and whose `fold` applies observations from outside a pass (the hook events and status line payloads the ingest server parses) in stamp order. | 1, 2 (`fold`) |
 | `c4-transcript` | The byte-offset tailer, the tolerant record parser gated on the major `version`, the record-to-event map, the subagent and workflow directory scanner, the project index built from metadata only, `SessionFollower` (one session's main transcript and agent files, folded into observations, usage max-merged per message id) and the file watcher. The workflow graph comes in Milestone 5. | 1 (reader), 5 (graph) |
 | `c4-testkit` | `ScratchHome` (a Claude home in a temp dir, seeded from `fixtures/home`), `FakeClaude` (a real process registered with its pid and creation time, so liveness tests run on a real process table), the discovery tests A and B. | 1 |
-| `c4-cli` | `c4 sessions [--json|--watch|--files-only|--redact|--home]`, `c4 doctor [--json|--no-commands|--c4-home]`, `c4 telemetry --transcript <file> [--json]`, `c4 install [--dry-run|--home|--c4-home|--shim]` and `c4 uninstall [--dry-run]`. The last two are the one writer of a Claude home: the shim copy, the status line wrapper and the hook groups, every write of `settings.json` after a backup beside it and recorded in a manifest under the C4 home for the way back (docs/SESSION-INTEGRATION.md). `doctor` audits that install as well: the shim copy against the manifest and the sidecar, the hook groups and the wrapper as `settings.json` holds them now, the ingest endpoint and the spool. JSON output carries `schema: 1`. Exit 0, 1 (could not do the job, reason on stderr) or 2 (usage). | 1, 2 |
-| `c4-desktop` | The Tauri app: the refresh thread, the ingest worker (the server on a tokio runtime of its own and the drain that folds its lines), two commands, one event, the Windows console attach for headless use. The window itself is `apps/desktop/src`. | 1, 2 |
+| `c4-cli` | `c4 sessions [--json|--watch|--files-only|--redact|--home]`, `c4 doctor [--json|--no-commands|--c4-home]`, `c4 telemetry --transcript <file> [--json]`, `c4 install [--dry-run|--home|--c4-home|--shim]` and `c4 uninstall [--dry-run]`. The last two are the one writer of a Claude home: the shim copy, the status line wrapper and the hook groups, every write of `settings.json` after a backup beside it and recorded in a manifest under the C4 home for the way back (docs/SESSION-INTEGRATION.md). `doctor` audits that install as well: the shim copy against the manifest and the shim beside the executable, the hook groups and the wrapper as `settings.json` holds them now, the ingest endpoint and the spool. `c4 serve` (`src/serve/`) is the window's core: the line protocol in `mod.rs`, the table behind a mutex with the refresh thread and the facts the window asks for in `state.rs`, the ingest worker on a tokio runtime of its own in `ingest.rs`, and the preferences file in `prefs.rs`. JSON output carries `schema: 1`. Exit 0, 1 (could not do the job, reason on stderr) or 2 (usage). | 1, 2 |
 | `c4-ingest` | The receiving end of the shim: a server on the home's ingest endpoint (a named pipe whose DACL admits the current user alone on Windows; a socket file with mode 0600 elsewhere, every peer's uid checked against the owner of the home), the parser that turns each line into an `Identity` observation plus the `Hook` or `Statusline` fact, a bounded inbox that drops its oldest item and counts the drop rather than hold up a hook, the spool replay at start and every 30 s, and a standard-library probe for `c4 doctor`. A line over 2 MiB or a connection silent for 5 s is dropped and counted; a line the parser refuses is logged by size and reason, never by content. A second server on the same home is refused. Its end-to-end test sends lines through `c4-shim`'s own delivery code. | 2 |
 | `c4-store` | SQLite schema and queries: sessions, identities, events, cursors, usage samples, agents, tasks, config transactions, audit, hosts, layouts, searchable scrollback. | 2 |
 | `c4-shim` | The sidecar: the `statusline -- <command>` and `hook` subcommands, the one-line JSON envelope, the endpoint rule (repeated from `c4-core::home` and held equal by a test), the spool and the run log. Standard library only. docs/SESSION-INTEGRATION.md has the wire format. | 2 |
@@ -75,20 +80,39 @@ graph TD
 
 ## The desktop app
 
-`apps/desktop/src-tauri` is the `c4-desktop` crate and builds the `c4` executable. `main.rs` looks at
-the command line first: any argument means a headless command, so it attaches to the parent console
-on Windows (a release `c4` is a windowed executable) and hands over to `c4_cli::main()`, and no
-webview is ever created. With no arguments `c4_desktop::run()` builds the Tauri app.
+The app is three parts: the core, `c4-cli serve`, a child process that owns the session table; the
+shell, `apps/desktop/electron`, Electron's main process, which is the `c4` executable; and the page,
+`apps/desktop/src`, which the shell serves to Chromium.
 
-The app state is one `Discovery` behind a mutex, shared by the refresh thread and the commands. The
-refresh thread (`c4-refresh`) runs a pass every `C4_REFRESH_MS` milliseconds (2000 by default, floor
+`main.ts` looks at the command line first. A word on it (`sessions`, `doctor`, `install`, ...), or
+`--help` or `--version`, is a headless command: the shell runs `c4-cli` with the same arguments in
+its own console, passes the exit code back and opens no window (`cli.ts`). A command line of
+switches alone opens the window, so Chromium's own switches (`--remote-debugging-port`, `--inspect`)
+still reach it. The window takes a single-instance lock (a second `c4` focuses the first window and
+exits 0), keeps Chromium's own files under `<C4 home>/electron`, registers the `c4` scheme, refuses
+every permission request, and starts the core.
+
+The core is `c4-cli serve` with pipes on stdin and stdout (`sidecar.ts`), speaking the line protocol
+at the top of `crates/c4-cli/src/serve/mod.rs`: a request is one JSON object per line with a number
+for its id, the answer carries the id back with `ok` or `error`, and a line with `event` and no id is
+the core's own (`hello` first, then `sessions` after every pass and every batch). The shell checks
+the protocol number in the hello (a mismatch is fatal: a dialog, exit 1), starts a core that exits
+on its own again after a pause that grows from 1 s to 30 s while it keeps failing and resets after a
+minute of steady running, and tells the page about each of these as a `core` event. On quit the
+core goes first: a grace of 50 ms for a request the page sent in its last moments (the preferences
+it flushes on `pagehide`), then stdin closed, then up to 2 s for the exit before a kill, so the
+ingest endpoint is free before the process leaves.
+
+Inside the core (`state.rs`) one `Discovery` sits behind a mutex, shared by the refresh thread and
+the thread that answers requests. The refresh thread (`c4-refresh`) runs a pass every `C4_REFRESH_MS` milliseconds (2000 by default, floor
 250): the registry files, the daemon files, the process table and the transcript check. Every eighth
 pass also runs the session list command, because it starts a Node process and, on macOS and Linux, can
 revive Claude Code's background supervisor as a side effect. After each pass the thread emits the
 `sessions` event with the document below. The mutex serializes a pass with a `list_sessions` call and
-with a fold of ingested lines, so the table is never read half-updated.
+with a fold of ingested lines, so the table is never read half-updated. One thread (`c4-stdout`)
+writes stdout a whole line at a time, so an event never lands inside an answer.
 
-The ingest worker (`ingest.rs`) starts after the Tauri app is built and before its event loop runs.
+The ingest worker (`ingest.rs`) starts with the core.
 It owns a tokio runtime of two threads named `c4-ingest`, on which the `c4-ingest` server listens on
 the C4 home's endpoint, replays the spool and serves the shim's connections. A drain task takes the
 parsed lines from the inbox as they arrive and hands each batch to `AppState::fold` on a blocking
@@ -97,19 +121,20 @@ order (`Discovery::fold`) and emits the `sessions` event with the document; batc
 40 ms apart, so a burst of hooks is one event. A line whose `agent_id` is set came from inside a
 subagent and folds its identity only, because a subagent's tool calls must not move the session.
 When another C4 holds the endpoint, or the server cannot start, the worker records the state and the
-error for the document and tries again every 15 s. On `RunEvent::Exit` the app stops the worker,
+error for the document and tries again every 15 s. When stdin closes the core stops the worker,
 which shuts the server down (the socket file is removed on Unix) and waits up to 2 s for it; a stop
 that takes longer is logged and not waited on. The runtime lives only while the worker does; the
-refresh thread and the commands never touch tokio. A worker that cannot get a runtime is reported on
+refresh thread and the reader never touch tokio. A worker that cannot get a runtime is reported on
 stderr and the window runs without hooks.
 
 | Call | Direction | Payload |
 |---|---|---|
-| `list_sessions` | window to core (invoke) | runs one files-only pass and returns the document |
-| `about` | window to core (invoke) | C4 version, the Claude home and what chose it, the C4 home and what chose it, the ingest endpoint, the preferences file and what was wrong with it at startup if anything, refresh period, agents cadence, operating system |
-| `prefs_get` | window to core (invoke) | the preferences document as the core holds it |
-| `prefs_set` | window to core (invoke) | `section`, `value`: replaces one section, writes the file, returns the document as written; an error string when the name is not a section name, the result would pass 1 MiB or the write failed |
-| `sessions` | core to window (event) | the document, after every pass and after every batch of ingested lines |
+| `list_sessions` | page to core (request) | runs one files-only pass and returns the document |
+| `about` | page to core (request) | C4 version, the Claude home and what chose it, the C4 home and what chose it, the ingest endpoint, the preferences file and what was wrong with it at startup if anything, refresh period, agents cadence, operating system |
+| `prefs_get` | page to core (request) | the preferences document as the core holds it |
+| `prefs_set` | page to core (request) | `section`, `value`: replaces one section, writes the file, returns the document as written; an error string when the name is not a section name, the result would pass 1 MiB or the write failed |
+| `sessions` | core to page (event) | the document, after every pass and after every batch of ingested lines |
+| `core` | shell to page (event) | the core as the shell sees it: `starting` with the attempt, `running` with its pid, version and schema, or `stopped` with the exit and the pause before the next start, when one is coming |
 
 The document is what `c4 sessions --json` prints (`schema`, `at`, `home`, `sessions[]`, `report`)
 plus `tick` (the pass counter), `agents` (when the session list command last ran, how many entries it
@@ -128,14 +153,25 @@ section a quarter of a second after the last change, one write in flight at a ti
 `pagehide`. The app root carries `data-sidebar`, `full` or `rail`, and the grid follows it: the
 sidebar and the splitter leave the layout while the rail (`apps/desktop/src/sessions/rail.ts`)
 shows, and the list is painted again when it comes back.
-`selectBridge()` picks the Tauri bridge when the page runs inside the app and the mock bridge (eight
-synthetic sessions on a scripted timeline) in a plain browser, so the layout can be worked on and
-tested without Claude Code; `VITE_C4_BRIDGE=mock|tauri` forces either. `fixtures/labels.json` is the
+The page reaches the core through `window.c4`, which the preload script
+(`apps/desktop/electron/preload.cts`) exposes over Electron's context bridge: `invoke(method,
+params)`, `on(listener)`, the platform and the versions. The main process (`ipc.ts`) takes a request
+only from a frame of the app's own page (the `c4://app` origin, plus the Vite server's in
+development) and only for the four methods above, waits up to 15 s for the core's hello when the
+page asked before the core was up, and sends it on; every line from the core goes to every window.
+`selectBridge()` picks that bridge when `window.c4` exists and the mock bridge (eight synthetic
+sessions on a scripted timeline) in a plain browser, so the layout can be worked on and tested
+without Claude Code; `VITE_C4_BRIDGE=mock|electron` forces either. `fixtures/labels.json` is the
 label contract: the Rust side and the TypeScript side are both tested against it, so the window never
 shows a state label the command line would contradict.
 
-Capabilities: the window runs with Tauri's `core:default` capability only; the four commands above
-are the whole surface. The content security policy allows `self` and inline styles and nothing remote.
+The page is served from the app's own scheme, `c4://app/` (`protocol.ts`): the renderer build and
+nothing else, a path that leaves the directory refused, every answer carrying the content security
+policy (the page's own origin for scripts, styles, images and fonts, inline styles, and no
+connections, objects or frames). The window runs with Chromium's sandbox and context isolation on
+and Node integration off, opens no popups and does not navigate away from the page. The four methods
+above are the whole surface between the page and the rest of the machine; docs/SECURITY.md has the
+rest.
 
 ## Event flow
 
@@ -143,15 +179,17 @@ Today:
 
 ```mermaid
 sequenceDiagram
-    participant T as c4-refresh thread
+    participant T as c4-refresh thread, in the core
     participant D as c4-discovery
     participant C as c4-core reduce
-    participant W as window
+    participant S as shell, the main process
+    participant W as page
     loop every 2 s
         T->>D: take a snapshot (files, process table, every eighth pass the agents command)
         D->>C: observations, in order
         C-->>T: table and transitions
-        T->>W: emit "sessions" with the document
+        T->>S: a "sessions" line on stdout with the document
+        S->>W: the line as a c4:event message
         W->>W: signals update, one render on the next animation frame
     end
 ```
@@ -168,30 +206,32 @@ sequenceDiagram
     participant I as c4-ingest
     participant C as c4-core reduce
     participant St as c4-store
-    participant UI as webview
+    participant UI as page
     S->>I: one JSON line over the local socket (5 ms)
     I->>I: parse into observations, queue in the inbox
     I->>C: one batch per drain, sorted by recv_at (2 ms)
     C->>St: append event, update session row
-    C->>UI: patch over a Tauri channel, batched at 60 Hz (16 ms)
+    C->>UI: patch, a line on stdout the shell relays, batched at 60 Hz (16 ms)
     UI->>UI: one store commit per animation frame (16 ms)
 ```
 
 Budget from hook event to pixels: 150 ms at the 95th percentile. Terminal bytes (Milestone 3) do not
 take this path. The host coalesces pty output into frames of at most 64 KiB every 8 to 16 ms, allows
-two frames in flight per terminal, and sends them as raw bytes over a Tauri channel straight to
-`xterm.write`. The host never stops draining the child process; a slow or reconnecting UI gets a
+two frames in flight per terminal, and sends them as raw bytes, which the shell relays to the page
+as binary IPC messages outside the core's JSON lines, straight to `xterm.write`. The host never
+stops draining the child process; a slow or reconnecting UI gets a
 screen snapshot plus the tail of the ring buffer.
 
 ## Threads and errors
 
-The CLI is synchronous on the main thread: a command is one pass or one file read, then exit. The app
-has the Tauri event loop on the main thread, the `c4-refresh` thread, and whatever threads the
-webview brings. `c4-ingest` brings tokio: the app's ingest worker owns a runtime of two threads named
-`c4-ingest` that run the accept task, one task per connection, the replay timer, the drain, and on
-blocking threads the spool reads and the folds into the table. Nothing else in the app is
-asynchronous. The process probe keeps its own system snapshot and refreshes only the pids it is
-asked about.
+A command is synchronous on the main thread: one pass or one file read, then exit. The core
+(`c4-cli serve`) has three threads of its own, `c4-stdin` (reads requests and answers them),
+`c4-stdout` (the one writer) and `c4-refresh`, and `c4-ingest` brings tokio: the ingest worker owns
+a runtime of two threads named `c4-ingest` that run the accept task, one task per connection, the
+replay timer, the drain, and on blocking threads the spool reads and the folds into the table.
+Nothing else in the core is asynchronous. The shell is Electron's main process, one Node event loop,
+plus whatever threads Chromium brings; the page is single-threaded. The process probe keeps its own
+system snapshot and refreshes only the pids it is asked about.
 
 A file discovery cannot use becomes a `Problem` (path and reason) in the pass report, never an error
 that stops the pass, because one broken file must not hide the sessions around it. The window shows

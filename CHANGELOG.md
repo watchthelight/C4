@@ -175,5 +175,9 @@ stay at 0.y.z while the interfaces settle.
   `apps/desktop/icons/` and the window carries it. Until the Electron package lands, the window
   runs from `pnpm -C apps/desktop start` against `target/debug/c4-cli`, and the headless commands
   are `c4-cli`'s.
+- docs/ARCHITECTURE.md and docs/SECURITY.md describe the shell as it is: the core behind
+  `c4-cli serve`, the Electron main process that runs it and serves the page from its own scheme,
+  and the page. The plan under docs/prompts carries a dated amendment that maps each Tauri piece to
+  what replaced it.
 
 [Unreleased]: https://github.com/watchthelight/C4/compare/c3a0a47...HEAD

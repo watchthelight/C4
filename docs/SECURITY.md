@@ -91,10 +91,22 @@ hosts are an opt-in feature with a short-code pairing that derives X25519 keys w
 a remote agent exposes the read-only discovery surface, and controls over it need the same lease and
 validation as local ones.
 
-## The webview
+## The shell
 
-The Tauri content security policy is locked, no remote URLs are loaded, and the asset protocol is
-scoped to the bundle. Terminal bytes are written to xterm.js, never interpreted as HTML.
+The window is Electron. The page runs in Chromium's renderer sandbox with context isolation on and
+Node integration off; its one way out is `window.c4`, which the preload script exposes: a request
+function for the four methods the core answers (`list_sessions`, `about`, `prefs_get`, `prefs_set`),
+an event subscription, the platform and the versions. The main process takes a request only from a
+frame of the app's own page and only for those four names, so a page that was somehow replaced could
+ask for nothing else. The page is served from the app's own scheme, `c4://app/`, from the renderer
+build alone (a path that leaves that directory is refused), and every answer carries a content
+security policy that allows the page's own origin for scripts, styles, images and fonts, inline
+styles, and nothing else: no connection to anywhere, no plugins, no frames. No remote URL is ever
+loaded, every permission request (notifications, media, and the rest) is refused, a popup is refused,
+and the window does not navigate away from the page. Chromium's own files (its cache and local
+storage) live under `~/.c4/electron/`, not under the Claude home. The core runs as a child process of
+the shell with pipes for stdin and stdout, so nothing else on the machine can send it a request.
+Terminal bytes are written to xterm.js, never interpreted as HTML.
 
 ## Reporting
 
