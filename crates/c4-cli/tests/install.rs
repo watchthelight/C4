@@ -84,6 +84,13 @@ impl Bench {
         cmd.output().expect("the c4 binary runs")
     }
 
+    /// `c4 doctor --no-commands`: the stub shim is text, not a program, so nothing here runs it.
+    fn doctor(&self, extra: &[&str]) -> Output {
+        let mut cmd = self.c4();
+        cmd.args(["doctor", "--no-commands"]).args(extra);
+        cmd.output().expect("the c4 binary runs")
+    }
+
     fn settings_bytes(&self) -> Vec<u8> {
         std::fs::read(self.settings()).unwrap()
     }
@@ -134,6 +141,19 @@ fn ok(out: &Output) -> String {
         stderr(out)
     );
     stdout(out)
+}
+
+fn json(out: &Output) -> Value {
+    serde_json::from_str(&ok(out)).unwrap()
+}
+
+fn notes(doc: &Value) -> Vec<String> {
+    doc["notes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|n| n.as_str().unwrap().to_string())
+        .collect()
 }
 
 fn sha256(bytes: &[u8]) -> String {
@@ -288,6 +308,125 @@ fn install_wraps_the_status_line_adds_the_hooks_and_leaves_a_manifest() {
     assert_eq!(manifest["shim"]["sha256"], sha256(STUB));
     assert!(manifest["installed_at"].is_i64());
     assert_eq!(manifest["installed_at"], manifest["updated_at"]);
+}
+
+#[test]
+fn doctor_audits_the_install() {
+    let bench = Bench::new();
+    bench.seed_fixture();
+
+    // Before any install: the file is there and nothing of C4's is in it.
+    let doc = json(&bench.doctor(&["--json"]));
+    assert_eq!(doc["c4"]["install"]["recorded"], false);
+    assert_eq!(doc["c4"]["install"]["settings"], "present");
+    assert_eq!(doc["c4"]["install"]["hooks_present"], 0);
+    assert_eq!(doc["c4"]["install"]["statusline"], "unwrapped");
+    assert_eq!(doc["c4"]["shim"]["copy_present"], false);
+    let found = notes(&doc);
+    assert!(
+        found
+            .iter()
+            .any(|n| n.starts_with("c4 install has not run")),
+        "{found:?}"
+    );
+
+    ok(&bench.install(&[]));
+
+    // Installed and untouched: the manifest, the file and the copy agree.
+    let doc = json(&bench.doctor(&["--json"]));
+    let install = &doc["c4"]["install"];
+    assert_eq!(install["recorded"], true);
+    // Paths in the report are redacted, so the home directory reads as `~` when the bench is under it.
+    assert_eq!(
+        install["recorded_settings"],
+        c4_core::redact::redact(&bench.settings().display().to_string())
+    );
+    assert_eq!(install["restorable"], true);
+    assert_eq!(install["settings"], "as_installed");
+    assert_eq!(install["hooks_present"], 17);
+    assert_eq!(install["hooks_total"], 17);
+    assert_eq!(install["statusline"], "wrapped");
+    assert_eq!(install["foreign"], Value::Array(Vec::new()));
+    assert!(install["installed_at"].is_string());
+    assert_eq!(install["installed_at"], install["updated_at"]);
+    let shim = &doc["c4"]["shim"];
+    assert_eq!(
+        shim["copy"],
+        c4_core::redact::redact(&bench.shim_copy().display().to_string())
+    );
+    assert_eq!(shim["copy_present"], true);
+    assert_eq!(shim["copy_matches_manifest"], true);
+    assert!(shim["version"].is_null(), "no command ran");
+    assert!(shim["error"].is_null());
+    assert_eq!(doc["c4"]["endpoint"]["state"], "free");
+    assert_eq!(doc["c4"]["spool"]["files"], 0);
+    let found = notes(&doc);
+    assert!(!found.iter().any(|n| n.contains("not whole")), "{found:?}");
+    assert!(
+        !found
+            .iter()
+            .any(|n| n.starts_with("c4 install has not run")),
+        "{found:?}"
+    );
+    let text = ok(&bench.doctor(&[]));
+    assert!(
+        text.contains("settings.json: as c4 install left it"),
+        "{text}"
+    );
+    assert!(
+        text.contains("hooks: 17 of 17 groups present; statusLine: wrapped"),
+        "{text}"
+    );
+    assert!(text.contains(": as the manifest recorded"), "{text}");
+    assert!(text.contains("shim run: not checked"), "{text}");
+    assert!(text.contains(", restorable yes"), "{text}");
+
+    // Another program takes the wrapper off, as the agents installer does on every run.
+    let mut settings = bench.settings_json();
+    settings["statusLine"]["command"] = Value::String(FIXTURE_STATUSLINE.into());
+    std::fs::write(
+        bench.settings(),
+        serde_json::to_vec_pretty(&settings).unwrap(),
+    )
+    .unwrap();
+    let doc = json(&bench.doctor(&["--json"]));
+    assert_eq!(doc["c4"]["install"]["settings"], "changed");
+    assert_eq!(doc["c4"]["install"]["hooks_present"], 17);
+    assert_eq!(doc["c4"]["install"]["statusline"], "unwrapped");
+    let found = notes(&doc);
+    assert!(
+        found.iter().any(|n| n
+            == "the install is not whole: the status line is not wrapped; run c4 install again"),
+        "{found:?}"
+    );
+    let text = ok(&bench.doctor(&[]));
+    assert!(
+        text.contains("settings.json: changed since c4 install"),
+        "{text}"
+    );
+    assert!(text.contains("statusLine: not wrapped"), "{text}");
+
+    // The copy goes missing while the hooks still name it.
+    std::fs::remove_file(bench.shim_copy()).unwrap();
+    let doc = json(&bench.doctor(&["--json"]));
+    assert_eq!(doc["c4"]["shim"]["copy_present"], false);
+    assert!(doc["c4"]["shim"]["copy_matches_manifest"].is_null());
+    let found = notes(&doc);
+    assert!(
+        found
+            .iter()
+            .any(|n| n.starts_with("the shim copy is missing while settings.json names it")),
+        "{found:?}"
+    );
+
+    // After uninstall the audit reads as it did before the install.
+    ok(&bench.uninstall(&[]));
+    let doc = json(&bench.doctor(&["--json"]));
+    assert_eq!(doc["c4"]["install"]["recorded"], false);
+    assert_eq!(doc["c4"]["install"]["settings"], "present");
+    assert_eq!(doc["c4"]["install"]["hooks_present"], 0);
+    assert_eq!(doc["c4"]["install"]["statusline"], "unwrapped");
+    assert_eq!(doc["c4"]["shim"]["copy_present"], false);
 }
 
 #[test]

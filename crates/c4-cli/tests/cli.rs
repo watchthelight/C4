@@ -15,6 +15,7 @@ fn c4(scratch: &ScratchHome) -> Command {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_c4-cli"));
     let (key, value) = scratch.env_var();
     cmd.env(key, value)
+        .env("C4_HOME", scratch.scratch_dir().join("c4"))
         .env_remove("C4_AGENTS_CMD")
         .env_remove("CLAUDE_CONFIG_DIR");
     cmd
@@ -196,7 +197,10 @@ fn sessions_table_names_the_states() {
 #[test]
 fn doctor_examines_a_scratch_home_without_running_commands() {
     let scratch = ScratchHome::seeded().unwrap();
-    let out = run(c4(&scratch).args(["doctor", "--json", "--no-commands"]));
+    let c4_home = scratch.scratch_dir().join("c4-explicit");
+    let out = run(c4(&scratch)
+        .args(["doctor", "--json", "--no-commands", "--c4-home"])
+        .arg(&c4_home));
     let doc = json(&out);
     assert_eq!(doc["schema"], 1);
     assert_eq!(doc["os"], std::env::consts::OS);
@@ -214,6 +218,20 @@ fn doctor_examines_a_scratch_home_without_running_commands() {
     assert!(doc["session_list"].is_null());
     assert_eq!(doc["process_table"]["found"], true);
     assert_eq!(doc["process_table"]["start_time"], true);
+    // C4's own parts, before any install: nothing there, nothing listening, nothing spooled.
+    assert_eq!(doc["c4"]["home"]["source"], "--c4-home");
+    assert_eq!(doc["c4"]["home"]["exists"], false);
+    assert_eq!(doc["c4"]["shim"]["copy_present"], false);
+    assert!(doc["c4"]["shim"]["copy_matches_manifest"].is_null());
+    assert!(doc["c4"]["shim"]["version"].is_null(), "no command ran");
+    assert!(doc["c4"]["shim"]["error"].is_null());
+    assert_eq!(doc["c4"]["install"]["recorded"], false);
+    assert_eq!(doc["c4"]["install"]["settings"], "missing");
+    assert_eq!(doc["c4"]["install"]["hooks_present"], 0);
+    assert_eq!(doc["c4"]["install"]["hooks_total"], 17);
+    assert_eq!(doc["c4"]["install"]["statusline"], "absent");
+    assert_eq!(doc["c4"]["endpoint"]["state"], "free");
+    assert_eq!(doc["c4"]["spool"]["files"], 0);
     let notes: Vec<&str> = doc["notes"]
         .as_array()
         .unwrap()
@@ -228,7 +246,14 @@ fn doctor_examines_a_scratch_home_without_running_commands() {
         notes.iter().any(|n| n.starts_with("registry:")),
         "{notes:?}"
     );
+    assert!(
+        notes
+            .iter()
+            .any(|n| n.starts_with("c4 install has not run")),
+        "{notes:?}"
+    );
 
+    // Without --c4-home the environment names the C4 home, as it does for every test here.
     let out = run(c4(&scratch).args(["doctor", "--no-commands"]));
     assert!(out.status.success(), "{}", stderr(&out));
     let text = stdout(&out);
@@ -240,6 +265,16 @@ fn doctor_examines_a_scratch_home_without_running_commands() {
     );
     assert!(text.contains("claude: not checked"), "{text}");
     assert!(text.contains("process table: ok"), "{text}");
+    assert!(text.contains("c4 home: "), "{text}");
+    assert!(text.contains("(from C4_HOME)"), "{text}");
+    assert!(text.contains("shim copy: "), "{text}");
+    assert!(text.contains(": missing"), "{text}");
+    assert!(text.contains("shim run: no copy to run"), "{text}");
+    assert!(text.contains("manifest: none at "), "{text}");
+    assert!(text.contains("settings.json: missing"), "{text}");
+    assert!(text.contains("endpoint: "), "{text}");
+    assert!(text.contains("free (nothing listens"), "{text}");
+    assert!(text.contains("spool: 0 files, 0 bytes"), "{text}");
 
     // A home that does not exist is a finding, not an error.
     let missing = scratch.scratch_dir().join("nowhere");

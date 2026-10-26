@@ -78,5 +78,13 @@ stay at 0.y.z while the interfaces settle.
   twice over an installed file, with CI checking that repo out at a pinned commit;
   `fixtures/settings/full.json` is the settings file it starts from. `serde_json` keeps key order
   across the workspace now, which is what lets the rewrite leave a user's file in its own order.
+- `c4 doctor` has a `c4` section: the C4 home (`--c4-home`), the shim copy against the manifest and
+  against the `c4-shim` beside the executable, the copy's `--version` and `endpoint` (skipped by
+  `--no-commands`) checked against the endpoint this C4 listens on, the install as the manifest
+  records it against what `settings.json` holds now (hook groups present of 17, the status line
+  wrapped or not, entries of another C4 home's shim), the ingest endpoint (listening, free or
+  unknown) and the spool, with notes that name the command to run. The session list command type
+  can carry environment variables for its child, which is how the shim copy is pointed at the same
+  C4 home.
 
 [Unreleased]: https://github.com/watchthelight/C4/compare/c3a0a47...HEAD

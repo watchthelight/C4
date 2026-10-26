@@ -161,6 +161,8 @@ pub struct AgentsCommand {
     pub program: String,
     /// Its arguments.
     pub args: Vec<String>,
+    /// Environment variables set for the child on top of this process's own.
+    pub envs: Vec<(String, String)>,
 }
 
 impl Default for AgentsCommand {
@@ -168,6 +170,7 @@ impl Default for AgentsCommand {
         Self {
             program: "claude".into(),
             args: vec!["agents".into(), "--json".into()],
+            envs: Vec::new(),
         }
     }
 }
@@ -181,7 +184,15 @@ impl AgentsCommand {
         Self {
             program: program.into(),
             args: args.into_iter().map(Into::into).collect(),
+            envs: Vec::new(),
         }
+    }
+
+    /// The command with `key` set to `value` in the child's environment.
+    #[must_use]
+    pub fn with_env(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.envs.push((key.into(), value.into()));
+        self
     }
 
     /// The command from the environment: [`AGENTS_CMD_ENV`] split on whitespace, else the default.
@@ -221,6 +232,7 @@ impl AgentsCommand {
     fn command(&self, program: &OsStr) -> Command {
         let mut cmd = Command::new(program);
         cmd.args(&self.args)
+            .envs(self.envs.iter().map(|(k, v)| (k.as_str(), v.as_str())))
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());

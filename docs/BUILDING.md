@@ -75,7 +75,7 @@ Any argument on the command line makes `c4` run a headless command and exit with
 c4 sessions                        # every session discovery can see, as a table
 c4 sessions --json                 # the same as JSON; --redact for pasting
 c4 sessions --watch                # keep refreshing, print state changes
-c4 doctor                          # where the Claude home is, whether claude runs
+c4 doctor                          # the Claude home, claude, and C4's shim, install and endpoint
 c4 telemetry --transcript <file>   # tokens, cost and agents of one transcript
 c4 install [--dry-run]             # copy the shim, wrap the status line, add the hook groups
 c4 uninstall [--dry-run]           # the way back, from the backup or entry by entry

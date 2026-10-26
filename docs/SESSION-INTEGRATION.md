@@ -217,6 +217,16 @@ nothing. A second install after another program rewrote the file turns `restorab
 backup no longer describes a file that C4 alone changed; from then on uninstall takes the one-by-one
 route.
 
+`c4 doctor` audits the install. Its `c4` section names the C4 home, says whether the shim copy is
+the one the manifest recorded and the same bytes as the `c4-shim` beside the executable, runs the
+copy with `--version` and `endpoint` (skipped by `--no-commands`) and checks that the copy would
+connect where the app listens, reads the manifest, and opens `settings.json` for one purpose, C4's
+own entries: how many of the 17 hook groups carry this home's shim, whether the status line is
+wrapped, and whether a `c4-shim` of another C4 home is wired in. Nothing else in the file is
+reported. It also says whether something listens on the endpoint and how much the spool holds, and
+each finding that calls for a command names it in the notes: `c4 install` again for a wrapper
+another installer removed, `c4 uninstall` with the right `--c4-home` for another home's leftovers.
+
 ## Living with other installers
 
 Hook groups are matched by command string, so an installer that merges its own groups (such as the
@@ -230,8 +240,9 @@ over a file C4 installed into (`python -I install/install.py --home <scratch>`),
 `c4 uninstall` once more: C4's seventeen groups survive both runs, the agents' hooks and env keys
 survive C4's uninstall, and the status line ends up as the agents template writes it. CI checks the
 agents repo out at a pinned commit for that test; locally it uses `~/src/agents` or `C4_AGENTS_REPO`
-and skips with a notice when neither holds the installer. `c4 doctor` reporting the un-wrapped state
-and a watch on `settings.json` that offers to re-apply the wrapper come with the next commits.
+and skips with a notice when neither holds the installer. `c4 doctor` reports the un-wrapped state
+("the install is not whole: the status line is not wrapped; run c4 install again"); a watch on
+`settings.json` that offers to re-apply the wrapper comes with a later commit.
 
 Claude Code applies hook edits in a settings file to sessions that are already running. Tested
 2026-10-25 with Claude Code 2.1.299 on Windows: a `UserPromptSubmit` command hook written to a

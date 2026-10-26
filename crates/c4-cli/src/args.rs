@@ -28,7 +28,8 @@ pub struct Cli {
 pub enum Command {
     /// List every session the discovery readers can see, in attention order.
     Sessions(SessionsArgs),
-    /// Check the Claude home, the claude command and the process table.
+    /// Check the Claude home, the claude command, the process table, and C4's own shim, install
+    /// and ingest endpoint.
     Doctor(DoctorArgs),
     /// Token totals, cost and agents recorded in one transcript file.
     Telemetry(TelemetryArgs),
@@ -145,11 +146,15 @@ pub struct DoctorArgs {
     /// Where the Claude home is.
     #[command(flatten)]
     pub home: HomeArgs,
+    /// Where the C4 home is.
+    #[command(flatten)]
+    pub c4_home: C4HomeArgs,
     /// Print JSON instead of text.
     #[arg(long)]
     pub json: bool,
-    /// Do not run claude or the session list command, which can start Claude Code's background
-    /// supervisor on macOS and Linux; check the files and the process table only.
+    /// Do not run claude, the session list command (which can start Claude Code's background
+    /// supervisor on macOS and Linux) or the shim copy; check the files, the process table and the
+    /// endpoint only.
     #[arg(long)]
     pub no_commands: bool,
     /// How long each command may take.

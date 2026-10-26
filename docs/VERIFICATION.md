@@ -32,10 +32,10 @@ in CI starts the app yet; a smoke test that does is planned.
 
 | Platform | Built in CI | Tests in CI | Run on hardware |
 |---|---|---|---|
-| Windows x64 | debug app, verify run 40271184171 | `cargo test --workspace` and `pnpm -r test` green (windows-latest) | `c4 sessions`, `c4 doctor`, `c4 install --dry-run` and the window against a real home, see Results |
-| macOS arm64 | debug app, verify run 40271184171 | `cargo test --workspace` and `pnpm -r test` green (macos-latest) | no hardware in reach |
-| macOS x64 | debug app, verify run 40271184171 | `cargo test --workspace` and `pnpm -r test` green (macos-15-intel) | no hardware in reach |
-| Linux x64 | debug app, verify run 40271184171 | `cargo test --workspace` and `pnpm -r test` green (ubuntu-latest) | not yet |
+| Windows x64 | debug app, verify run 40276837007 | `cargo test --workspace` and `pnpm -r test` green (windows-latest) | `c4 sessions`, `c4 doctor`, `c4 install --dry-run` and the window against a real home, see Results |
+| macOS arm64 | debug app, verify run 40276837007 | `cargo test --workspace` and `pnpm -r test` green (macos-latest) | no hardware in reach |
+| macOS x64 | debug app, verify run 40276837007 | `cargo test --workspace` and `pnpm -r test` green (macos-15-intel) | no hardware in reach |
+| Linux x64 | debug app, verify run 40276837007 | `cargo test --workspace` and `pnpm -r test` green (ubuntu-latest) | not yet |
 
 ## Manual checklist
 
@@ -95,3 +95,14 @@ result below the list when you run it.
   Afterwards `~/.c4/install-manifest.json` did not exist and `settings.json` had its previous size
   and modification time, with no new backup beside it. The real install waits for the build in which
   the app starts the ingest server, so that nothing installed sits unread.
+- 2026-10-26, the verify workflow for commit 3238e80 (run 40276837007): the lint job and the four
+  test jobs green, with the agents repo checked out at its pinned commit for test M on every runner.
+- 2026-10-26, C4 0.0.1 (debug `c4-cli`), Claude Code 2.1.299, Windows 11 Pro. `c4-cli doctor`
+  against the real Claude home, before any install: the home's files (two registry records, the
+  roster, one job), `claude.cmd` on PATH with its version in 81 ms, three entries from the session
+  list command in 543 ms, the process table answering for the command's own pid; then C4's own
+  parts: no C4 home, no shim copy, the sidecar beside the executable present, no manifest,
+  `settings.json` present with 0 of 17 hook groups and the status line not wrapped, the ingest
+  endpoint free, the spool empty, and the one note that `c4 install` has not run. Afterwards
+  `~/.c4/install-manifest.json` did not exist and `settings.json` had its previous size and
+  modification time.

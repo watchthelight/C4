@@ -27,7 +27,7 @@ same command line as the `c4` executable without the window:
 cargo build --release -p c4-cli -p c4-shim
 target/release/c4-cli install --dry-run   # what would change; nothing is written
 target/release/c4-cli install             # copy the shim to ~/.c4/bin and wire settings.json
-target/release/c4-cli doctor              # the Claude home's files, the claude command, the session list
+target/release/c4-cli doctor              # the Claude home, claude, and C4's shim, install and endpoint
 target/release/c4-cli sessions            # every session discovery can see
 target/release/c4-cli uninstall           # the way back
 ```

@@ -20,6 +20,7 @@ path = "src/main.rs"
 anyhow = { workspace = true }
 c4-core = { path = "../c4-core" }
 c4-discovery = { path = "../c4-discovery" }
+c4-ingest = { path = "../c4-ingest" }
 c4-transcript = { path = "../c4-transcript" }
 clap = { workspace = true }
 serde = { workspace = true }

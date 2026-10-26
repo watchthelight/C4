@@ -33,8 +33,11 @@ and `c4 uninstall` alone. Every write of that file is preceded by a copy to
 permissions, key order and layout, and is recorded in `~/.c4/install-manifest.json`. `c4 uninstall`
 restores the backup byte for byte when nothing else has written the file since, and otherwise removes
 C4's entries one by one. C4 never writes `~/.claude.json`, a project's `.claude/` directory or any
-other file under the Claude home, and never runs the shim it installs. The hooks it installs print
-nothing and return no decision, so none of them can approve, block or alter what a session does.
+other file under the Claude home. `c4 install` never runs the shim it copies; `c4 doctor` runs the
+copy with `--version` and `endpoint` alone, which `--no-commands` skips, and opens `settings.json`
+to count C4's own hook groups and check the status line wrapper, reporting nothing else from it. The
+hooks C4 installs print nothing and return no decision, so none of them can approve, block or alter
+what a session does.
 
 ## Redaction
 

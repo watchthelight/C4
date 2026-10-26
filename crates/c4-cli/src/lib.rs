@@ -6,7 +6,9 @@
 //! - `c4 sessions`: one discovery pass, as a table or as JSON, or a watch loop that prints state
 //!   changes. Discovery only; no transcript is read.
 //! - `c4 doctor`: where the Claude home is, what it holds, whether `claude` runs and whether the
-//!   process table answers. Nothing but file existence is read from the settings.
+//!   process table answers; then C4's own parts: the shim copy and the sidecar, the install as the
+//!   manifest records it against `settings.json` now, the ingest endpoint and the spool. The
+//!   settings file is opened for C4's own entries alone.
 //! - `c4 telemetry`: the token totals, cost, agents and recorded state of one transcript file.
 //! - `c4 install` and `c4 uninstall`: the shim copied into the C4 home and wired into
 //!   `settings.json`, with a backup beside the file and a manifest for the way back.

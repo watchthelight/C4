@@ -366,7 +366,7 @@ fn write_manifest(c4_home: &C4Home, manifest: &Manifest) -> anyhow::Result<()> {
     rename_retrying(&tmp, &path)
 }
 
-fn sha256_hex(bytes: &[u8]) -> String {
+pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
     use sha2::Digest;
     format!("{:x}", sha2::Sha256::digest(bytes))
 }
@@ -392,13 +392,13 @@ impl Default for Layout {
 }
 
 /// `settings.json` as read: its bytes when it exists, its top-level map, and its layout.
-struct SettingsFile {
-    bytes: Option<Vec<u8>>,
-    map: Map<String, Value>,
+pub(crate) struct SettingsFile {
+    pub(crate) bytes: Option<Vec<u8>>,
+    pub(crate) map: Map<String, Value>,
     layout: Layout,
 }
 
-fn read_settings(path: &Path) -> anyhow::Result<SettingsFile> {
+pub(crate) fn read_settings(path: &Path) -> anyhow::Result<SettingsFile> {
     match std::fs::read(path) {
         Ok(bytes) => {
             let (map, layout) = parse_settings(&bytes, path)?;
@@ -590,7 +590,8 @@ fn same_file(a: &Path, b: &Path) -> bool {
     }
 }
 
-fn default_shim_source() -> anyhow::Result<PathBuf> {
+/// The `c4-shim` beside this executable: what `c4 install` copies and `c4 doctor` compares with.
+pub(crate) fn default_shim_source() -> anyhow::Result<PathBuf> {
     let exe = std::env::current_exe().context("could not find this executable's own path")?;
     let dir = exe
         .parent()
@@ -600,7 +601,7 @@ fn default_shim_source() -> anyhow::Result<PathBuf> {
 
 /// What became of the status line on install.
 #[derive(Debug, Default, PartialEq, Eq)]
-enum StatuslineOutcome {
+pub(crate) enum StatuslineOutcome {
     /// No `statusLine` in the file; nothing to wrap.
     #[default]
     Absent,
@@ -618,12 +619,12 @@ enum StatuslineOutcome {
 
 /// What install changed in the map.
 #[derive(Debug, Default)]
-struct InstallPlan {
-    hooks_created: bool,
-    added: Vec<&'static str>,
-    present: Vec<&'static str>,
-    foreign: Vec<String>,
-    statusline: StatuslineOutcome,
+pub(crate) struct InstallPlan {
+    pub(crate) hooks_created: bool,
+    pub(crate) added: Vec<&'static str>,
+    pub(crate) present: Vec<&'static str>,
+    pub(crate) foreign: Vec<String>,
+    pub(crate) statusline: StatuslineOutcome,
 }
 
 impl InstallPlan {
@@ -688,7 +689,12 @@ fn wrap_statusline(root: &mut Map<String, Value>, shim: &ShimCommand) -> Statusl
     }
 }
 
-fn apply_install(root: &mut Map<String, Value>, shim: &ShimCommand) -> anyhow::Result<InstallPlan> {
+/// Wrap the status line and add the hook groups in `root`, and say what that changed. On a copy
+/// of the map this is the audit `c4 doctor` runs: nothing to add means the install is whole.
+pub(crate) fn apply_install(
+    root: &mut Map<String, Value>,
+    shim: &ShimCommand,
+) -> anyhow::Result<InstallPlan> {
     let statusline = wrap_statusline(root, shim);
     let hooks_created = !root.contains_key("hooks");
     let mut plan = InstallPlan {

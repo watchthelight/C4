@@ -193,6 +193,7 @@ beyond their existence, any environment value whose name contains TOKEN, KEY or 
 in MCP server definitions. Those fields are dropped before any data structure exists, so they cannot
 reach the store, the logs or an export. Today's readers also leave `~/.claude.json`, `history.jsonl`
 and the ledger closed; the milestones that need them open them under the same rules. `settings.json`
-is opened by one command, `c4 install` (and `c4 uninstall`), which is also the one thing in C4 that
-writes it, after a backup and with a manifest for the way back (docs/SESSION-INTEGRATION.md);
-`c4 doctor` checks that the file exists without opening it. docs/SECURITY.md has the full list.
+is opened by `c4 install` and `c4 uninstall`, the one thing in C4 that writes it, after a backup and
+with a manifest for the way back, and by `c4 doctor`, which reads it to count C4's own hook groups
+and check the status line wrapper and reports nothing else from it (docs/SESSION-INTEGRATION.md).
+docs/SECURITY.md has the full list.
