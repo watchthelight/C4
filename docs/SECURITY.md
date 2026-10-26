@@ -36,7 +36,9 @@ user exports them on purpose.
 The ingest socket is a named pipe whose DACL admits the current user alone on Windows (the SDDL is
 `D:P(A;;GA;;;<user SID>)`, built from the SID of C4's own token, and remote clients are rejected) and a
 Unix socket with mode 0600 in a 0700 directory elsewhere, where the server checks the uid of every
-peer against the owner of the C4 home and refuses a mismatch. The pipe name starts with
+peer against the owner of the C4 home and refuses a mismatch (the uid the kernel recorded at connect
+time, read with `getpeereid` on macOS and the BSDs, so a peer that has already closed is still
+checked and not refused for lack of credentials). The pipe name starts with
 `\\.\pipe\LOCAL\`, the prefix Claude Code's own peer-message pipes use; Windows documents that prefix
 as the form pipes inside app containers must take, not as a namespace of its own for ordinary
 processes, so C4 relies on the DACL and not on the name to keep other users out. Managed session hosts

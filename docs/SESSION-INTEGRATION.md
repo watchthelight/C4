@@ -109,7 +109,11 @@ the payload.
 with a DACL that admits the current user alone (`D:P(A;;GA;;;<user SID>)`, built from the SID of C4's
 own token) and rejects remote clients; elsewhere it binds the socket file with mode 0600 inside a
 0700 directory and compares the uid of every peer with the owner of the C4 home, refusing a mismatch.
-A second server on the same home is refused, so two C4 windows cannot split one home's payloads.
+The uid is the one the kernel recorded when the peer connected, because a shim has usually closed its
+end before the server looks: on macOS and the BSDs the server reads it with `getpeereid`, since the
+query tokio makes also asks for the peer's pid and fails once the peer is gone (the first macOS CI run
+of the server tests found that). A second server on the same home is refused, so two C4 windows
+cannot split one home's payloads.
 
 One line is one payload. The parser takes `session_id`, `cwd`, `session_title` (hooks) or
 `session_name` (status line), `transcript_path` and `version` into an identity observation, then the

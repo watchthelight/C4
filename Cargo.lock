@@ -310,6 +310,7 @@ version = "0.0.1"
 dependencies = [
  "c4-core",
  "c4-shim",
+ "libc",
  "serde",
  "serde_json",
  "tempfile",

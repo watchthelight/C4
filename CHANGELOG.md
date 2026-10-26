@@ -57,7 +57,8 @@ stay at 0.y.z while the interfaces settle.
   `~/.c4/spool/<date>.jsonl` when C4 is not running. A test holds the endpoint rule equal to
   `c4-core::home`.
 - `c4-ingest`, the receiving end: a server on the ingest endpoint (a named pipe with a current-user
-  DACL on Windows, a mode 0600 socket file with a peer uid check elsewhere) that turns each shim line
+  DACL on Windows, a mode 0600 socket file with a peer uid check elsewhere, read with `getpeereid`
+  on macOS and the BSDs because a shim has closed its end before the server looks) that turns each shim line
   into observations, a bounded inbox that drops its oldest item under pressure and counts the drop,
   the spool replay at start and every 30 s, a probe for `c4 doctor`, and a second server on the same
   home refused. The app does not start the server yet. Fixtures for every hook payload C4 listens

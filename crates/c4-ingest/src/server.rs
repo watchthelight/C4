@@ -491,12 +491,13 @@ mod platform {
 
 #[cfg(unix)]
 mod platform {
+    use std::io;
     use std::os::unix::fs::{MetadataExt, PermissionsExt};
     use std::path::PathBuf;
     use std::sync::atomic::Ordering;
 
     use c4_core::C4Home;
-    use tokio::net::UnixListener;
+    use tokio::net::{UnixListener, UnixStream};
     use tokio::sync::watch;
     use tokio::task::JoinSet;
 
@@ -506,6 +507,45 @@ mod platform {
         socket: UnixListener,
         path: PathBuf,
         uid: u32,
+    }
+
+    /// The effective uid of the peer, as the kernel recorded it when the peer connected.
+    ///
+    /// A shim closes its end the moment its line is written, so the peer is usually gone by the
+    /// time the server looks. On macOS and the BSDs tokio's `peer_cred` also asks for the peer's
+    /// pid (`LOCAL_PEERPID`), which needs the peer still connected and fails with `ENOTCONN` once
+    /// it is not; `getpeereid` reads the recorded credentials alone. On Linux `SO_PEERCRED` is the
+    /// record itself and tokio's call is enough.
+    #[cfg(any(
+        target_vendor = "apple",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "dragonfly"
+    ))]
+    #[allow(unsafe_code)]
+    fn peer_uid(stream: &UnixStream) -> io::Result<u32> {
+        use std::os::fd::AsRawFd;
+        let mut uid: libc::uid_t = 0;
+        let mut gid: libc::gid_t = 0;
+        // SAFETY: `getpeereid` writes one uid and one gid through the two valid pointers and
+        // reads nothing else; the descriptor belongs to `stream`, which outlives the call.
+        let ret = unsafe { libc::getpeereid(stream.as_raw_fd(), &raw mut uid, &raw mut gid) };
+        if ret != 0 {
+            return Err(io::Error::last_os_error());
+        }
+        Ok(uid)
+    }
+
+    #[cfg(not(any(
+        target_vendor = "apple",
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "dragonfly"
+    )))]
+    fn peer_uid(stream: &UnixStream) -> io::Result<u32> {
+        stream.peer_cred().map(|cred| cred.uid())
     }
 
     pub(super) fn listen(home: &C4Home) -> Result<Listener, StartError> {
@@ -549,13 +589,13 @@ mod platform {
             tokio::select! {
                 _ = stop.changed() => break,
                 accepted = listener.socket.accept() => match accepted {
-                    Ok((stream, _)) => match stream.peer_cred() {
-                        Ok(cred) if cred.uid() == listener.uid => {
+                    Ok((stream, _)) => match peer_uid(&stream) {
+                        Ok(uid) if uid == listener.uid => {
                             conns.spawn(serve(stream, ctx.clone()));
                         }
-                        Ok(cred) => {
+                        Ok(uid) => {
                             ctx.counters.refused.fetch_add(1, Ordering::Relaxed);
-                            tracing::warn!(uid = cred.uid(), "ingest connection from another user refused");
+                            tracing::warn!(uid, "ingest connection from another user refused");
                         }
                         Err(e) => {
                             ctx.counters.refused.fetch_add(1, Ordering::Relaxed);
