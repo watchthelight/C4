@@ -1,0 +1,71 @@
+# <wtl> project: c4 | file: deny.toml | author: watchthelight </wtl>
+# cargo-deny configuration: `cargo deny check` (the lint job runs it on every push). Advisories,
+# licenses, duplicate versions and dependency sources are checked over the dependency graph of the
+# four release targets, so crates that only exist for Android, iOS or WebAssembly builds of Tauri's
+# dependencies do not count. Format: cargo-deny 0.20.
+
+[graph]
+targets = [
+    "x86_64-pc-windows-msvc",
+    "x86_64-apple-darwin",
+    "aarch64-apple-darwin",
+    "x86_64-unknown-linux-gnu",
+]
+all-features = false
+no-default-features = false
+
+[output]
+feature-depth = 1
+
+[advisories]
+# A known vulnerability fails the check. A yanked version fails it too. An unmaintained crate fails
+# it only when a workspace crate depends on it directly; the GTK bindings Tauri uses on Linux pull
+# in a few transitive ones that have no maintained replacement yet.
+yanked = "deny"
+unmaintained = "workspace"
+ignore = []
+
+[licenses]
+# Licenses any crate in the shipped binaries may carry. A crate with a choice of licenses (for
+# example "Unlicense OR MIT") is accepted through the one listed here. MPL-2.0 is accepted per crate
+# in `exceptions`, never in general, so a new copyleft dependency shows up in CI.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "CC0-1.0",
+    "Unicode-3.0",
+    "Zlib",
+]
+confidence-threshold = 0.8
+exceptions = [
+    # dirs (through tauri) needs option-ext; tauri-utils' HTML handling needs the servo CSS crates.
+    # MPL-2.0 is a file-level copyleft: it covers those files only, not C4.
+    { allow = ["MPL-2.0"], crate = "option-ext" },
+    { allow = ["MPL-2.0"], crate = "cssparser" },
+    { allow = ["MPL-2.0"], crate = "cssparser-macros" },
+    { allow = ["MPL-2.0"], crate = "dtoa-short" },
+    { allow = ["MPL-2.0"], crate = "selectors" },
+]
+
+[bans]
+# Tauri's tree carries several versions of a few crates (windows-sys, toml, syn); a warning keeps
+# that visible without failing the build.
+multiple-versions = "warn"
+wildcards = "allow"
+highlight = "all"
+workspace-default-features = "allow"
+external-default-features = "allow"
+allow = []
+deny = []
+skip = []
+skip-tree = []
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

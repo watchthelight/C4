@@ -84,6 +84,19 @@ python scripts/fake_claude.py --home /tmp/scratch --cwd /tmp/proj --status busy 
 C4_CLAUDE_HOME=/tmp/scratch cargo run -p c4-cli -- sessions --files-only
 ```
 
+## Licenses
+
+C4 is MIT. Two files describe what may ship inside it: `deny.toml` for `cargo deny check` (advisories,
+licenses, duplicate versions and dependency sources, evaluated for the four release targets) and
+`about.toml` for `cargo about`, which `scripts/gen_notices.py` turns into `THIRD-PARTY-NOTICES.md`
+together with the npm packages of the window and the fonts under `assets/fonts/`. Both tools install
+with `cargo install cargo-deny cargo-about --locked`; CI pins cargo-deny 0.20 and cargo-about 0.9.
+
+After a dependency change run `python scripts/gen_notices.py` and commit the result; the lint job runs
+it with `--check` and fails when the file is out of date. A new license in the tree fails `cargo deny
+check` until it is added to `deny.toml` and `about.toml` on purpose. MPL-2.0 is accepted per crate in
+`deny.toml`, so a new copyleft dependency is a deliberate decision, not a side effect.
+
 ## Troubleshooting
 
 - **`cl.exe` exits with code 2 while compiling a C dependency on Windows.** A `CC` environment

@@ -55,14 +55,11 @@ jobs:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --all --check
-      - name: cargo deny
-        if: hashFiles('deny.toml') != ''
-        uses: EmbarkStudios/cargo-deny-action@v2
+      - name: cargo-deny and cargo-about (the versions deny.toml and about.toml are written for)
+        uses: taiki-e/install-action@v2
         with:
-          command: check
-      - name: third-party notices are current
-        if: hashFiles('scripts/gen_notices.py') != ''
-        run: python -I scripts/gen_notices.py --check
+          tool: cargo-deny@0.20.2,cargo-about@0.9.2
+      - run: cargo deny check
       - uses: pnpm/action-setup@v6
         if: hashFiles('pnpm-lock.yaml') != ''
       - uses: actions/setup-node@v7
@@ -76,6 +73,8 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm -r lint
           pnpm -r typecheck
+      - name: third-party notices are current
+        run: python -I scripts/gen_notices.py --check
 
   test:
     strategy:
