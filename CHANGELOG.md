@@ -9,9 +9,35 @@ stay at 0.y.z while the interfaces settle.
 
 ### Added
 
-- Cargo workspace with the `c4-core` crate, a pinned Rust toolchain and the MIT license.
-- Repository scripts: the pre-commit gate, the secret scan, the slop lint and the header check.
-- CI: a pull-request gate and the verify workflow with a lint job and a four-runner test matrix.
-- Documentation set under docs/ and the project directive and plan under docs/prompts/.
+- Cargo workspace with a pinned Rust toolchain and the MIT license.
+- `c4-core`: session, process, agent and host types; the nine-state session machine, which
+  carries the source and certainty of every transition and never reports Failed from silence or
+  Completed with work in flight; the versioned event envelope; redaction of paths and secrets.
+- Synthetic fixtures: a scratch Claude home with registry entries, supervisor files, transcripts
+  with subagents and workflows, a session list, and the state label contract shared by the Rust
+  and TypeScript sides.
+- `c4-discovery`: readers for the session registry, `claude agents --json`, the background
+  session supervisor files and the process table; liveness by pid and creation time with pid reuse
+  detected; terminal host identification from the process environment; one verdict per session
+  when several name one pid, so a session whose process moved to a new id after `/clear` or
+  `/resume` is completed instead of lingering.
+- `c4-transcript`: a byte-offset tailer that leaves a partial last line alone, a tolerant record
+  parser gated on the transcript version, a session follower with usage max-merged per message id,
+  a metadata-only project index, a subagent and workflow scanner and a file watcher.
+- `c4-testkit` and `scripts/fake_claude.py`: scratch homes and a stand-in Claude Code process
+  registered with its own pid and creation time, so liveness tests run on a real process table.
+- `c4 sessions` (table, JSON, watch), `c4 doctor` and `c4 telemetry --transcript`.
+- The desktop shell: the `c4` executable opens a window that lists sessions in attention order
+  with a read-only inspector, refreshed by a background pass every 2 s; any argument runs a headless
+  command instead. A mock bridge serves synthetic sessions in a plain browser.
+- Licensing: `cargo deny` over the four release targets, `cargo about` and a generated
+  THIRD-PARTY-NOTICES.md that CI checks for staleness.
+- Repository scripts: the pre-commit gate, the secret scan, the slop lint, the header check and
+  the notices generator.
+- CI: a pull-request gate and the verify workflow with a lint job and a four-runner test matrix
+  that also builds the debug app.
+- Documentation set under docs/ and the project directive and plan under docs/prompts/, including
+  the finding that Claude Code 2.1.299 applies a hook added to a settings file to sessions that are
+  already running.
 
 [Unreleased]: https://github.com/watchthelight/C4/compare/c3a0a47...HEAD
