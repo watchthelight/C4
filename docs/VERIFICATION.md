@@ -26,14 +26,16 @@ and passes; "manual" means someone ran the checklist on real hardware; "unverifi
 
 ## Platform status
 
-"Built in CI" covers the desktop app; the crates build as part of the tests on every runner.
+"Built in CI" covers the desktop app: `pnpm -C apps/desktop tauri build --debug --no-bundle`, which
+links the window into the executable. The crates build as part of the tests on every runner. Nothing
+in CI starts the app yet; a smoke test that does is planned.
 
 | Platform | Built in CI | Tests in CI | Run on hardware |
 |---|---|---|---|
-| Windows x64 | crates only | `cargo test --workspace` green (windows-latest) | `c4 sessions` and `c4 doctor` against a real home, see Results |
-| macOS arm64 | crates only | `cargo test --workspace` green (macos-latest) | no hardware in reach |
-| macOS x64 | crates only | `cargo test --workspace` green (macos-15-intel) | no hardware in reach |
-| Linux x64 | crates only | `cargo test --workspace` green (ubuntu-latest) | not yet |
+| Windows x64 | debug app, verify run 40257450521 | `cargo test --workspace` and `pnpm -r test` green (windows-latest) | `c4 sessions`, `c4 doctor` and the window against a real home, see Results |
+| macOS arm64 | debug app, verify run 40257450521 | `cargo test --workspace` and `pnpm -r test` green (macos-latest) | no hardware in reach |
+| macOS x64 | debug app, verify run 40257450521 | `cargo test --workspace` and `pnpm -r test` green (macos-15-intel) | no hardware in reach |
+| Linux x64 | debug app, verify run 40257450521 | `cargo test --workspace` and `pnpm -r test` green (ubuntu-latest) | not yet |
 
 ## Manual checklist
 
@@ -77,3 +79,6 @@ result below the list when you run it.
   entries arrived on the same pass. `c4 sessions --json --files-only` from the same executable
   returned the same four sessions; the window closed with exit code 0 and nothing on stderr. Checked
   by screenshot, not by a test; the Playwright suite arrives in Milestone 2.
+- 2026-10-26, the verify workflow for commit 923519b (run 40257450521): the lint job and the four
+  test jobs green. Each runner built the debug app with `tauri build --debug --no-bundle` after
+  `cargo test --workspace` and `pnpm -r test`. The app was built, not started, on every runner.

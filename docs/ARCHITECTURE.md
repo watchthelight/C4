@@ -220,7 +220,7 @@ persisted yet; every start of the window begins with an empty table and a fresh 
 
 | Stage | Budget | Measured |
 |---|---|---|
-| Cold start to the first session list | 2 s | 611 ms for `c4 sessions` over a real home, the session list command included (Windows, see docs/VERIFICATION.md) |
+| Cold start to the first session list | 2 s | 37 ms for the window's first pass over a real home with four sessions; 611 ms for `c4 sessions` with the session list command (Windows, see docs/VERIFICATION.md) |
 | Hook event to UI | 150 ms p95 | Milestone 2 |
 | Transcript append to graph update | 500 ms | Milestone 5 |
 | Pty frames | 8 to 16 ms, two in flight | Milestone 3 |
