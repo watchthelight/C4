@@ -1,8 +1,9 @@
 // <wtl> project: c4 | file: apps/desktop/src/sessions/filter.ts | author: watchthelight </wtl>
-// The line above the session list: the filter box and the grouping button. `/` anywhere in the
-// window focuses the box; Escape clears it, then leaves it; Enter and the down arrow leave it for
-// the list with the filter kept. The box is the only text input in the sidebar and it reaches no
-// session: it only narrows what the list shows.
+// The line above the session list: the filter box, the grouping button and, in the main window,
+// the button that folds the sidebar to its rail. `/` anywhere in the window focuses the box;
+// Escape clears it, then leaves it; Enter and the down arrow leave it for the list with the filter
+// kept. The box is the only text input in the sidebar and it reaches no session: it only narrows
+// what the list shows.
 
 import { el } from "../dom";
 import { GROUP_BYS, nextGroupBy } from "./arrange";
@@ -25,6 +26,8 @@ export interface FilterBarOptions {
   onGroupBy(groupBy: GroupBy): void;
   /** Focus should go back to the list. */
   onLeave(): void;
+  /** When given, a button at the right end folds the sidebar to its rail. */
+  onFold?(): void;
 }
 
 export interface FilterBar {
@@ -85,6 +88,20 @@ export function createFilterBar(options: FilterBarOptions): FilterBar {
     options.onGroupBy(groupBy);
   });
   root.append(input, button);
+  const onFold = options.onFold;
+  if (onFold) {
+    const fold = el("button", "fold");
+    fold.type = "button";
+    fold.setAttribute("aria-label", "fold the sidebar to its rail");
+    fold.title = "fold the sidebar to its rail (Ctrl+Shift+B)";
+    const glyph = el("span", "glyph-sidebar");
+    glyph.setAttribute("aria-hidden", "true");
+    fold.append(glyph);
+    fold.addEventListener("click", () => {
+      onFold();
+    });
+    root.append(fold);
+  }
 
   return {
     el: root,

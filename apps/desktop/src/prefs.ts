@@ -1,7 +1,8 @@
 // <wtl> project: c4 | file: apps/desktop/src/prefs.ts | author: watchthelight </wtl>
 // What the window keeps between runs. The core stores one JSON object under the C4 home with a
 // schema number and a section per part of the window; the sidebar section holds the list's
-// preferences and the sidebar's width. Reading is tolerant: a missing or malformed value falls back
+// preferences, the sidebar's width and whether it is folded to its rail. Reading is tolerant: a
+// missing or malformed value falls back
 // to its default and an unknown key is left alone, so a file from another version never stops the
 // window. Writes go to the core one section at a time, after a short quiet, so a splitter drag
 // costs one write; the store flushes on demand when the page is about to go away.
@@ -22,9 +23,15 @@ export const WRITE_DELAY_MS = 250;
 /** Pins and folded groups kept, the newest last; older ones drop off the front. */
 export const PINS_MAX = 500;
 
+/** How the sidebar shows in the main window: the full list, or the 36px rail of state squares. */
+export type SidebarView = "full" | "rail";
+
+export const SIDEBAR_VIEWS: readonly SidebarView[] = ["full", "rail"];
+
 export interface SidebarPrefs extends ListPrefs {
   /** The sidebar's width in CSS pixels as the user set it; the layout holds it inside the window. */
   width: number;
+  view: SidebarView;
 }
 
 export const SIDEBAR_DEFAULTS: Readonly<SidebarPrefs> = {
@@ -33,6 +40,7 @@ export const SIDEBAR_DEFAULTS: Readonly<SidebarPrefs> = {
   pinned: [],
   collapsed: [],
   width: SIDEBAR_WIDTH,
+  view: "full",
 };
 
 /** `width` held between the minimum and what leaves the workspace its room in a window `windowWidth` wide. */
@@ -73,6 +81,7 @@ export function readSidebar(doc: unknown): SidebarPrefs {
     pinned: strings(s.pinned, PINS_MAX),
     collapsed: strings(s.collapsed, PINS_MAX),
     width: Math.max(SIDEBAR_MIN, Math.round(width)),
+    view: oneOf(s.view, SIDEBAR_VIEWS, SIDEBAR_DEFAULTS.view),
   };
 }
 
@@ -84,6 +93,7 @@ export function sidebarSection(prefs: SidebarPrefs): Record<string, unknown> {
     pinned: [...prefs.pinned],
     collapsed: [...prefs.collapsed],
     width: prefs.width,
+    view: prefs.view,
   };
 }
 

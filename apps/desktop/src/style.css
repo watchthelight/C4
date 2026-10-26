@@ -23,10 +23,45 @@
 
 .topbar,
 .sidebar,
+.rail,
 .workspace,
 .strip {
   position: relative;
   z-index: 1;
+}
+
+/* The sidebar folded to its rail: the first column narrows to 36px, the sidebar and the splitter
+   leave the layout and the rail takes their place; opened again, the rail leaves instead. */
+
+#app[data-sidebar="rail"] {
+  grid-template-columns: var(--rail-w) 1fr;
+}
+
+#app[data-sidebar="rail"] .sidebar,
+#app[data-sidebar="rail"] .splitter,
+#app[data-sidebar="full"] .rail {
+  display: none;
+}
+
+/* the sidebar glyph on the fold and unfold buttons: a 10 by 8 frame with a bar at its left */
+
+.glyph-sidebar {
+  position: relative;
+  display: inline-block;
+  width: 10px;
+  height: 8px;
+  border: 1px solid currentColor;
+  vertical-align: middle;
+}
+
+.glyph-sidebar::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: currentColor;
 }
 
 /* top bar */
@@ -166,6 +201,152 @@
 .filterbar .groupby:focus-visible {
   outline: 1px solid var(--sage-hi);
   outline-offset: -1px;
+}
+
+.filterbar .fold {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--ctl-md);
+  height: var(--ctl-md);
+  padding: 0;
+  border: 1px solid var(--faint);
+  background: transparent;
+  color: var(--dim);
+  cursor: default;
+}
+
+.filterbar .fold:hover {
+  border-color: var(--dim);
+  color: var(--text);
+}
+
+.filterbar .fold:focus-visible {
+  outline: 1px solid var(--sage-hi);
+  outline-offset: -1px;
+}
+
+/* The rail: the unfold button on top, one 24px item per session with its state square centered,
+   the count of sessions that need you at the bottom. The items take the attention stripe the rows
+   carry; a pinned item has a 3px sage square in its corner. */
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--line);
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+}
+
+.rail .unfold {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: var(--ctl-lg);
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--dim);
+  cursor: default;
+}
+
+.rail .unfold:hover {
+  background: var(--panel);
+  color: var(--text);
+}
+
+.rail .unfold:focus-visible {
+  outline: 1px solid var(--sage-hi);
+  outline-offset: -1px;
+}
+
+.rail .items {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--s-2) 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  outline: none;
+}
+
+.rail .items::-webkit-scrollbar {
+  display: none;
+}
+
+.rail .items:focus-visible {
+  outline: 1px solid var(--sage-hi);
+  outline-offset: -1px;
+}
+
+.rail .item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: var(--ctl-md);
+  padding: 0;
+  border: 0;
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: var(--text);
+  cursor: default;
+  transition:
+    background-color var(--t-fast),
+    border-color var(--t-fast);
+}
+
+/* the stripe would push the square 1px off center; the square moves back over it */
+
+.rail .item .sq {
+  margin-left: -2px;
+}
+
+.rail .item:hover {
+  background: var(--panel);
+}
+
+.rail .item[aria-selected="true"] {
+  background: var(--sage-wash);
+}
+
+.rail .item[data-attention="true"] {
+  border-left-color: var(--amber);
+}
+
+.rail .item[data-kind="failed"] {
+  border-left-color: var(--red);
+}
+
+.rail .item[data-pinned="true"]::after {
+  content: "";
+  position: absolute;
+  right: 5px;
+  top: 5px;
+  width: 3px;
+  height: 3px;
+  background: var(--sage);
+}
+
+.rail .need {
+  flex: 0 0 auto;
+  padding: var(--s-2) 0;
+  border-top: 1px solid var(--line);
+  color: var(--amber);
+  font-size: var(--fs-11);
+  line-height: 16px;
+  text-align: center;
+}
+
+.rail .need:empty {
+  display: none;
 }
 
 /* The list is virtual: a spacer holds the height of every item, and only the items near the

@@ -62,6 +62,30 @@ describe("filter bar", () => {
     button.click();
     expect(groups).toEqual(["project", "none"]);
     expect(groupLabel("host")).toBe("by host");
+    expect(bar.el.querySelector("button.fold")).toBeNull();
     bar.el.remove();
+  });
+
+  it("gets a fold button only when the window has a rail to fold to", () => {
+    let folded = 0;
+    const bar = createFilterBar({
+      groupBy: "none",
+      onFilter: () => {},
+      onGroupBy: () => {},
+      onLeave: () => {},
+      onFold: () => {
+        folded += 1;
+      },
+    });
+    const fold = bar.el.querySelector<HTMLButtonElement>("button.fold");
+    if (!fold) {
+      throw new Error("the bar has no fold button");
+    }
+    expect(fold.type).toBe("button");
+    expect(fold.getAttribute("aria-label")).toBe("fold the sidebar to its rail");
+    expect(fold.title).toContain("Ctrl+Shift+B");
+    expect(fold.querySelector(".glyph-sidebar")?.getAttribute("aria-hidden")).toBe("true");
+    fold.click();
+    expect(folded).toBe(1);
   });
 });

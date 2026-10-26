@@ -227,9 +227,18 @@ Right for 10px, Home or End for the limits; a double-click puts the 320px defaul
 never goes under 220px and the workspace keeps 400px, so a narrower window shows less of the width
 you set and a wider one gives it back.
 
+The button at the right end of the filter line, or Ctrl+Shift+B (Cmd+Shift+B on macOS), folds the
+sidebar to a 36px rail: one state square per session, pinned sessions first and the rest in
+attention order, the attention stripe beside the waiting and failed ones, and the count of sessions
+that need you at the bottom. A square carries the session's name and state in its tooltip and its
+accessible name; a click selects it, the arrow keys move the selection, and the pointer resting on
+it opens the same card the rows have. The button at the top of the rail, the chord again, or `/`
+opens the sidebar back up. The rail follows the list's rule for reorders: a square changes its
+glyph at once, its place waits while the pointer or the keyboard is in the rail.
+
 Nothing in the window types into any session (the filter box narrows the list and reaches nothing
 else). The sidebar's organization survives a restart: the pins, the grouping, the folded groups, the
-density and the width go to `prefs.json` under the C4 home (`~/.c4/` unless `C4_HOME` or
+density, the width and whether it is folded to its rail go to `prefs.json` under the C4 home (`~/.c4/` unless `C4_HOME` or
 `--c4-home` says otherwise) a quarter of a second after each change by hand (a change made in the
 quarter second before the window closes may not reach the file), and the next start builds the
 sidebar from them before the first pass. The file is one JSON object with a `schema`

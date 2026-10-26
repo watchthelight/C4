@@ -3,8 +3,8 @@
 // one render per animation frame. Nothing renders while the window is hidden. The starfield canvas
 // goes in first and runs on its own clock behind the sidebar and the status strip. The saved
 // preferences come before anything else: the sidebar is built from them, and every change made by
-// hand (a pin, the grouping, a folded group, the density, the sidebar's width) goes back to the
-// core after a short quiet.
+// hand (a pin, the grouping, a folded group, the density, the sidebar's width, the fold to the
+// rail) goes back to the core after a short quiet.
 
 import { effect, signal } from "@preact/signals-core";
 import { selectBridge } from "./bridge";
@@ -12,11 +12,12 @@ import type { About, PrefsDoc, SessionView, Snapshot } from "./bridge/types";
 import { createStrip, createTopBar } from "./chrome";
 import { el } from "./dom";
 import { SIDEBAR_MIN, SIDEBAR_WIDTH, WORKSPACE_MIN, clampWidth, createPrefsStore, readSidebar, sidebarSection } from "./prefs";
-import type { PrefsStore, SidebarPrefs } from "./prefs";
+import type { PrefsStore, SidebarPrefs, SidebarView } from "./prefs";
 import { createFilterBar } from "./sessions/filter";
 import { createHoverCard } from "./sessions/hovercard";
 import { createInspector } from "./sessions/inspector";
 import { createSessionList, nextDensity } from "./sessions/list";
+import { createRail } from "./sessions/rail";
 import { createSplitter } from "./splitter";
 import { createStarfield } from "./starfield";
 import type { StarfieldOptions } from "./starfield";
@@ -79,6 +80,18 @@ function mount(saved: SidebarPrefs, store: PrefsStore): void {
   const topBar = createTopBar();
   const hover = createHoverCard();
   const stars = createStarfield(root, starfieldOptions());
+
+  // the card is drawn outside the list and the rail, beside the row or square the pointer rests
+  // on, on the frame's clock so its times agree with the rows
+  function hoverFor(id: string | null, anchor: HTMLElement | null): void {
+    const view = id === null ? undefined : viewOf(id);
+    if (view && anchor && frame) {
+      hover.show(view, anchor, frame.now);
+    } else {
+      hover.hide();
+    }
+  }
+
   const list = createSessionList({
     density: saved.density,
     groupBy: saved.groupBy,
@@ -92,16 +105,7 @@ function mount(saved: SidebarPrefs, store: PrefsStore): void {
       filterBar.setGroupBy(prefs.groupBy);
       save();
     },
-    // the card is drawn outside the list, beside the row the pointer rests on, on the frame's clock
-    // so its times agree with the rows
-    onHover: (id, anchor) => {
-      const view = id === null ? undefined : viewOf(id);
-      if (view && anchor && frame) {
-        hover.show(view, anchor, frame.now);
-      } else {
-        hover.hide();
-      }
-    },
+    onHover: hoverFor,
   });
   const filterBar = createFilterBar({
     groupBy: list.groupBy,
@@ -114,9 +118,40 @@ function mount(saved: SidebarPrefs, store: PrefsStore): void {
     onLeave: () => {
       list.el.focus();
     },
+    onFold: () => {
+      setView("rail");
+      rail.focus();
+    },
+  });
+  const rail = createRail({
+    onSelect: (id) => {
+      selected.value = id;
+    },
+    onExpand: () => {
+      setView("full");
+      list.el.focus();
+    },
+    onHover: hoverFor,
   });
   const inspector = createInspector();
   const strip = createStrip(bridge.kind);
+
+  // the sidebar shows in full or folded to its rail; the app root carries which, and the layout
+  // follows. The list is painted again when it comes back, since it had no height while hidden.
+  let view: SidebarView = saved.view;
+  root.dataset.sidebar = view;
+  function setView(next: SidebarView): void {
+    if (next === view) {
+      return;
+    }
+    view = next;
+    hover.hide();
+    root.dataset.sidebar = next;
+    if (next === "full") {
+      list.paint();
+    }
+    save();
+  }
 
   // the sidebar's width is a custom property on the app root; the splitter moves it live and the
   // store gets the width once the drag ends. `wanted` is the width the user set; a narrower window
@@ -145,19 +180,20 @@ function mount(saved: SidebarPrefs, store: PrefsStore): void {
   applyWidth(splitter.width);
 
   function save(): void {
-    store.set("sidebar", sidebarSection({ ...list.prefs(), width: wanted }));
+    store.set("sidebar", sidebarSection({ ...list.prefs(), width: wanted, view }));
   }
 
   const sidebar = el("aside", "sidebar");
   sidebar.append(filterBar.el, list.el);
   const workspace = el("main", "workspace");
   workspace.append(inspector.el);
-  root.append(topBar.el, sidebar, workspace, strip.el, splitter.el, hover.el);
+  root.append(topBar.el, sidebar, rail.el, workspace, strip.el, splitter.el, hover.el);
 
   function render(f: Frame): void {
     const views = f.snapshot?.sessions ?? [];
     topBar.update(views, f.about);
     list.update(views, f.selected, f.now);
+    rail.update(views, f.selected, list.isPinned);
     hover.refresh(views, f.now);
     inspector.update(views.find((v) => v.id === f.selected) ?? null, f.now);
     const facts = f.about === null ? null : { ...f.about, prefs_problem: f.note ?? f.about.prefs_problem };
@@ -211,7 +247,8 @@ function mount(saved: SidebarPrefs, store: PrefsStore): void {
   });
 
   // Ctrl+Shift+= (Cmd+Shift+= on macOS) walks the row density: compact, standard, expanded.
-  // `/` outside a text field focuses the filter box.
+  // Ctrl+Shift+B folds the sidebar to its rail and opens it again, with focus following. `/`
+  // outside a text field focuses the filter box, opening the sidebar first if it is folded.
   document.addEventListener("keydown", (event) => {
     const chord = (event.ctrlKey || event.metaKey) && event.shiftKey && !event.altKey;
     if (chord && event.code === "Equal") {
@@ -219,9 +256,21 @@ function mount(saved: SidebarPrefs, store: PrefsStore): void {
       list.setDensity(nextDensity(list.density));
       return;
     }
+    if (chord && event.code === "KeyB") {
+      event.preventDefault();
+      if (view === "full") {
+        setView("rail");
+        rail.focus();
+      } else {
+        setView("full");
+        list.el.focus();
+      }
+      return;
+    }
     const plain = !event.ctrlKey && !event.metaKey && !event.altKey;
     if (plain && event.key === "/" && !typing(event.target)) {
       event.preventDefault();
+      setView("full");
       filterBar.focus();
     }
   });

@@ -120,7 +120,7 @@ the same facts.
 | Region | Size | Content |
 |---|---|---|
 | Top bar | 32px | mark and "c4", layout name, attention count, shared quota meters |
-| Sidebar | 320px default, 220 minimum, set by the 6px splitter at its right edge (the workspace keeps 400px), collapses to a 36px rail of state squares, detachable; the width, pins, grouping, folded groups and density are kept between runs | session rows, group headers, filter |
+| Sidebar | 320px default, 220 minimum, set by the 6px splitter at its right edge (the workspace keeps 400px); folds to a 36px rail of state squares (one 24px item per session, pins first, the attention stripe kept, a 3px sage square on a pinned item, the count that need you at the bottom in amber), detachable; the width, pins, grouping, folded groups, density and the fold are kept between runs | session rows, group headers, filter |
 | Workspace | the rest | tab strip 28px, split tree of panes, surface tabs (Library, Center, Telemetry, Settings) |
 | Inspector | 360px default, collapsible | Overview, Workflow, Tokens, Agents, Git, Capabilities, Log |
 | Status strip | 22px | attention count, quota meters, peer count, layout name, key hints |
@@ -139,11 +139,13 @@ visible pane received bytes in the last 250 ms, during splitter drags, and under
 App chords use Ctrl+Shift on Windows and Linux and Cmd+Shift on macOS so that plain shell keys pass
 through to the terminal. Palette `Ctrl+Shift+P`, switcher `Ctrl+K`, split right and down
 `Ctrl+Shift+D` and `Ctrl+Shift+E`, focus pane `Ctrl+Shift+Arrow`, tabs `Ctrl+Tab` and `Ctrl+1..9`,
-zoom `Ctrl+Shift+Enter`, focus mode `Ctrl+Shift+F`, find `Ctrl+F`, regions `Ctrl+Shift+B/I/L/M/Y`,
-row density `Ctrl+Shift+=`, cycle regions F6, Esc back to the terminal. In the session list the
-arrow keys, PageUp, PageDown, Home and End move the selection and scroll to it, `p` pins the
+zoom `Ctrl+Shift+Enter`, focus mode `Ctrl+Shift+F`, find `Ctrl+F`, regions `Ctrl+Shift+I/L/M/Y`,
+sidebar fold `Ctrl+Shift+B` (to the rail and back, focus following to the rail's squares or the
+list), row density `Ctrl+Shift+=`, cycle regions F6, Esc back to the terminal. In the session list
+the arrow keys, PageUp, PageDown, Home and End move the selection and scroll to it, `p` pins the
 selected session, `g` walks the grouping, Left folds the selected session's group and Right opens
-it. `/` anywhere outside a text field focuses the filter box; in the box Escape clears, then leaves,
+it; in the rail the arrow keys, Home and End move the selection. `/` anywhere outside a text field
+focuses the filter box, opening a folded sidebar first; in the box Escape clears, then leaves,
 and Enter or the down arrow leaves for the list with the filter kept. The splitter between the
 sidebar and the workspace is a focusable separator: Left and Right move it 10px, Home and End go to
 its limits, and a double-click puts the default back; its 1px line shows `--sage-deep` under the

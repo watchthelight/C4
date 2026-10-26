@@ -36,6 +36,7 @@ describe("readSidebar", () => {
         pinned: ["a", "b"],
         collapsed: ["project:c4"],
         width: 400,
+        view: "rail",
       },
     };
     expect(readSidebar(doc)).toEqual({
@@ -44,6 +45,7 @@ describe("readSidebar", () => {
       pinned: ["a", "b"],
       collapsed: ["project:c4"],
       width: 400,
+      view: "rail",
     });
   });
 
@@ -55,10 +57,20 @@ describe("readSidebar", () => {
         pinned: ["a", 7, "", null, "a", "b"],
         collapsed: "project:c4",
         width: "wide",
+        view: "detached",
         future: { kept: true },
       },
     });
-    expect(got).toEqual({ density: "standard", groupBy: "none", pinned: ["a", "b"], collapsed: [], width: SIDEBAR_WIDTH });
+    expect(got).toEqual({
+      density: "standard",
+      groupBy: "none",
+      pinned: ["a", "b"],
+      collapsed: [],
+      width: SIDEBAR_WIDTH,
+      view: "full",
+    });
+    expect(readSidebar({ sidebar: { view: "rail" } }).view).toBe("rail");
+    expect(readSidebar({ sidebar: { view: true } }).view).toBe("full");
     expect(readSidebar({ sidebar: { width: Number.NaN } }).width).toBe(SIDEBAR_WIDTH);
     expect(readSidebar({ sidebar: { width: Number.POSITIVE_INFINITY } }).width).toBe(SIDEBAR_WIDTH);
     expect(readSidebar({ sidebar: { width: 12.6 } }).width).toBe(SIDEBAR_MIN);
@@ -92,9 +104,23 @@ describe("clampWidth", () => {
 
 describe("sidebarSection", () => {
   it("writes snake_case keys that read back as the same preferences", () => {
-    const prefs = { density: "expanded" as const, groupBy: "host" as const, pinned: ["x"], collapsed: ["host:a"], width: 260 };
+    const prefs = {
+      density: "expanded" as const,
+      groupBy: "host" as const,
+      pinned: ["x"],
+      collapsed: ["host:a"],
+      width: 260,
+      view: "rail" as const,
+    };
     const section = sidebarSection(prefs);
-    expect(section).toEqual({ density: "expanded", group_by: "host", pinned: ["x"], collapsed: ["host:a"], width: 260 });
+    expect(section).toEqual({
+      density: "expanded",
+      group_by: "host",
+      pinned: ["x"],
+      collapsed: ["host:a"],
+      width: 260,
+      view: "rail",
+    });
     expect(readSidebar({ sidebar: section })).toEqual(prefs);
     // the arrays are copies, not the caller's
     (section.pinned as string[]).push("y");

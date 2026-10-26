@@ -137,5 +137,13 @@ stay at 0.y.z while the interfaces settle.
   limits on Home and End, and puts the 320px default back on a double-click; the sidebar never goes
   under 220px and the workspace keeps 400px, so a narrower window shows less of the saved width and
   a wider one gives it back. In a browser the mock bridge keeps the preferences in local storage.
+- A sidebar rail. The button at the right end of the filter line, or Ctrl+Shift+B, folds the
+  sidebar to a 36px rail with one state square per session (pinned first, then the attention
+  order, the attention stripe kept, the count that need you at the bottom); a square's tooltip and
+  accessible name carry the session's name and state, a click selects, the arrow keys move the
+  selection, and the pointer resting on a square opens the hover card. The button at the top of
+  the rail, the chord again or `/` opens the sidebar back up. A reorder waits while the pointer or
+  the keyboard is in the rail, as in the list. The fold is kept in `prefs.json` with the rest of
+  the sidebar's organization (`apps/desktop/src/sessions/rail.ts`).
 
 [Unreleased]: https://github.com/watchthelight/C4/compare/c3a0a47...HEAD

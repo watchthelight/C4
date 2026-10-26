@@ -14,7 +14,7 @@ and passes; "manual" means someone ran the checklist on real hardware; "unverifi
 | B | a session started after C4 appears within 2 s | a stand-in started after the first discovery pass, and the Python stand-in through the binary | verified, headless |
 | C | state changes show live | a hook line delivered through the shim's own code moves a session in the window's document (`apps/desktop/src-tauri/src/ingest.rs`); a stand-in that flips its registry status on a timeline and the Playwright side come with later Milestone 2 commits | in part: the hook path is verified, headless, on every runner, and seen in the window against a live session on Windows (Results, item 3) |
 | D | subagents and background agents are listed with their totals | subagent transcript files appear mid-run | planned (Milestone 2, full in 5) |
-| E | sidebar interactions | vitest components plus Playwright on the mock bridge | in part: vitest covers the virtual list (`apps/desktop/tests/list.test.ts`: the rows near the viewport, node reuse while scrolling, the three densities, keyboard selection, the reorder rule, headers that fold, the filter, pins, keyboard travel over headers and a row that arrives under its header while the order is held), the order rules (`apps/desktop/tests/arrange.test.ts`: the filter grammar, the attention sort with pins first, grouping by project, host and state) the filter bar (`apps/desktop/tests/filterbar.test.ts`), the hover card (`apps/desktop/tests/hovercard.test.ts`: what the card says about a view, where it goes, the 350 ms rest and what closes it), the saved preferences (`apps/desktop/tests/prefs.test.ts`: the tolerant read, the width's limits, the section as written, the store's coalesced writes and error reports) and the splitter (`apps/desktop/tests/splitter.test.ts`: the separator's attributes, a drag within its limits, the keys, the double-click reset, dispose); the detached window and the Playwright side come with later Milestone 2 commits |
+| E | sidebar interactions | vitest components plus Playwright on the mock bridge | in part: vitest covers the virtual list (`apps/desktop/tests/list.test.ts`: the rows near the viewport, node reuse while scrolling, the three densities, keyboard selection, the reorder rule, headers that fold, the filter, pins, keyboard travel over headers and a row that arrives under its header while the order is held), the order rules (`apps/desktop/tests/arrange.test.ts`: the filter grammar, the attention sort with pins first, grouping by project, host and state) the filter bar (`apps/desktop/tests/filterbar.test.ts`), the hover card (`apps/desktop/tests/hovercard.test.ts`: what the card says about a view, where it goes, the 350 ms rest and what closes it), the saved preferences (`apps/desktop/tests/prefs.test.ts`: the tolerant read, the width's limits, the section as written, the store's coalesced writes and error reports) the splitter (`apps/desktop/tests/splitter.test.ts`: the separator's attributes, a drag within its limits, the keys, the double-click reset, dispose) and the rail (`apps/desktop/tests/rail.test.ts`: the squares in attention order with pins first, the tooltip and accessible name, the count that need you, click and keyboard selection, the unfold button, a reorder held while the pointer or the keyboard is inside, the hover wait and the pointer-rest rule); the detached window and the Playwright side come with later Milestone 2 commits |
 | F | token numbers match the status line | the status line's own parser run against the same transcript | planned (Milestone 4) |
 | G | the REA toolkit can be assigned and reverted | scratch settings file, byte-identical revert | planned (Milestone 6) |
 | H | a managed terminal is a real pty | real shell, echo, interrupt, terminate | planned (Milestone 3) |
@@ -222,3 +222,22 @@ result below the list when you run it.
   back at 1036px the 420 returned; a drag while narrow made 260 the kept width. Two ArrowLeft
   presses on the focused splitter moved it 20px and wrote the width; a double-click put 320 back
   and wrote it. No console errors or warnings.
+- 2026-10-26, the verify workflow for commit ca65a1e (run 40295638390): the lint job and the four
+  test jobs green.
+- 2026-10-26, the sidebar rail, locally on Windows: vitest 74 tests green (five new in
+  `rail.test.ts`, one in `filterbar.test.ts`), eslint and tsc clean. Measured in Chromium against
+  the mock bridge at 1036x850 with the eight synthetic sessions: the fold button 24x24 at the right
+  end of the filter line; a click on it put `data-sidebar="rail"` on the app root, the grid columns
+  at 36px and 1000px, the sidebar and the splitter out of the layout, the workspace starting at
+  x 36, the rail from the top bar to the status strip with the 28px unfold button on top, eight
+  24px items each with its 8px square centered, the attention stripe amber on the waiting session
+  and red on the failed one, the names and states in the tooltips, "2" in amber at the bottom,
+  focus on the squares, and one write of the section with `view` rail within 400 ms. A click on
+  the third square selected it (the sage wash, the inspector on that session); the pointer resting
+  on the first square for 450 ms opened the hover card 8px right of the rail at the square's top
+  with that session's name; ArrowDown moved the selection to the fourth square, closed the card,
+  and the card stayed closed while the pointer rested. Ctrl+Shift+B opened the sidebar (columns
+  320px and 716px, the splitter back at x 317, focus on the list, the selected row the same
+  session) and wrote `view` full; the chord again folded it with focus on the squares; `/` opened
+  it with focus in the filter box; folded again and reloaded, the window came back folded with its
+  eight squares. No console errors or warnings.

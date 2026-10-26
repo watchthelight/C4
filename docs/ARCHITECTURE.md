@@ -123,8 +123,11 @@ from them (`apps/desktop/src/prefs.ts`; a core that cannot give them yields the 
 in the status strip). Five signals (`snapshot`, `about`, `selected`, `note` for a preferences
 problem of this run, a one-second `clock`) feed one render per animation frame; nothing renders
 while the window is hidden. Every change by hand in the sidebar (a pin, the grouping, a folded
-group, the density, the splitter) goes to a store that writes the `sidebar` section a quarter of a
-second after the last change, one write in flight at a time, and flushes on `pagehide`.
+group, the density, the splitter, the fold to the rail) goes to a store that writes the `sidebar`
+section a quarter of a second after the last change, one write in flight at a time, and flushes on
+`pagehide`. The app root carries `data-sidebar`, `full` or `rail`, and the grid follows it: the
+sidebar and the splitter leave the layout while the rail (`apps/desktop/src/sessions/rail.ts`)
+shows, and the list is painted again when it comes back.
 `selectBridge()` picks the Tauri bridge when the page runs inside the app and the mock bridge (eight
 synthetic sessions on a scripted timeline) in a plain browser, so the layout can be worked on and
 tested without Claude Code; `VITE_C4_BRIDGE=mock|tauri` forces either. `fixtures/labels.json` is the
