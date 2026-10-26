@@ -11,18 +11,15 @@
     "build:main": "tsc -p electron/tsconfig.json",
     "start": "electron .",
     "preview": "vite preview",
-    "tauri": "tauri",
     "typecheck": "tsc --noEmit && tsc --noEmit -p electron/tsconfig.test.json",
     "lint": "eslint .",
     "test": "vitest run"
   },
   "dependencies": {
-    "@preact/signals-core": "^1.14.4",
-    "@tauri-apps/api": "^2.12.4"
+    "@preact/signals-core": "^1.14.4"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@tauri-apps/cli": "^2.12.4",
     "@types/node": "^24.19.2",
     "electron": "^45.0.0",
     "eslint": "^10.13.0",

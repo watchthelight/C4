@@ -1,9 +1,10 @@
 // <wtl> project: c4 | file: apps/desktop/electron/window.ts | author: watchthelight </wtl>
-// The main window: the size, floor and background the Tauri window had, shown once the page has
-// painted; no menu bar, no navigation away from the page, no popups.
+// The main window: 1280 by 800 with an 800 by 500 floor, the app's icon and background, shown once
+// the page has painted; no menu bar, no navigation away from the page, no popups.
 
 import { BrowserWindow } from "electron";
 import { log } from "./log.js";
+import { iconPath } from "./paths.js";
 
 export interface WindowOptions {
   url: string;
@@ -18,6 +19,7 @@ export function createMainWindow(o: WindowOptions): BrowserWindow {
     minWidth: 800,
     minHeight: 500,
     title: "c4",
+    icon: iconPath(),
     backgroundColor: "#08080c",
     show: false,
     autoHideMenuBar: true,

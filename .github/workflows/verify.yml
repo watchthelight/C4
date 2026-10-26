@@ -1,5 +1,5 @@
 # <wtl> project: c4 | file: .github/workflows/verify.yml | author: watchthelight </wtl>
-# Full verification: lint on one runner, then clippy, the whole test suite and a debug app build on
+# Full verification: lint on one runner, then clippy, the whole test suite and the window's build on
 # Windows, Linux, macOS arm64 and macOS x64. Runs on every push to main, weekly, and on request.
 name: verify
 
@@ -89,11 +89,6 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
-      - name: linux build dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf xdg-utils
       - name: read the toolchain pin
         id: pin
         shell: bash
@@ -131,12 +126,6 @@ jobs:
         run: |
           pnpm -C apps/desktop exec playwright install --with-deps chromium
           pnpm -C apps/desktop e2e
-      - name: stage the shim as the app's sidecar
-        if: hashFiles('apps/desktop/src-tauri/tauri.conf.json') != ''
-        shell: bash
-        run: |
-          cargo build -p c4-shim
-          python -I scripts/stage_shim.py --profile debug
-      - name: debug app build, with the sidecar
-        if: hashFiles('apps/desktop/src-tauri/tauri.conf.json') != ''
-        run: pnpm -C apps/desktop tauri build --debug --no-bundle --config src-tauri/tauri.sidecar.conf.json
+      - name: the window builds (the page bundle and the main process)
+        if: hashFiles('pnpm-lock.yaml') != ''
+        run: pnpm -r build

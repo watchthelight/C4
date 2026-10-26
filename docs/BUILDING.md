@@ -8,7 +8,6 @@
 |---|---|---|---|
 | Rust | rustup from rustup.rs or `winget install Rustlang.Rustup`; the toolchain in `rust-toolchain.toml` installs itself on first use | rustup | rustup |
 | C toolchain | Visual Studio Build Tools 2022 with the "Desktop development with C++" workload (MSVC and a Windows SDK) | Xcode command line tools | `build-essential` |
-| WebView | WebView2 (preinstalled on Windows 11) | WKWebView (part of macOS) | `libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf xdg-utils` |
 | Electron | downloaded by `pnpm install` (about 120 MB per platform) | same | same |
 | Node and pnpm | Node 22 or later, pnpm 10 | same | same |
 | Python | 3.11 or later, for the scripts and the hook bridge | same | same |
@@ -18,7 +17,7 @@ Nothing in the build calls the network beyond the package registries.
 ## Commands
 
 ```sh
-cargo test --workspace                                 # every crate, including the desktop crate
+cargo test --workspace                                 # every crate
 cargo clippy --workspace --all-targets -- -D warnings  # what CI runs
 pnpm install                                           # frontend dependencies (apps/desktop)
 pnpm -r lint && pnpm -r typecheck && pnpm -r test      # eslint, tsc, vitest
@@ -26,10 +25,6 @@ pnpm -C apps/desktop dev                               # the Electron window aga
 pnpm -C apps/desktop build                             # dist/ (the page) and dist-electron/ (the main process)
 pnpm -C apps/desktop start                             # the Electron window from that build
 pnpm -C apps/desktop dev:web                           # Vite alone, for a browser and the synthetic bridge
-pnpm -C apps/desktop tauri dev                         # the Tauri app with hot reload
-pnpm -C apps/desktop tauri build --debug --no-bundle   # the debug app without installers
-pnpm -C apps/desktop tauri build                       # a release bundle for this platform, without the shim
-python -I scripts/stage_shim.py                        # stage the built c4-shim as the app's sidecar (see below)
 cargo bench --workspace                                # criterion benches
 python scripts/precommit.py                            # what the git hook runs
 python scripts/gen_notices.py                          # regenerate THIRD-PARTY-NOTICES.md
@@ -44,71 +39,44 @@ rustup target add x86_64-unknown-linux-gnu
 cargo clippy -p c4-ingest -p c4-cli --all-targets --target x86_64-unknown-linux-gnu -- -D warnings
 ```
 
-The desktop crate is left out of such a run: its build script needs the Linux WebKit packages.
-
 ## The desktop app
 
-`apps/desktop` holds the window. `src-tauri` is the `c4-desktop` crate that builds the `c4`
-executable, `src` is the window itself (TypeScript and Vite, no framework), `tests` is the vitest
-suite. The crate links `c4-cli`, `c4-core`, `c4-discovery` and `c4-ingest` directly: the ingest
-server runs inside the app on a tokio runtime of its own, and the only other process is the shim
-that Claude Code starts.
+`apps/desktop` holds the window: `src` is the page (TypeScript and Vite, no framework), `electron` is
+the main process that opens it (the next section), `tests` is the vitest suite and `icons` the icon
+set. The page never links the Rust crates: the main process runs `c4-cli serve` as a child process,
+and the page reaches it through `window.c4`.
 
-The window is moving to Electron; the section below describes that shell, and the Tauri notes here
-apply until it is removed.
-
-`pnpm -C apps/desktop tauri dev` starts Vite on port 1420 and opens the app against it. `tauri build`
-runs `pnpm build` first and embeds `dist/` in the executable. A plain `cargo build` or `cargo test` of
-the workspace needs neither Node nor `dist/`: without the Tauri CLI the crate is built in development
-mode and its window would load `http://localhost:1420`, so the executable to run is the one
-`tauri build` produces, `target/debug/c4` or `target/release/c4`.
-
-The window picks its data source at startup. Inside the app it calls the Rust commands. Opened in a
+The window picks its data source at startup. Inside the app it talks to the core. Opened in a
 browser (`pnpm -C apps/desktop dev:web`, then http://localhost:1420) it serves eight synthetic
 sessions from `src/bridge/mock.ts`, so the layout can be worked on without Claude Code;
-`VITE_C4_BRIDGE=mock`, `=electron` or `=tauri` forces one.
+`VITE_C4_BRIDGE=mock` or `=electron` forces one.
 
-The app refreshes from the Claude home's files every 2 s (`C4_REFRESH_MS`, floor 250) and runs the
+The core refreshes from the Claude home's files every 2 s (`C4_REFRESH_MS`, floor 250) and runs the
 session list command on every eighth pass. Hook and status line payloads arrive through the shim on
 the C4 home's endpoint (`C4_HOME`, else `~/.c4`) while the window is open; `c4 install` wires the
-shim in. The desktop crate's tests send lines through the shim's own delivery code against a scratch
-C4 home, so they bind that home's endpoint and never the real one.
+shim in. The serve tests (`crates/c4-cli/tests/serve.rs`) send lines through the shim's own delivery
+code against a scratch C4 home, so they bind that home's endpoint and never the real one.
 
-### The shim as a sidecar
+### The shim beside the executable
 
-The app ships `c4-shim` beside `c4`, which is where `c4 install` takes its copy from. Tauri calls
-such a file a sidecar: the bundler reads it from `src-tauri/binaries/c4-shim-<target triple>` (with
-`.exe` on Windows), places it next to the app without the triple, and `tauri-build` copies it into
-`target/<profile>/` as well, so a development build finds it there. The declaration lives in
-`src-tauri/tauri.sidecar.conf.json`, not in `tauri.conf.json`: Tauri's build script refuses to build
-while a declared sidecar is missing, and a plain `cargo build` or `cargo test` of the workspace should
-never need a staged file. A release bundle with the shim inside is three commands:
+`c4 install` copies the `c4-shim` that sits beside the executable it runs from, which in development
+is `target/<profile>/c4-shim` beside `c4-cli` after `cargo build -p c4-shim`. The packaged app will
+carry `c4-cli` and `c4-shim` together under its resources; that packaging is the next step and is
+not in the tree yet.
 
-```sh
-cargo build -p c4-shim --release
-python -I scripts/stage_shim.py                                              # to src-tauri/binaries/
-pnpm -C apps/desktop tauri build --config src-tauri/tauri.sidecar.conf.json
-```
-
-`--profile debug` stages the debug shim, which is what CI does on every runner before
-`tauri build --debug --no-bundle --config src-tauri/tauri.sidecar.conf.json`; `--target <triple>`
-names a shim built with `cargo --target`, under `target/<triple>/`. The config file must not be named
-`tauri.<platform>.conf.json`: Tauri merges files named that way on its own, which would make every
-build of the desktop crate need the staged shim.
-
-The icons under `src-tauri/icons/` come from `assets/icons/c4-1024.png`, which `scripts/make_icon.py`
-draws. To regenerate them run `pnpm -C apps/desktop exec tauri icon ../../assets/icons/c4-1024.png -o <dir>`
-and copy the files from `<dir>` (the command also writes Android and iOS sets, which C4 does not ship).
-The 256 px file is named `256x256.png` here; the generator names it with a `2x` suffix after an `@`,
-which reads as an e-mail address to the secret scan. The pixel size is what the Linux bundler reads.
+The icons under `apps/desktop/icons/` come from `assets/icons/c4-1024.png`, which `scripts/make_icon.py`
+draws: the PNG sizes, `icon.ico` and `icon.icns` were derived from it. After a change to the source,
+derive them again with any tool that writes those formats from a PNG. The 256 px file is named
+`256x256.png` here; a generator that names it with a `2x` suffix after an `@` writes a name that
+reads as an e-mail address to the secret scan.
 
 ## The Electron shell
 
-The window is moving from the platform webview (WebView2 on Windows) to Electron, so that Chromium
-renders it everywhere. `apps/desktop/electron/` is the main process: `main.ts` decides between the
-window and the command line, `sidecar.ts` runs `c4-cli serve` as a child process and speaks its line
-protocol, `protocol.ts` serves `dist/` under the app's own `c4://app/` scheme with the content security
-policy the Tauri window had, `ipc.ts` carries the window's four requests and the core's event lines,
+The window runs in Electron, so Chromium renders it on every platform. `apps/desktop/electron/` is
+the main process: `main.ts` decides between the window and the command line, `sidecar.ts` runs
+`c4-cli serve` as a child process and speaks its line protocol, `protocol.ts` serves `dist/` under
+the app's own `c4://app/` scheme with a locked content security policy, `ipc.ts` carries the
+window's four requests and the core's event lines,
 `preload.cts` is the one script the sandboxed page gets (it puts `window.c4` there), and `window.ts`
 opens the window. `tsc -p electron/tsconfig.json` compiles the directory to `dist-electron/`, which git
 ignores; the preload is a `.cts` file because a sandboxed preload must be CommonJS while the main
@@ -158,11 +126,10 @@ c4 install [--dry-run]             # copy the shim, wrap the status line, add th
 c4 uninstall [--dry-run]           # the way back, from the backup or entry by entry
 ```
 
-During development `cargo run -p c4-cli -- <command>` runs the same commands as their own executable,
-`c4-cli`, which builds in seconds and needs neither Node nor a webview. A release `c4` on Windows is a
-windowed executable: it attaches to the console of the shell that started it, so the output appears
-there, but the shell does not wait for a windowed program and can print its prompt first. Pipe the
-output, or use `c4-cli`, when that matters. Debug builds keep a console of their own.
+`c4-cli` is the executable behind these commands: `cargo run -p c4-cli -- <command>` runs them during
+development, and the packaged `c4` relays its command line to the copy it carries (that packaging is
+the next step). On Windows a windowed `c4` started from a shell may not share that shell's console;
+this is not checked yet, so pipe the output, or use `c4-cli`, when it matters.
 
 `sessions` and `doctor` read the Claude home named by `C4_CLAUDE_HOME`, else `CLAUDE_CONFIG_DIR`, else
 `~/.claude`, or the one given with `--home`. `C4_AGENTS_CMD` replaces `claude agents --json` with
@@ -205,9 +172,3 @@ check` until it is added to `deny.toml` and `about.toml` on purpose. MPL-2.0 is 
 - **The Electron window says the core is missing.** It looked for `target/debug/c4-cli` (`.exe` on
   Windows) two directories above `apps/desktop`, or the path in `C4_CLI`. `cargo build -p c4-cli`
   puts it there.
-- **Slow terminal rendering on Linux.** WebKitGTK can put WebGL on a software path. Settings has a
-  renderer toggle; the DOM renderer is the fallback and is always available.
-- **The app window is blank on Linux.** Check that the WebKitGTK 4.1 development package was present
-  at build time and the runtime package is installed.
-- **`pnpm tauri build` fails on `macos-15-intel`.** The x64 build is a CI-only target; see the release
-  notes for its verification status.

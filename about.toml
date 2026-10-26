@@ -1,8 +1,7 @@
 # <wtl> project: c4 | file: about.toml | author: watchthelight </wtl>
 # cargo-about configuration for scripts/gen_notices.py, which turns `cargo about generate --format json`
 # into THIRD-PARTY-NOTICES.md. Only crates that link into the release targets count: build and dev
-# dependencies are left out, and so are crates that exist only for Android, iOS or WebAssembly builds
-# of Tauri's dependencies.
+# dependencies are left out, and so are crates that exist only for other platforms.
 #
 # `accepted` is a priority list: a crate offered under "Apache-2.0 OR MIT" is taken under MIT because
 # MIT comes first. deny.toml holds the same set for `cargo deny check`, with MPL-2.0 limited to the

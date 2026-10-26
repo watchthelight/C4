@@ -6,11 +6,10 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   clearScreen: false,
-  envPrefix: ["VITE_", "TAURI_ENV_"],
   server: {
     port: 1420,
     strictPort: true,
-    watch: { ignored: ["**/src-tauri/**", "**/dist-electron/**"] },
+    watch: { ignored: ["**/dist-electron/**"] },
   },
   build: {
     target: ["es2022", "chrome110", "safari15"],

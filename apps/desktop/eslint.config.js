@@ -4,7 +4,7 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import tseslint from "typescript-eslint";
 
 export default defineConfig([
-  globalIgnores(["dist/", "dist-electron/", "src-tauri/", "node_modules/"]),
+  globalIgnores(["dist/", "dist-electron/", "node_modules/"]),
   js.configs.recommended,
   tseslint.configs.recommended,
   {

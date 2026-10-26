@@ -2,7 +2,7 @@
 //! The core's table: one shared [`Discovery`] behind a mutex, the pass the refresh thread runs,
 //! the ingest server's batches folded into the same table, and the facts the window asks for.
 //! Nothing here knows how the window is reached: the parent module carries the documents over
-//! stdout, and the Tauri shell carries them as events.
+//! stdout, and the shell forwards them to the page as events.
 //!
 //! Two cadences for the files. The files under the Claude home and the process table are cheap, so
 //! they are read every period (`C4_REFRESH_MS`, two seconds by default). The session list command

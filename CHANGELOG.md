@@ -86,10 +86,6 @@ stay at 0.y.z while the interfaces settle.
   unknown) and the spool, with notes that name the command to run. The session list command type
   can carry environment variables for its child, which is how the shim copy is pointed at the same
   C4 home.
-- The shim ships as a Tauri sidecar beside `c4`: `scripts/stage_shim.py` copies the built `c4-shim`
-  to `src-tauri/binaries/c4-shim-<triple>`, `tauri.sidecar.conf.json` declares it for
-  `tauri build --config`, and CI stages it before the debug app build on every runner. A plain cargo
-  build or test never needs the staged file.
 - The app runs the ingest server. A worker started when the window opens, on a tokio runtime of its
   own, listens on the C4 home's endpoint, replays the spool, and folds each batch of hook events and
   status line payloads into the session table on a blocking thread, sending the window the same
@@ -154,22 +150,30 @@ stay at 0.y.z while the interfaces settle.
   session list command; a line that is not a request is answered with a null id; logs go to
   stderr, warnings and worse unless `--log` says otherwise. The process ends, with the ingest
   server stopped and the endpoint free, when stdin closes or stdout cannot be written. The session
-  table, the ingest worker and the preferences file moved from the Tauri crate to
+  table, the ingest worker and the preferences file moved from the desktop crate to
   `crates/c4-cli/src/serve/`, so the window and the child process share them. A test drives
   `c4-cli serve` as a child process through the whole protocol, including a hook line delivered
   through the shim's own code and the exit when stdin closes (`crates/c4-cli/tests/serve.rs`).
 - The window runs in Electron, over `c4-cli serve`. Chromium renders the page on every platform
-  (the Tauri window used the platform webview, WebView2 on Windows). `apps/desktop/electron/` is
+  (the first shell used the platform webview, WebView2 on Windows). `apps/desktop/electron/` is
   the main process: it starts the core as a child process and speaks its JSON lines, serves the
   page from the app's own `c4://app/` scheme with the same content security policy, and gives the
   sandboxed page `window.c4` through a preload script. A request waits for the core's hello; a
   core that exits is started again after a growing pause and the page hears about it as a `core`
   event; a stop closes the core's stdin first, after a grace for the preferences the page flushes
   on its way out. `c4 <args>` still runs the command line with no window. `pnpm -C apps/desktop
-  dev` and `start` open the Electron window; the Tauri shell stays in the tree for one more
-  commit. Tests cover the argument rule, the page origin check, the path check of the scheme, the
-  sidecar against a stand-in core (ids, events, a restart, a protocol mismatch, stop and kill) and
-  the renderer bridge (`apps/desktop/electron/tests/`, `apps/desktop/tests/electron.test.ts`).
-  Electron is listed in THIRD-PARTY-NOTICES.md with a pointer to its own LICENSES.chromium.html.
+  dev` and `start` open the Electron window. Tests cover the argument rule, the page origin check,
+  the path check of the scheme, the sidecar against a stand-in core (ids, events, a restart, a
+  protocol mismatch, stop and kill) and the renderer bridge (`apps/desktop/electron/tests/`,
+  `apps/desktop/tests/electron.test.ts`). Electron is listed in THIRD-PARTY-NOTICES.md with a
+  pointer to its own LICENSES.chromium.html.
+- The Tauri shell is gone: `apps/desktop/src-tauri` (the `c4-desktop` crate that built the `c4`
+  executable around the platform webview), the sidecar staging (`scripts/stage_shim.py`), the
+  `@tauri-apps` packages and the window's Tauri bridge. The Rust workspace is the crates alone, so
+  a Linux build needs no WebKit packages and CI installs none; the test jobs build the page bundle
+  and the main process (`pnpm -r build`) where they built the debug app. The icon set moved to
+  `apps/desktop/icons/` and the window carries it. Until the Electron package lands, the window
+  runs from `pnpm -C apps/desktop start` against `target/debug/c4-cli`, and the headless commands
+  are `c4-cli`'s.
 
 [Unreleased]: https://github.com/watchthelight/C4/compare/c3a0a47...HEAD

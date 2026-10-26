@@ -12,7 +12,7 @@ export const HOST = "app";
 /** The page's origin, without a trailing slash. */
 export const ORIGIN = `${SCHEME}://${HOST}`;
 
-/** The policy the Tauri window had, with the sources the page never uses closed. */
+/** The page's policy: its own origin for what it uses, every other source closed. */
 export const CSP = [
   "default-src 'self'",
   "script-src 'self'",

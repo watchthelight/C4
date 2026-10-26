@@ -1,9 +1,10 @@
 # <wtl> project: c4 | file: scripts/make_icon.py | author: watchthelight </wtl>
 """Write the C4 icon source: a 1024 by 1024 PNG with the uprooted.sh favicon geometry, a centered sage
-square on near-black with three star pixels. The Tauri CLI turns it into the platform icon set:
+square on near-black with three star pixels. The platform icon set under apps/desktop/icons/ (the
+PNG sizes, the Windows .ico and the macOS .icns) was derived from it; docs/BUILDING.md says how to
+derive it again.
 
     python scripts/make_icon.py assets/icons/c4-1024.png
-    pnpm -C apps/desktop exec tauri icon ../../assets/icons/c4-1024.png -o src-tauri/icons
 
 Standard library only, so the file is reproducible on any machine without an image library. The
 output is deterministic: the same bytes every run.

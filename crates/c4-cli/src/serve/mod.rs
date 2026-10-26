@@ -20,8 +20,7 @@
 //! Three threads of its own: one reads stdin and answers, one writes stdout (every other thread
 //! hands it whole lines over a channel, so an event never lands inside an answer), and the refresh
 //! thread runs the passes. The ingest server runs on a runtime of its own (`ingest.rs`). The
-//! table, the worker and the preferences file (`state.rs`, `ingest.rs`, `prefs.rs`) are shared
-//! with the Tauri shell, which runs them in its own process.
+//! table, the worker and the preferences file live in `state.rs`, `ingest.rs` and `prefs.rs`.
 
 pub mod ingest;
 pub mod prefs;

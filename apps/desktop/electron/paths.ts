@@ -32,6 +32,12 @@ export function rendererDir(): string {
   return path.join(app.getAppPath(), "dist");
 }
 
+/** The window's icon: the .ico on Windows, the PNG elsewhere (a macOS app takes it from the bundle). */
+export function iconPath(): string {
+  const file = process.platform === "win32" ? "icon.ico" : "icon.png";
+  return path.join(app.getAppPath(), "icons", file);
+}
+
 /** The preload script, built beside this file. */
 export function preloadPath(): string {
   return path.join(import.meta.dirname, "preload.cjs");

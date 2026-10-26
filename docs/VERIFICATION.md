@@ -26,9 +26,9 @@ and passes; "manual" means someone ran the checklist on real hardware; "unverifi
 
 ## Platform status
 
-"Built in CI" covers the desktop app: `pnpm -C apps/desktop tauri build --debug --no-bundle`, which
-links the window into the executable. The crates build as part of the tests on every runner. Nothing
-in CI starts the app yet; a smoke test that does is planned.
+"Built in CI" covers the window: `pnpm -r build` writes the page bundle and compiles the Electron
+main process on every runner, and the crates build as part of the tests. Nothing in CI starts the
+app yet; a Playwright smoke test that does is planned.
 
 | Platform | Built in CI | Tests in CI | Run on hardware |
 |---|---|---|---|
@@ -307,3 +307,13 @@ result below the list when you run it.
   and took Vite down when the window closed, exit 0. Not checked: the console behaviour of the
   packaged windowed `c4` run from a terminal (the relay was checked with pipes only), and macOS
   and Linux, where the shell has not run.
+- 2026-10-26, the verify workflow for commit c087593 (run 40332751736): the lint job and the four
+  test jobs green.
+- 2026-10-26, dropping the Tauri shell, locally on Windows: `cargo test --workspace` green with the
+  crates alone, `cargo deny check` clean with no license exception left, the notices regenerated,
+  tsc for the page and the main process, eslint, vitest 91 and `pnpm build` green, and the header,
+  slop and scan scripts. By hand, the Electron window from that build against the cargo debug
+  `c4-cli` and the scratch C4 home: the title bar carries the C4 mark from
+  `apps/desktop/icons/icon.ico` where Electron's own icon was, the fold through the DevTools
+  protocol was kept as `view` rail and came back on the next start as before, and `pnpm dev`
+  opened the window against Vite and took it down with exit 0.
