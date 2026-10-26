@@ -9,7 +9,7 @@ listed here, each under its own license. Build tools, test tools and development
 part of the shipped program and are not listed. "Used under" is the license C4 takes a package under
 when its author offers a choice; "Declared" is the package's own license expression.
 
-## Rust crates (319)
+## Rust crates (322)
 
 | Crate | Version | Used under | Declared | Source |
 |---|---|---|---|---|
@@ -237,10 +237,12 @@ when its author offers a choice; "Declared" is the package's own license express
 | servo_arc | 0.4.3 | MIT | MIT OR Apache-2.0 | https://github.com/servo/stylo |
 | sha2 | 0.10.9 | MIT | MIT OR Apache-2.0 | https://github.com/RustCrypto/hashes |
 | sharded-slab | 0.1.7 | MIT | MIT | https://github.com/hawkw/sharded-slab |
+| signal-hook-registry | 1.4.8 | MIT | MIT OR Apache-2.0 | https://github.com/vorner/signal-hook |
 | simd-adler32 | 0.3.10 | MIT | MIT | https://github.com/mcountryman/simd-adler32 |
 | siphasher | 1.0.4 | MIT | MIT OR Apache-2.0 | https://github.com/jedisct1/rust-siphash |
 | slab | 0.4.12 | MIT | MIT | https://github.com/tokio-rs/slab |
 | smallvec | 1.16.4 | MIT | MIT OR Apache-2.0 | https://github.com/servo/rust-smallvec |
+| socket2 | 0.6.5 | MIT | MIT OR Apache-2.0 | https://github.com/rust-lang/socket2 |
 | softbuffer | 0.4.8 | MIT | MIT OR Apache-2.0 | https://github.com/rust-windowing/softbuffer |
 | soup3 | 0.5.0 | MIT | MIT | https://gitlab.gnome.org/World/Rust/soup3-rs |
 | soup3-sys | 0.5.0 | MIT | MIT | https://gitlab.gnome.org/World/Rust/soup3-rs |
@@ -272,6 +274,7 @@ when its author offers a choice; "Declared" is the package's own license express
 | time-macros | 0.2.32 | MIT | MIT OR Apache-2.0 | https://github.com/time-rs/time |
 | tinystr | 0.8.5 | Unicode-3.0 | Unicode-3.0 | https://github.com/unicode-org/icu4x |
 | tokio | 1.54.1 | MIT | MIT | https://github.com/tokio-rs/tokio |
+| tokio-macros | 2.7.2 | MIT | MIT | https://github.com/tokio-rs/tokio |
 | toml | 1.1.8+spec-1.1.0 | MIT | MIT OR Apache-2.0 | https://github.com/toml-rs/toml |
 | toml_datetime | 0.6.3 | MIT | MIT OR Apache-2.0 | https://github.com/toml-rs/toml |
 | toml_datetime | 1.1.2+spec-1.1.0 | MIT | MIT OR Apache-2.0 | https://github.com/toml-rs/toml |
@@ -349,7 +352,7 @@ when its author offers a choice; "Declared" is the package's own license express
 
 ## License texts
 
-128 distinct texts. Identical texts are shown once; the packages that carry each one are
+130 distinct texts. Identical texts are shown once; the packages that carry each one are
 named above it.
 
 ### Apache-2.0 (1 of 2)
@@ -745,7 +748,7 @@ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
 ````
 
-### MIT (1 of 115)
+### MIT (1 of 117)
 
 Used by: @preact/signals-core 1.14.4
 
@@ -773,7 +776,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (2 of 115)
+### MIT (2 of 117)
 
 Used by: @tauri-apps/api 2.12.4, tauri 2.12.5, tauri-codegen 2.7.4, tauri-macros 2.7.4, tauri-runtime 2.12.2, tauri-runtime-wry 2.12.3, tauri-utils 2.10.2
 
@@ -801,7 +804,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (3 of 115)
+### MIT (3 of 117)
 
 Used by: adler2 2.0.1, anyhow 1.0.104, camino 1.2.6, cargo-platform 0.1.9, cargo_metadata 0.19.2, displaydoc 0.2.7, dtoa 1.0.11, dyn-clone 1.0.20, erased-serde 0.4.11, fastrand 2.5.0, itoa 1.0.18, lazy_static 1.5.1, linux-raw-sys 0.12.1, once_cell 1.21.4, pin-project-lite 0.2.17, proc-macro-crate 1.3.1, proc-macro-crate 2.0.2, proc-macro2 1.0.107, quote 1.0.47, rustc-hash 2.1.3, rustix 1.1.5, semver 1.0.28, serde 1.0.229, serde-untagged 0.1.9, serde_core 1.0.229, serde_derive 1.0.229, serde_derive_internals 0.29.1, serde_json 1.0.154, serde_repr 0.1.21, servo_arc 0.4.3, syn 1.0.109, syn 2.0.119, syn 3.0.9, thiserror 1.0.69, thiserror 2.0.21, thiserror-impl 1.0.69, thiserror-impl 2.0.21, typeid 1.0.3, unicode-ident 1.0.27, x11 2.21.0, x11-dl 2.21.0, zmij 1.0.23
 
@@ -831,7 +834,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (4 of 115)
+### MIT (4 of 117)
 
 Used by: aho-corasick 1.1.5, byteorder 1.5.0, memchr 2.8.3, walkdir 2.5.0
 
@@ -859,7 +862,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ````
 
-### MIT (5 of 115)
+### MIT (5 of 117)
 
 Used by: anstream 1.0.0, anstyle 1.0.14, anstyle-parse 1.0.0, anstyle-query 1.1.5, anstyle-wincon 3.0.11, clap 4.6.7, clap_builder 4.6.7, clap_derive 4.6.7, clap_lex 1.1.1, colorchoice 1.0.5, is_terminal_polyfill 1.70.2, once_cell_polyfill 1.70.2, serde_spanned 1.1.2, toml 1.1.8+spec-1.1.0, toml_datetime 1.1.2+spec-1.1.0, toml_edit 0.19.15, toml_edit 0.20.2, toml_parser 1.1.5+spec-1.1.0, toml_writer 1.1.3+spec-1.1.0
 
@@ -885,7 +888,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (6 of 115)
+### MIT (6 of 117)
 
 Used by: atk 0.18.2, atk-sys 0.18.2, cairo-rs 0.18.5, cairo-sys-rs 0.18.2, gdk 0.18.2, gdk-pixbuf 0.18.5, gdk-pixbuf-sys 0.18.0, gdk-sys 0.18.2, gdkwayland-sys 0.18.2, gdkx11 0.18.2, gdkx11-sys 0.18.2, gio 0.18.4, gio-sys 0.18.1, glib 0.18.5, glib-macros 0.18.5, glib-sys 0.18.1, gobject-sys 0.18.0, gtk 0.18.2, gtk-sys 0.18.2, gtk3-macros 0.18.2, pango 0.18.3, pango-sys 0.18.0, siphasher 1.0.4
 
@@ -909,7 +912,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (7 of 115)
+### MIT (7 of 117)
 
 Used by: base64 0.21.7
 
@@ -937,7 +940,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ````
 
-### MIT (8 of 115)
+### MIT (8 of 117)
 
 Used by: base64 0.23.1
 
@@ -965,7 +968,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ````
 
-### MIT (9 of 115)
+### MIT (9 of 117)
 
 Used by: bit-set 0.8.0, bit-vec 0.8.0
 
@@ -997,7 +1000,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (10 of 115)
+### MIT (10 of 117)
 
 Used by: bitflags 1.3.2, bitflags 2.13.2, glob 0.3.4, log 0.4.34, regex 1.13.1, regex-automata 0.4.18, regex-syntax 0.8.11
 
@@ -1029,7 +1032,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (11 of 115)
+### MIT (11 of 117)
 
 Used by: block-buffer 0.10.4
 
@@ -1061,7 +1064,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (12 of 115)
+### MIT (12 of 117)
 
 Used by: block2 0.6.2, brotli-decompressor 6.2.0, dispatch2 0.3.1, dlopen2 0.8.2, dlopen2_derive 0.4.3, dpi 0.1.2, objc2 0.6.5, objc2-app-kit 0.3.2, objc2-core-foundation 0.3.2, objc2-core-graphics 0.3.2, objc2-core-services 0.3.2, objc2-encode 4.1.0, objc2-exception-helper 0.1.1, objc2-foundation 0.3.2, objc2-io-kit 0.3.2, objc2-open-directory 0.3.2, objc2-quartz-core 0.3.2, objc2-web-kit 0.3.2, webview2-com 0.39.1, webview2-com-macros 0.8.1, webview2-com-sys 0.39.1, windows 0.62.2, windows-collections 0.3.2, windows-core 0.62.2, windows-future 0.3.2, windows-implement 0.60.2, windows-interface 0.59.3, windows-link 0.2.1, windows-numerics 0.3.1, windows-result 0.4.1, windows-strings 0.5.1, windows-sys 0.61.2, windows-threading 0.2.1, windows-version 0.1.7
 
@@ -1086,7 +1089,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTI
 USE OR OTHER DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (13 of 115)
+### MIT (13 of 117)
 
 Used by: brotli 9.1.0
 
@@ -1112,7 +1115,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ````
 
-### MIT (14 of 115)
+### MIT (14 of 117)
 
 Used by: bytes 1.12.1
 
@@ -1144,7 +1147,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (15 of 115)
+### MIT (15 of 117)
 
 Used by: cfb 0.14.0
 
@@ -1172,9 +1175,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (16 of 115)
+### MIT (16 of 117)
 
-Used by: cfg-if 1.0.5, toml_datetime 0.6.3
+Used by: cfg-if 1.0.5, socket2 0.6.5, toml_datetime 0.6.3
 
 ````text
 Copyright (c) 2014 Alex Crichton
@@ -1204,7 +1207,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (17 of 115)
+### MIT (17 of 117)
 
 Used by: cookie 0.18.2
 
@@ -1237,7 +1240,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (18 of 115)
+### MIT (18 of 117)
 
 Used by: core-foundation 0.10.1, core-foundation-sys 0.8.7, core-graphics 0.25.0, core-graphics-types 0.2.0, string_cache 0.9.0
 
@@ -1269,7 +1272,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (19 of 115)
+### MIT (19 of 117)
 
 Used by: cpufeatures 0.2.17
 
@@ -1301,7 +1304,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (20 of 115)
+### MIT (20 of 117)
 
 Used by: crc32fast 1.5.3
 
@@ -1329,7 +1332,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (21 of 115)
+### MIT (21 of 117)
 
 Used by: crossbeam-channel 0.5.17, crossbeam-utils 0.8.23
 
@@ -1363,7 +1366,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (22 of 115)
+### MIT (22 of 117)
 
 Used by: crypto-common 0.1.7
 
@@ -1395,7 +1398,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (23 of 115)
+### MIT (23 of 117)
 
 Used by: ctor 1.0.13
 
@@ -1407,7 +1410,7 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (24 of 115)
+### MIT (24 of 117)
 
 Used by: darling 0.24.1, darling_core 0.24.1, darling_macro 0.24.1
 
@@ -1435,7 +1438,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (25 of 115)
+### MIT (25 of 117)
 
 Used by: dbus 0.9.12, libdbus-sys 0.2.7
 
@@ -1461,7 +1464,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (26 of 115)
+### MIT (26 of 117)
 
 Used by: deranged 0.5.9
 
@@ -1487,7 +1490,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (27 of 115)
+### MIT (27 of 117)
 
 Used by: derive_more 2.1.1, derive_more-impl 2.1.1
 
@@ -1515,7 +1518,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (28 of 115)
+### MIT (28 of 117)
 
 Used by: digest 0.10.7
 
@@ -1547,7 +1550,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (29 of 115)
+### MIT (29 of 117)
 
 Used by: dirs 7.0.0, dirs-sys 0.5.0
 
@@ -1573,7 +1576,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (30 of 115)
+### MIT (30 of 117)
 
 Used by: dom_query 0.28.0
 
@@ -1607,7 +1610,7 @@ derived from the "nipper" project (https://github.com/importcjj/nipper),
 developed by Chen Jiaju, licensed under the MIT License and the Apache License 2.0 (dual licensed).
 ````
 
-### MIT (31 of 115)
+### MIT (31 of 117)
 
 Used by: embed_plist 1.2.2
 
@@ -1635,7 +1638,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (32 of 115)
+### MIT (32 of 117)
 
 Used by: equivalent 1.0.3
 
@@ -1667,7 +1670,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (33 of 115)
+### MIT (33 of 117)
 
 Used by: errno 0.3.14
 
@@ -1699,7 +1702,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (34 of 115)
+### MIT (34 of 117)
 
 Used by: fdeflate 0.3.7
 
@@ -1731,7 +1734,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (35 of 115)
+### MIT (35 of 117)
 
 Used by: field-offset 0.3.6
 
@@ -1759,7 +1762,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (36 of 115)
+### MIT (36 of 117)
 
 Used by: flate2 1.1.10
 
@@ -1791,7 +1794,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (37 of 115)
+### MIT (37 of 117)
 
 Used by: fnv 1.0.7
 
@@ -1823,7 +1826,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (38 of 115)
+### MIT (38 of 117)
 
 Used by: foreign-types 0.5.0, foreign-types-macros 0.2.4, foreign-types-shared 0.3.1
 
@@ -1849,7 +1852,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (39 of 115)
+### MIT (39 of 117)
 
 Used by: form_urlencoded 1.2.2
 
@@ -1881,7 +1884,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (40 of 115)
+### MIT (40 of 117)
 
 Used by: futures-channel 0.3.34, futures-core 0.3.34, futures-executor 0.3.34, futures-io 0.3.34, futures-macro 0.3.34, futures-task 0.3.34, futures-util 0.3.34
 
@@ -1914,7 +1917,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (41 of 115)
+### MIT (41 of 117)
 
 Used by: generic-array 0.14.7
 
@@ -1942,7 +1945,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (42 of 115)
+### MIT (42 of 117)
 
 Used by: getrandom 0.3.4
 
@@ -1975,7 +1978,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (43 of 115)
+### MIT (43 of 117)
 
 Used by: getrandom 0.4.3
 
@@ -2008,7 +2011,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (44 of 115)
+### MIT (44 of 117)
 
 Used by: hashbrown 0.17.1
 
@@ -2040,7 +2043,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (45 of 115)
+### MIT (45 of 117)
 
 Used by: heck 0.4.1, heck 0.5.0, unicode-segmentation 1.13.3
 
@@ -2072,7 +2075,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (46 of 115)
+### MIT (46 of 117)
 
 Used by: html5ever 0.39.0, markup5ever 0.39.0, web_atoms 0.2.6
 
@@ -2104,7 +2107,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (47 of 115)
+### MIT (47 of 117)
 
 Used by: http 1.5.0
 
@@ -2136,7 +2139,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (48 of 115)
+### MIT (48 of 117)
 
 Used by: ico 0.6.0
 
@@ -2164,7 +2167,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (49 of 115)
+### MIT (49 of 117)
 
 Used by: ident_case 1.0.1
 
@@ -2190,7 +2193,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (50 of 115)
+### MIT (50 of 117)
 
 Used by: idna 1.1.0, percent-encoding 2.3.2, url 2.5.8
 
@@ -2222,7 +2225,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (51 of 115)
+### MIT (51 of 117)
 
 Used by: idna_adapter 1.2.2
 
@@ -2254,7 +2257,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (52 of 115)
+### MIT (52 of 117)
 
 Used by: indexmap 2.14.2
 
@@ -2286,7 +2289,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (53 of 115)
+### MIT (53 of 117)
 
 Used by: infer 0.22.0
 
@@ -2314,7 +2317,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (54 of 115)
+### MIT (54 of 117)
 
 Used by: javascriptcore-rs 1.1.2
 
@@ -2343,7 +2346,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (55 of 115)
+### MIT (55 of 117)
 
 Used by: javascriptcore-rs-sys 1.1.1, soup3 0.5.0, soup3-sys 0.5.0
 
@@ -2371,7 +2374,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (56 of 115)
+### MIT (56 of 117)
 
 Used by: json-patch 4.2.0
 
@@ -2399,7 +2402,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (57 of 115)
+### MIT (57 of 117)
 
 Used by: jsonptr 0.7.1
 
@@ -2427,7 +2430,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (58 of 115)
+### MIT (58 of 117)
 
 Used by: keyboard-types 0.8.3
 
@@ -2453,7 +2456,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ````
 
-### MIT (59 of 115)
+### MIT (59 of 117)
 
 Used by: libc 0.2.191
 
@@ -2485,7 +2488,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (60 of 115)
+### MIT (60 of 117)
 
 Used by: lock_api 0.4.14, parking_lot 0.12.5, parking_lot_core 0.9.12, thread_local 1.1.10
 
@@ -2517,7 +2520,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (61 of 115)
+### MIT (61 of 117)
 
 Used by: matchers 0.2.0
 
@@ -2543,7 +2546,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (62 of 115)
+### MIT (62 of 117)
 
 Used by: memoffset 0.9.1
 
@@ -2569,7 +2572,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (63 of 115)
+### MIT (63 of 117)
 
 Used by: mime 0.3.17
 
@@ -2595,7 +2598,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ````
 
-### MIT (64 of 115)
+### MIT (64 of 117)
 
 Used by: miniz_oxide 0.8.9, miniz_oxide 0.9.1
 
@@ -2627,7 +2630,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (65 of 115)
+### MIT (65 of 117)
 
 Used by: miniz_oxide 0.8.9, miniz_oxide 0.9.1
 
@@ -2658,7 +2661,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (66 of 115)
+### MIT (66 of 117)
 
 Used by: mio 1.2.4
 
@@ -2684,7 +2687,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ````
 
-### MIT (67 of 115)
+### MIT (67 of 117)
 
 Used by: muda 0.20.0
 
@@ -2712,7 +2715,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (68 of 115)
+### MIT (68 of 117)
 
 Used by: new_debug_unreachable 1.0.6
 
@@ -2744,7 +2747,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (69 of 115)
+### MIT (69 of 117)
 
 Used by: notify-types 2.1.0
 
@@ -2776,7 +2779,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (70 of 115)
+### MIT (70 of 117)
 
 Used by: ntapi 0.4.3
 
@@ -2800,7 +2803,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (71 of 115)
+### MIT (71 of 117)
 
 Used by: nu-ansi-term 0.50.3
 
@@ -2829,7 +2832,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (72 of 115)
+### MIT (72 of 117)
 
 Used by: num-conv 0.2.2
 
@@ -2855,7 +2858,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (73 of 115)
+### MIT (73 of 117)
 
 Used by: num_threads 0.1.8
 
@@ -2881,7 +2884,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (74 of 115)
+### MIT (74 of 117)
 
 Used by: phf 0.13.1, phf_generator 0.13.1, phf_macros 0.13.1, phf_shared 0.13.1
 
@@ -2908,7 +2911,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (75 of 115)
+### MIT (75 of 117)
 
 Used by: plist 1.10.3
 
@@ -2934,7 +2937,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (76 of 115)
+### MIT (76 of 117)
 
 Used by: png 0.18.1
 
@@ -2966,7 +2969,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (77 of 115)
+### MIT (77 of 117)
 
 Used by: powerfmt 0.2.1
 
@@ -2992,7 +2995,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (78 of 115)
+### MIT (78 of 117)
 
 Used by: precomputed-hash 0.1.1
 
@@ -3020,7 +3023,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (79 of 115)
+### MIT (79 of 117)
 
 Used by: proc-macro-error 1.0.4, proc-macro-error-attr 1.0.4
 
@@ -3048,7 +3051,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (80 of 115)
+### MIT (80 of 117)
 
 Used by: quick-xml 0.42.0
 
@@ -3078,7 +3081,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ````
 
-### MIT (81 of 115)
+### MIT (81 of 117)
 
 Used by: raw-window-handle 0.6.2
 
@@ -3106,7 +3109,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (82 of 115)
+### MIT (82 of 117)
 
 Used by: same-file 1.0.6, winapi-util 0.1.11
 
@@ -3134,7 +3137,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ````
 
-### MIT (83 of 115)
+### MIT (83 of 117)
 
 Used by: schemars 0.8.22, schemars_derive 0.8.22
 
@@ -3162,7 +3165,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (84 of 115)
+### MIT (84 of 117)
 
 Used by: scopeguard 1.2.0
 
@@ -3194,7 +3197,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (85 of 115)
+### MIT (85 of 117)
 
 Used by: serde_with 3.24.0, serde_with_macros 3.24.0
 
@@ -3226,7 +3229,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (86 of 115)
+### MIT (86 of 117)
 
 Used by: serialize-to-javascript 0.1.2, serialize-to-javascript-impl 0.1.2
 
@@ -3254,7 +3257,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (87 of 115)
+### MIT (87 of 117)
 
 Used by: sha2 0.10.9
 
@@ -3288,7 +3291,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (88 of 115)
+### MIT (88 of 117)
 
 Used by: sharded-slab 0.1.7
 
@@ -3314,7 +3317,39 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ````
 
-### MIT (89 of 115)
+### MIT (89 of 117)
+
+Used by: signal-hook-registry 1.4.8
+
+````text
+Copyright (c) 2017 tokio-jsonrpc developers
+
+Permission is hereby granted, free of charge, to any
+person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the
+Software without restriction, including without
+limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software
+is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice
+shall be included in all copies or substantial portions
+of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+````
+
+### MIT (90 of 117)
 
 Used by: simd-adler32 0.3.10
 
@@ -3342,7 +3377,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (90 of 115)
+### MIT (91 of 117)
 
 Used by: slab 0.4.12
 
@@ -3374,7 +3409,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (91 of 115)
+### MIT (92 of 117)
 
 Used by: smallvec 1.16.4
 
@@ -3406,7 +3441,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (92 of 115)
+### MIT (93 of 117)
 
 Used by: softbuffer 0.4.8
 
@@ -3432,7 +3467,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (93 of 115)
+### MIT (94 of 117)
 
 Used by: stable_deref_trait 1.2.1
 
@@ -3464,7 +3499,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (94 of 115)
+### MIT (95 of 117)
 
 Used by: strsim 0.11.1
 
@@ -3494,7 +3529,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (95 of 115)
+### MIT (96 of 117)
 
 Used by: swift-rs 1.0.9
 
@@ -3520,7 +3555,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (96 of 115)
+### MIT (97 of 117)
 
 Used by: synstructure 0.14.0
 
@@ -3534,7 +3569,7 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (97 of 115)
+### MIT (98 of 117)
 
 Used by: sysinfo 0.39.6
 
@@ -3562,7 +3597,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (98 of 115)
+### MIT (99 of 117)
 
 Used by: tempfile 3.27.0
 
@@ -3594,7 +3629,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (99 of 115)
+### MIT (100 of 117)
 
 Used by: tendril 0.5.1
 
@@ -3626,7 +3661,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (100 of 115)
+### MIT (101 of 117)
 
 Used by: time 0.3.55, time-core 0.1.9, time-macros 0.2.32
 
@@ -3652,7 +3687,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (101 of 115)
+### MIT (102 of 117)
 
 Used by: tokio 1.54.1
 
@@ -3680,7 +3715,36 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (102 of 115)
+### MIT (103 of 117)
+
+Used by: tokio-macros 2.7.2
+
+````text
+MIT License
+
+Copyright (c) 2019 Yoshua Wuyts
+Copyright (c) Tokio Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+````
+
+### MIT (104 of 117)
 
 Used by: tracing 0.1.44, tracing-attributes 0.1.31, tracing-core 0.1.36, tracing-log 0.2.0, tracing-serde 0.2.0, tracing-subscriber 0.3.23
 
@@ -3712,7 +3776,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (103 of 115)
+### MIT (105 of 117)
 
 Used by: tracing-core 0.1.36
 
@@ -3740,7 +3804,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (104 of 115)
+### MIT (106 of 117)
 
 Used by: typenum 1.20.1
 
@@ -3768,7 +3832,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (105 of 115)
+### MIT (107 of 117)
 
 Used by: urlpattern 0.6.0
 
@@ -3796,7 +3860,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (106 of 115)
+### MIT (108 of 117)
 
 Used by: utf8_iter 1.0.4
 
@@ -3828,7 +3892,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (107 of 115)
+### MIT (109 of 117)
 
 Used by: utf8parse 0.2.2
 
@@ -3860,7 +3924,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (108 of 115)
+### MIT (110 of 117)
 
 Used by: uuid 1.29.0
 
@@ -3893,7 +3957,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (109 of 115)
+### MIT (111 of 117)
 
 Used by: web-time 1.1.0
 
@@ -3921,7 +3985,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (110 of 115)
+### MIT (112 of 117)
 
 Used by: webkit2gtk 2.0.2
 
@@ -3948,7 +4012,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (111 of 115)
+### MIT (113 of 117)
 
 Used by: webkit2gtk-sys 2.0.2
 
@@ -3973,7 +4037,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (112 of 115)
+### MIT (114 of 117)
 
 Used by: winapi 0.3.9
 
@@ -3999,7 +4063,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (113 of 115)
+### MIT (115 of 117)
 
 Used by: window-vibrancy 0.8.1
 
@@ -4027,7 +4091,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ````
 
-### MIT (114 of 115)
+### MIT (116 of 117)
 
 Used by: winnow 0.5.40, winnow 1.0.4
 
@@ -4052,7 +4116,7 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ````
 
-### MIT (115 of 115)
+### MIT (117 of 117)
 
 Used by: wry 0.57.1
 

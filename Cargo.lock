@@ -305,6 +305,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "c4-ingest"
+version = "0.0.1"
+dependencies = [
+ "c4-core",
+ "c4-shim",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "c4-shim"
 version = "0.0.1"
 dependencies = [

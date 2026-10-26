@@ -4,9 +4,10 @@
 
 How C4 plugs into an existing Claude Code setup, what it changes, and how to take it out again.
 
-Status: the shim exists (`crates/c4-shim`); the ingest server and `c4 install` follow in Milestone 2.
-Until they land C4 runs in the coarse mode described in docs/HOW-IT-WORKS.md: registry, transcripts
-and the status line's cache files, no hooks.
+Status: the shim (`crates/c4-shim`) and the ingest server (`crates/c4-ingest`) exist; the app does not
+start the server yet, and `c4 install` follows, both in Milestone 2. Until they land C4 runs in the
+coarse mode described in docs/HOW-IT-WORKS.md: registry, transcripts and the status line's cache
+files, no hooks.
 
 ## What `c4 install` changes
 
@@ -92,8 +93,7 @@ lowercase with forward slashes, so two C4 homes on one machine never share a pip
 socket file `~/.c4/ingest.sock`. The shim and `c4-core` each carry this rule and a test keeps them
 equal. When nothing is listening the line is appended to `~/.c4/spool/<UTC date>.jsonl` instead
 (one line per payload, at most 20 MiB per file, after which further lines for that day are dropped),
-for the ingest server to replay when C4 starts; that server is the next piece of Milestone 2, so
-until it lands the spool only fills. A payload over 1 MiB is passed to the original command whole
+for the ingest server to replay when C4 starts. A payload over 1 MiB is passed to the original command whole
 and not copied at all. The shim never waits long: a hook exits 900 ms after reading its payload at
 the latest, inside the 1 s timeout of the synchronous SessionEnd hook, and the status line, once the
 original command has finished, waits for a delivery still in progress only until 250 ms have passed
@@ -102,6 +102,42 @@ own. If the original command cannot be started, the reason becomes the status li
 the shim exits 0, because a message is more use than an empty line. Setting `C4_SHIM_LOG=1` writes
 one line per run to `~/.c4/logs/shim.log` with the byte count, the outcome and the exit code, never
 the payload.
+
+## The ingest server
+
+`c4-ingest` listens on the endpoint above for as long as the app runs. On Windows it creates the pipe
+with a DACL that admits the current user alone (`D:P(A;;GA;;;<user SID>)`, built from the SID of C4's
+own token) and rejects remote clients; elsewhere it binds the socket file with mode 0600 inside a
+0700 directory and compares the uid of every peer with the owner of the C4 home, refusing a mismatch.
+A second server on the same home is refused, so two C4 windows cannot split one home's payloads.
+
+One line is one payload. The parser takes `session_id`, `cwd`, `session_title` (hooks) or
+`session_name` (status line), `transcript_path` and `version` into an identity observation, then the
+hook event or the status line figures (model, context used, context size, effort) into a second one,
+both stamped with the shim's `recv_at`. An event this version does not know is kept by name and moves
+nothing; so is one whose required id is missing (the agent of a `SubagentStart`, the task of a
+`TaskCreated`, the directory of a `CwdChanged`), so a malformed payload cannot create a nameless agent
+or task. A hook that fires inside a subagent carries the subagent's `agent_id` beside its observations,
+so the consumer can keep a subagent's tool calls from moving the session.
+
+A line the parser refuses is counted and logged by size and reason, never by content, because a hook
+payload carries whatever the session typed. A connection that stays silent for 5 s is closed; one that
+sends a line over 2 MiB is dropped (the shim never sends more than 1 MiB). Parsed lines wait in a
+bounded inbox of 4,096 items that drops its oldest item and counts the drop rather than hold up a
+hook. The inbox keeps arrival order; after a replay that is not `recv_at` order, so the consumer sorts
+each batch it drains.
+
+The spool is replayed once right after the server binds and every 30 s after that. A spool file is
+claimed by renaming it to `<name>.replaying`, so a shim that spools its next line starts a fresh file;
+it is read, checked once more for a line a shim appended during the read, and removed. A `.replaying`
+file found at startup belongs to a C4 that died mid-replay and is read as it is. Replay is at least
+once: a C4 that dies between reading a file and removing it reads the file again at the next start,
+and the same line reaches the inbox twice. A file that cannot be renamed is left for the next pass.
+A shim that opened a spool file just before the rename and finished its one write after the server's
+last size check loses that line; the window is a few microseconds wide.
+
+Not covered by a test on any platform: that a connection from another user is refused. It needs a
+second account on the machine.
 
 ## Backups and removal
 

@@ -1,0 +1,16 @@
+{
+  "session_id": "0a1b2c3d-0001-4000-8000-000000000001",
+  "prompt_id": "550e8400-0001-4000-8000-000000000001",
+  "transcript_path": "/home/example/.claude/projects/-home-example-proj/0a1b2c3d-0001-4000-8000-000000000001.jsonl",
+  "cwd": "/home/example/proj",
+  "permission_mode": "default",
+  "agent_id": "e1c0a0d1",
+  "agent_type": "Explore",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Grep",
+  "tool_input": {
+    "pattern": "fn deliver",
+    "path": "/home/example/proj/crates"
+  },
+  "tool_use_id": "toolu_fixture_0000000003"
+}

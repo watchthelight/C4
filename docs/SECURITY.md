@@ -33,15 +33,21 @@ user exports them on purpose.
 
 ## Local sockets
 
-The ingest socket is a named pipe whose DACL admits the current user alone on Windows and a Unix
-socket with mode 0600 in a private directory elsewhere. The pipe name starts with `\\.\pipe\LOCAL\`,
-the prefix Claude Code's own peer-message pipes use; Windows documents that prefix as the form pipes
-inside app containers must take, not as a namespace of its own for ordinary processes, so C4 relies
-on the DACL and not on the name to keep other users out. Remote clients are rejected. Managed session hosts use the same rules. The shim connects only to the endpoint derived
-from its own C4 home and sends one line per payload. Hook payloads include tool inputs, which can hold
-whatever the session typed, so the spool that keeps undelivered lines (`~/.c4/spool/`) is created
-with mode 0700 and its files with 0600 on Unix, lives under the user's own profile on Windows, and
-each file is removed once C4 has replayed it.
+The ingest socket is a named pipe whose DACL admits the current user alone on Windows (the SDDL is
+`D:P(A;;GA;;;<user SID>)`, built from the SID of C4's own token, and remote clients are rejected) and a
+Unix socket with mode 0600 in a 0700 directory elsewhere, where the server checks the uid of every
+peer against the owner of the C4 home and refuses a mismatch. The pipe name starts with
+`\\.\pipe\LOCAL\`, the prefix Claude Code's own peer-message pipes use; Windows documents that prefix
+as the form pipes inside app containers must take, not as a namespace of its own for ordinary
+processes, so C4 relies on the DACL and not on the name to keep other users out. Managed session hosts
+use the same rules. The shim connects only to the endpoint derived from its own C4 home and sends one
+line per payload. The server reads at most 2 MiB per line, closes a connection that stays silent for
+5 s, keeps a bounded inbox that drops the oldest item under pressure, and logs a line it cannot parse
+by size and reason only. Hook payloads include tool inputs, which can hold whatever the session typed,
+so the spool that keeps undelivered lines (`~/.c4/spool/`) is created with mode 0700 and its files
+with 0600 on Unix, lives under the user's own profile on Windows, and each file is removed once C4 has
+replayed it. Not tested on any platform: that a connection from another user is refused; it needs a
+second account on the machine.
 
 ## Control
 

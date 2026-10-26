@@ -1,0 +1,93 @@
+{
+  "cwd": "/home/example/proj",
+  "session_id": "0a1b2c3d-0001-4000-8000-000000000001",
+  "session_name": "fixture session one",
+  "prompt_id": "550e8400-0001-4000-8000-000000000001",
+  "transcript_path": "/home/example/.claude/projects/-home-example-proj/0a1b2c3d-0001-4000-8000-000000000001.jsonl",
+  "model": {
+    "id": "claude-opus-5-5",
+    "display_name": "Opus"
+  },
+  "workspace": {
+    "current_dir": "/home/example/proj",
+    "project_dir": "/home/example/proj",
+    "added_dirs": [],
+    "git_worktree": "main",
+    "repo": {
+      "host": "github.com",
+      "owner": "example",
+      "name": "proj"
+    }
+  },
+  "version": "2.1.299",
+  "output_style": {
+    "name": "default"
+  },
+  "cost": {
+    "total_cost_usd": 1.2345,
+    "total_duration_ms": 4500000,
+    "total_api_duration_ms": 230000,
+    "total_lines_added": 156,
+    "total_lines_removed": 23
+  },
+  "context_window": {
+    "total_input_tokens": 155000,
+    "total_output_tokens": 12000,
+    "context_window_size": 200000,
+    "used_percentage": 42,
+    "remaining_percentage": 58,
+    "current_usage": {
+      "input_tokens": 8500,
+      "output_tokens": 1200,
+      "cache_creation_input_tokens": 5000,
+      "cache_read_input_tokens": 69300
+    }
+  },
+  "exceeds_200k_tokens": false,
+  "prompt_cache": {
+    "warm": true,
+    "caching_observed": true,
+    "ttl": "1h",
+    "expires_at": 1792976400,
+    "requests": 14,
+    "misses": 2,
+    "expected_rebuilds": 1,
+    "hit_ratio": 0.91,
+    "cache_write_tokens": 352000,
+    "miss_recache_tokens": 310200,
+    "last_miss_at": 1792972430,
+    "last_miss_cause": {
+      "causes": ["tools_changed"],
+      "tools_added": 2,
+      "tools_removed": 0
+    },
+    "miss_causes": {
+      "tools_changed": 2
+    },
+    "recache_tokens_if_cold": 45000
+  },
+  "fast_mode": false,
+  "effort": {
+    "level": "high"
+  },
+  "thinking": {
+    "enabled": true
+  },
+  "rate_limits": {
+    "five_hour": {
+      "used_percentage": 23.5,
+      "resets_at": 1792983600
+    },
+    "seven_day": {
+      "used_percentage": 41.2,
+      "resets_at": 1793404800
+    },
+    "spend_limit": {
+      "used_percentage": 62.8,
+      "resets_at": 1795564800,
+      "used_usd": 314.12,
+      "limit_usd": 500,
+      "period": "monthly"
+    }
+  }
+}

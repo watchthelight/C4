@@ -1,0 +1,37 @@
+{
+  "session_id": "0a1b2c3d-0001-4000-8000-000000000001",
+  "prompt_id": "550e8400-0001-4000-8000-000000000001",
+  "transcript_path": "/home/example/.claude/projects/-home-example-proj/0a1b2c3d-0001-4000-8000-000000000001.jsonl",
+  "cwd": "/home/example/proj",
+  "permission_mode": "default",
+  "effort": {
+    "level": "high"
+  },
+  "hook_event_name": "Stop",
+  "stop_hook_active": false,
+  "last_assistant_message": "The build runs in the background; I will report when it finishes.",
+  "background_tasks": [
+    {
+      "id": "bash_1",
+      "type": "shell",
+      "status": "running",
+      "description": "Build the workspace",
+      "command": "cargo build --workspace"
+    },
+    {
+      "id": "e1c0a0d1",
+      "type": "subagent",
+      "status": "running",
+      "description": "Scan the call sites",
+      "agent_type": "Explore"
+    }
+  ],
+  "session_crons": [
+    {
+      "id": "cron_1",
+      "schedule": "*/15 * * * *",
+      "recurring": true,
+      "prompt": "check whether the build finished"
+    }
+  ]
+}

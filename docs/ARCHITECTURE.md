@@ -9,8 +9,8 @@ from a per-session host process.
 
 Status: Milestone 1 delivers `c4-core`, `c4-discovery`, `c4-transcript` (tailer, parser, follower,
 index and watcher), `c4-testkit`, `c4-cli` and `c4-desktop`, whose window lists sessions. Milestone 2
-has so far added `c4-shim`. The other crates are named below with the milestone that brings them;
-solid edges in the crate graph are in the tree, dotted ones are planned.
+has so far added `c4-shim` and `c4-ingest`. The other crates are named below with the milestone that
+brings them; solid edges in the crate graph are in the tree, dotted ones are planned.
 
 ## Processes
 
@@ -18,7 +18,7 @@ solid edges in the crate graph are in the tree, dotted ones are planned.
 |---|---|---|
 | `c4` | The desktop app. With no arguments it opens the window; with arguments it runs a headless command (`sessions`, `doctor`, `telemetry` today; `perf`, `install`, `uninstall` and `host` with their milestones) and exits before any webview exists. | 1 |
 | `c4-cli` | The same commands as a webview-free executable for development (`cargo run -p c4-cli -- sessions`). Not shipped. | 1 |
-| `c4-shim` | A standard-library-only sidecar. `c4-shim statusline -- <original command>` copies stdin to C4's local socket (20 ms connect timeout, spool to disk on failure) and then runs the original command with the same stdin, passing its output and exit code through. `c4-shim hook` does the same tee and always exits 0 with empty output. About 2 ms of overhead. | 2 |
+| `c4-shim` | A standard-library-only sidecar. `c4-shim statusline -- <original command>` starts the original command at once with the same stdin and copies the payload to C4's local socket on a thread beside it (spooled to disk when nothing listens), passing output and exit code through. `c4-shim hook` does the same copy and always exits 0 with empty output, 900 ms after reading the payload at the latest. The status line pays the shim's own startup and nothing else. | 2 |
 | `c4 host --session <id>` | One detached process per managed session. It owns the pty, a 2 MiB raw ring buffer, a screen model, the controller lease and a local socket. The UI can crash or exit and the host keeps the session alive. | 3 |
 | `python -I hooks/c4_usage.py` | On demand: imports the user's `statusline.py` and prints its `parse_usage()` result as JSON for sessions whose status line has not run recently. | 4 |
 
@@ -37,9 +37,10 @@ graph TD
     desktop[c4-desktop: the c4 binary] --> cli
     desktop --> core
     desktop --> discovery
-    ingest[c4-ingest, M2] -.-> core
+    ingest[c4-ingest] --> core
     store[c4-store, M2] -.-> core
     shim[c4-shim: no dependencies]
+    ingest -. tests only .-> shim
     adapters[c4-adapters, M3] -.-> core
     host[c4-host, M3] -.-> core
     controls[c4-controls, M3] -.-> adapters
@@ -57,7 +58,7 @@ graph TD
 | `c4-testkit` | `ScratchHome` (a Claude home in a temp dir, seeded from `fixtures/home`), `FakeClaude` (a real process registered with its pid and creation time, so liveness tests run on a real process table), the discovery tests A and B. | 1 |
 | `c4-cli` | `c4 sessions [--json|--watch|--files-only|--redact|--home]`, `c4 doctor [--json|--no-commands]`, `c4 telemetry --transcript <file> [--json]`. JSON output carries `schema: 1`. Exit 0, 1 (could not do the job, reason on stderr) or 2 (usage). | 1 |
 | `c4-desktop` | The Tauri app: the refresh thread, two commands, one event, the Windows console attach for headless use. The window itself is `apps/desktop/src`. | 1 |
-| `c4-ingest` | Local socket server (named pipe with a current-user DACL on Windows, mode 0600 Unix socket elsewhere), spool replay, bounded queues that drop the oldest item and count drops instead of blocking a producer. | 2 |
+| `c4-ingest` | The receiving end of the shim: a server on the home's ingest endpoint (a named pipe whose DACL admits the current user alone on Windows; a socket file with mode 0600 elsewhere, every peer's uid checked against the owner of the home), the parser that turns each line into an `Identity` observation plus the `Hook` or `Statusline` fact, a bounded inbox that drops its oldest item and counts the drop rather than hold up a hook, the spool replay at start and every 30 s, and a standard-library probe for `c4 doctor`. A line over 2 MiB or a connection silent for 5 s is dropped and counted; a line the parser refuses is logged by size and reason, never by content. A second server on the same home is refused. Its end-to-end test sends lines through `c4-shim`'s own delivery code. | 2 |
 | `c4-store` | SQLite schema and queries: sessions, identities, events, cursors, usage samples, agents, tasks, config transactions, audit, hosts, layouts, searchable scrollback. | 2 |
 | `c4-shim` | The sidecar: the `statusline -- <command>` and `hook` subcommands, the one-line JSON envelope, the endpoint rule (repeated from `c4-core::home` and held equal by a test), the spool and the run log. Standard library only. docs/SESSION-INTEGRATION.md has the wire format. | 2 |
 | `c4-adapters` | The `HostAdapter` trait and one implementation per terminal host. | 3, 7 |
@@ -123,7 +124,8 @@ sequenceDiagram
     end
 ```
 
-From Milestone 2, hook and status line payloads join through the shim and the ingest socket:
+Hook and status line payloads join through the shim and the ingest server. The server, the parser and
+the inbox are in the tree; the app drains the inbox into the reducer with the next Milestone 2 commit:
 
 ```mermaid
 sequenceDiagram
@@ -133,7 +135,8 @@ sequenceDiagram
     participant St as c4-store
     participant UI as webview
     S->>I: one JSON line over the local socket (5 ms)
-    I->>C: typed observation (2 ms)
+    I->>I: parse into observations, queue in the inbox
+    I->>C: one batch per drain, sorted by recv_at (2 ms)
     C->>St: append event, update session row
     C->>UI: patch over a Tauri channel, batched at 60 Hz (16 ms)
     UI->>UI: one store commit per animation frame (16 ms)
@@ -149,8 +152,9 @@ screen snapshot plus the tail of the ring buffer.
 
 The CLI is synchronous on the main thread: a command is one pass or one file read, then exit. The app
 has the Tauri event loop on the main thread, the `c4-refresh` thread, and whatever threads the
-webview brings; tokio arrives with `c4-ingest`. The process probe keeps its own system snapshot and
-refreshes only the pids it is asked about.
+webview brings. `c4-ingest` brings tokio: an accept task, one task per connection, a replay timer, and
+the spool read on a blocking thread; the app starts them with the next Milestone 2 commit. The process
+probe keeps its own system snapshot and refreshes only the pids it is asked about.
 
 A file discovery cannot use becomes a `Problem` (path and reason) in the pass report, never an error
 that stops the pass, because one broken file must not hide the sessions around it. The window shows

@@ -1,0 +1,17 @@
+{
+  "session_id": "0a1b2c3d-0001-4000-8000-000000000001",
+  "prompt_id": "550e8400-0001-4000-8000-000000000001",
+  "transcript_path": "/home/example/.claude/projects/-home-example-proj/0a1b2c3d-0001-4000-8000-000000000001.jsonl",
+  "cwd": "/home/example/proj",
+  "permission_mode": "default",
+  "hook_event_name": "PostToolUseFailure",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "cargo test --workspace",
+    "description": "Run the test suite"
+  },
+  "tool_use_id": "toolu_fixture_0000000001",
+  "error": "Exit code 101\ntest result: FAILED. 11 passed; 1 failed",
+  "is_interrupt": false,
+  "duration_ms": 4187
+}

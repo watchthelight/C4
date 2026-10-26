@@ -1,0 +1,12 @@
+{
+  "session_id": "0a1b2c3d-0001-4000-8000-000000000001",
+  "prompt_id": "550e8400-0001-4000-8000-000000000001",
+  "transcript_path": "/home/example/.claude/projects/-home-example-proj/0a1b2c3d-0001-4000-8000-000000000001.jsonl",
+  "cwd": "/home/example/proj",
+  "permission_mode": "default",
+  "hook_event_name": "Stop",
+  "stop_hook_active": false,
+  "last_assistant_message": "Done. All tests pass.",
+  "background_tasks": [],
+  "session_crons": []
+}

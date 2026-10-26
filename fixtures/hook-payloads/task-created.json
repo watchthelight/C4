@@ -1,0 +1,10 @@
+{
+  "session_id": "0a1b2c3d-0001-4000-8000-000000000001",
+  "transcript_path": "/home/example/.claude/projects/-home-example-proj/0a1b2c3d-0001-4000-8000-000000000001.jsonl",
+  "cwd": "/home/example/proj",
+  "hook_event_name": "TaskCreated",
+  "task_id": "task-001",
+  "task_subject": "Add the ingest server",
+  "task_description": "Listen on the local socket and replay the spool",
+  "teammate_name": "implementer"
+}

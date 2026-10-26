@@ -17,11 +17,15 @@ temporary directory when they need to write.
 | `home/jobs/<short>/state.json`, `timeline.jsonl` | one background job's state and history | `c4-discovery` daemon reader |
 | `home/projects/<encoded cwd>/` | `~/.claude/projects/<encoded cwd>/<session>.jsonl` and `<session>/subagents/` | `c4-transcript` tailer and scanner |
 | `agents-json/` | the output of `claude agents --json` | `c4-discovery` agents poller |
+| `hook-payloads/` | one hook payload per event C4 listens to, with the fields Claude Code 2.1.299 documents, plus `subagent-tool-use.json` (a `PreToolUse` fired inside a subagent) and `unknown-event.json` (an event C4 does not know) | `c4-ingest` parser |
+| `statusline-payload/` | the status line payload, complete (`full.json`) and with only the fields the parser reads (`minimal.json`) | `c4-ingest` parser |
+| `spool/` | one day of the shim's spool: two good lines and two bad ones | `c4-ingest` replay |
 
 Files that exist to prove tolerance: `home/sessions/broken.json` (truncated JSON), `home/sessions/notes.txt`
 (not a record), `home/sessions/41004.json` (an older record missing optional fields), the empty
-transcript for session 4, the transcript for session 2 that ends mid-line, and the `agents-json` entry
-with a kind and status no version of C4 knows.
+transcript for session 4, the transcript for session 2 that ends mid-line, the `agents-json` entry
+with a kind and status no version of C4 knows, and the two bad lines in `spool/2026-10-26.jsonl` (one
+that is not JSON, one whose payload the shim wrapped as raw text because Claude Code did not send JSON).
 
 Rules for adding to this directory:
 

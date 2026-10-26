@@ -1,0 +1,29 @@
+# <wtl> project: c4 | file: crates/c4-ingest/Cargo.toml | author: watchthelight </wtl>
+
+[package]
+name = "c4-ingest"
+description = "Receives the lines c4-shim sends over the local socket, replays the spool and turns each payload into observations"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+c4-core = { path = "../c4-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_System_Threading"] }
+
+[dev-dependencies]
+c4-shim = { path = "../c4-shim" }
+tempfile = { workspace = true }
+
+[lints]
+workspace = true

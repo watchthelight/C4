@@ -1,0 +1,22 @@
+{
+  "session_id": "0a1b2c3d-0001-4000-8000-000000000001",
+  "prompt_id": "550e8400-0001-4000-8000-000000000001",
+  "transcript_path": "/home/example/.claude/projects/-home-example-proj/0a1b2c3d-0001-4000-8000-000000000001.jsonl",
+  "cwd": "/home/example/proj",
+  "permission_mode": "default",
+  "effort": {
+    "level": "high"
+  },
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Write",
+  "tool_input": {
+    "file_path": "/home/example/proj/notes.txt",
+    "content": "fixture content"
+  },
+  "tool_response": {
+    "filePath": "/home/example/proj/notes.txt",
+    "type": "create"
+  },
+  "tool_use_id": "toolu_fixture_0000000002",
+  "duration_ms": 12
+}

@@ -1,0 +1,14 @@
+{
+  "session_id": "0a1b2c3d-0001-4000-8000-000000000001",
+  "transcript_path": "/home/example/.claude/projects/-home-example-proj/0a1b2c3d-0001-4000-8000-000000000001.jsonl",
+  "cwd": "/home/example/proj",
+  "permission_mode": "default",
+  "hook_event_name": "SubagentStop",
+  "stop_hook_active": false,
+  "agent_id": "e1c0a0d1",
+  "agent_type": "Explore",
+  "agent_transcript_path": "/home/example/.claude/projects/-home-example-proj/0a1b2c3d-0001-4000-8000-000000000001/subagents/agent-e1c0a0d1.jsonl",
+  "last_assistant_message": "Found the three call sites.",
+  "background_tasks": [],
+  "session_crons": []
+}
