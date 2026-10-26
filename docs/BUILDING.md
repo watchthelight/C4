@@ -12,7 +12,9 @@
 | Node and pnpm | Node 22 or later, pnpm 10 | same | same |
 | Python | 3.11 or later, for the scripts and the hook bridge | same | same |
 
-Nothing in the build calls the network beyond the package registries.
+Nothing in the build calls the network beyond the package registries, except packaging:
+electron-builder fetches the Electron build it packages and the tools it needs (NSIS and WiX on
+Windows, the AppImage tool on Linux) from GitHub into its own cache on first use.
 
 ## Commands
 
@@ -25,6 +27,9 @@ pnpm -C apps/desktop dev                               # the Electron window aga
 pnpm -C apps/desktop build                             # dist/ (the page) and dist-electron/ (the main process)
 pnpm -C apps/desktop start                             # the Electron window from that build
 pnpm -C apps/desktop dev:web                           # Vite alone, for a browser and the synthetic bridge
+python scripts/stage_bin.py                            # copy the release c4-cli and c4-shim under apps/desktop/resources/bin
+pnpm -C apps/desktop package                           # the installers for this platform, under apps/desktop/release/
+pnpm -C apps/desktop package:dir                       # the unpacked app alone
 cargo bench --workspace                                # criterion benches
 python scripts/precommit.py                            # what the git hook runs
 python scripts/gen_notices.py                          # regenerate THIRD-PARTY-NOTICES.md
@@ -60,9 +65,9 @@ code against a scratch C4 home, so they bind that home's endpoint and never the 
 ### The shim beside the executable
 
 `c4 install` copies the `c4-shim` that sits beside the executable it runs from, which in development
-is `target/<profile>/c4-shim` beside `c4-cli` after `cargo build -p c4-shim`. The packaged app will
-carry `c4-cli` and `c4-shim` together under its resources; that packaging is the next step and is
-not in the tree yet.
+is `target/<profile>/c4-shim` beside `c4-cli` after `cargo build -p c4-shim`. The packaged app
+carries `c4-cli` and `c4-shim` together under its resources (`resources/bin/`, see Packaging), so
+`c4 install` through the packaged `c4` takes the shim from there.
 
 The icons under `apps/desktop/icons/` come from `assets/icons/c4-1024.png`, which `scripts/make_icon.py`
 draws: the PNG sizes, `icon.ico` and `icon.icns` were derived from it. After a change to the source,
@@ -107,9 +112,37 @@ fetches it.
 
 With the `electron` binary itself (`pnpm start`, `electron .`) a few arguments never reach C4:
 Electron's default app answers `--version`, `--abi`, `--help` and `-i` on its own. Everything else
-relays as the packaged `c4` will: `electron . sessions --json`, `electron . doctor`. Switches alone
+relays as the packaged `c4` does: `electron . sessions --json`, `electron . doctor`. Switches alone
 open the window and reach Chromium, which is how a driver attaches to it:
 `electron . --remote-debugging-port=9333`.
+
+## Packaging
+
+electron-builder (`apps/desktop/electron-builder.yml`) turns the build into the app: the asar holds
+the page bundle, the main process and the icons; `c4-cli` and `c4-shim` sit beside it under
+`resources/bin/`; Electron's own files, `LICENSES.chromium.html` among them, sit around it. The
+executable is `c4` (`C4.app` on macOS, with `c4` inside) and the product name is C4.
+
+```sh
+cargo build --release -p c4-cli -p c4-shim
+python scripts/stage_bin.py          # copies them to apps/desktop/resources/bin/, which git ignores
+pnpm -C apps/desktop build
+pnpm -C apps/desktop package:dir     # the unpacked app: release/win-unpacked/, mac-arm64/, linux-unpacked/
+pnpm -C apps/desktop package         # the installers for this platform under apps/desktop/release/
+```
+
+`package` refuses to run until both binaries are staged (`electron/package.mjs` checks), so a package
+never ships without its core; `python scripts/stage_bin.py --profile debug` stages the debug build,
+which is what CI packages. electron-builder builds for the platform it runs on: NSIS and MSI
+installers on Windows (`c4-<version>-win-x64.exe` and `.msi`), a dmg for arm64 and one for x64 on
+macOS (`c4-<version>-mac-arm64.dmg`, `c4-<version>-mac-x64.dmg`), an AppImage and a deb on Linux
+(`c4-<version>-linux-x64.AppImage` and `.deb`). The version is the one in `apps/desktop/package.json`,
+kept equal to the workspace version in `Cargo.toml`; the icons come from `apps/desktop/icons/`
+(`icon.ico`, `icon.icns`, `icon.png`). Nothing is signed: there is no certificate for Windows or Linux
+and no Apple identity, so Windows shows its unknown-publisher warning for the installer, and whether
+the unsigned macOS build starts on Apple silicon is not verified yet (no macOS hardware is in reach).
+The verify workflow packages the unpacked app with the debug core on every runner, which proves the
+configuration on all four platforms; the release workflow that builds the installers is the next step.
 
 ## Headless commands
 
@@ -127,9 +160,13 @@ c4 uninstall [--dry-run]           # the way back, from the backup or entry by e
 ```
 
 `c4-cli` is the executable behind these commands: `cargo run -p c4-cli -- <command>` runs them during
-development, and the packaged `c4` relays its command line to the copy it carries (that packaging is
-the next step). On Windows a windowed `c4` started from a shell may not share that shell's console;
-this is not checked yet, so pipe the output, or use `c4-cli`, when it matters.
+development, and the packaged `c4` relays its command line to the copy under its resources and exits
+with the core's exit code. One Windows caveat, checked with the packaged build: `c4.exe` is a windowed
+executable, so an interactive PowerShell prompt comes back before the command has run (within 25 ms,
+with no exit code), and the output lands on the console afterwards. Piping the output
+(`c4 sessions --json | Out-String`) makes PowerShell wait, cmd.exe waits either way, and
+`resources\bin\c4-cli.exe` beside `c4.exe` is the console program with the same command line, which
+is what a script should call.
 
 `sessions` and `doctor` read the Claude home named by `C4_CLAUDE_HOME`, else `CLAUDE_CONFIG_DIR`, else
 `~/.claude`, or the one given with `--home`. `C4_AGENTS_CMD` replaces `claude agents --json` with
@@ -172,3 +209,6 @@ check` until it is added to `deny.toml` and `about.toml` on purpose. MPL-2.0 is 
 - **The Electron window says the core is missing.** It looked for `target/debug/c4-cli` (`.exe` on
   Windows) two directories above `apps/desktop`, or the path in `C4_CLI`. `cargo build -p c4-cli`
   puts it there.
+- **`package` says c4-cli or c4-shim is missing.** They are copied, not built, by the package step:
+  `python scripts/stage_bin.py` after `cargo build --release -p c4-cli -p c4-shim`, or
+  `--profile debug` for the debug build.

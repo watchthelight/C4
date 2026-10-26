@@ -1,0 +1,66 @@
+# <wtl> project: c4 | file: apps/desktop/electron-builder.yml | author: watchthelight </wtl>
+# The packaged app. The asar holds the page bundle, the main process and the icons; c4-cli and
+# c4-shim sit beside it under resources/bin, where scripts/stage_bin.py puts them before a build
+# (electron/package.mjs refuses to run without them). `pnpm package` writes the installers for this
+# platform under release/, `pnpm package:dir` the unpacked app alone. Nothing is signed: there is no
+# certificate for Windows or Linux and no Apple identity, so CI sets CSC_IDENTITY_AUTO_DISCOVERY to
+# false and the macOS build is whatever electron-builder makes without one.
+appId: org.watchthelight.c4
+productName: C4
+executableName: c4
+copyright: Copyright (c) 2026 watchthelight
+artifactName: c4-${version}-${os}-${arch}.${ext}
+directories:
+  output: release
+  buildResources: icons
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - icons/**/*
+  - package.json
+  - "!**/*.map"
+asar: true
+asarUnpack:
+  - icons/**/*
+extraResources:
+  - from: resources/bin
+    to: bin
+npmRebuild: false
+nodeGypRebuild: false
+electronLanguages:
+  - en-US
+win:
+  icon: icon.ico
+  target:
+    - nsis
+    - msi
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: false
+  # no updater, so no block map beside the installer
+  differentialPackage: false
+msi:
+  oneClick: false
+  perMachine: false
+mac:
+  category: public.app-category.developer-tools
+  icon: icon.icns
+  darkModeSupport: true
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+linux:
+  category: Development
+  icon: icon.png
+  maintainer: watchthelight <admin@watchthelight.org>
+  synopsis: a command center for Claude Code sessions
+  description: C4 finds every Claude Code session you can reach, shows what each one is doing and whether it needs you, and only ever controls a session through a verified channel.
+  target:
+    - AppImage
+    - deb

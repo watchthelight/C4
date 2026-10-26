@@ -1,9 +1,11 @@
 # <wtl> project: c4 | file: .scanignore | author: watchthelight </wtl>
 # Globs (fnmatch, relative to the repo root) that scripts/scan.py skips. Only fixture directories whose
-# files must contain fake secrets, socket names or process start times belong here, plus the generated
-# notices file, whose third-party license texts carry their authors' addresses; everything else in
-# fixtures/ is still scanned.
+# files must contain fake secrets, socket names or process start times belong here, plus two generated
+# files that carry third-party text: the notices, whose license texts name their authors' addresses,
+# and the pnpm lock file, whose deprecation notices do the same; everything else in fixtures/ is still
+# scanned.
 fixtures/home/sessions/*
 fixtures/home/daemon/*
 fixtures/home/jobs/*
 THIRD-PARTY-NOTICES.md
+pnpm-lock.yaml

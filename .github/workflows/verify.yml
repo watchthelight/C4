@@ -129,3 +129,17 @@ jobs:
       - name: the window builds (the page bundle and the main process)
         if: hashFiles('pnpm-lock.yaml') != ''
         run: pnpm -r build
+      # the unpacked app with the debug core and shim beside it: electron-builder fetches its own
+      # Electron build and tools from GitHub; no certificate on any runner, so no signing lookup
+      - name: the app packages (unpacked)
+        if: hashFiles('pnpm-lock.yaml') != ''
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: |
+          cargo build -p c4-cli -p c4-shim
+          python -I scripts/stage_bin.py --profile debug
+          pnpm -C apps/desktop package:dir
+      - name: what the package holds
+        if: hashFiles('pnpm-lock.yaml') != ''
+        shell: bash
+        run: find apps/desktop/release -maxdepth 4 -not -path '*/locales/*' | sort | head -n 60

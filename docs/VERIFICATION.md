@@ -32,7 +32,7 @@ app yet; a Playwright smoke test that does is planned.
 
 | Platform | Built in CI | Tests in CI | Run on hardware |
 |---|---|---|---|
-| Windows x64 | the crates, the page bundle and the Electron main process, verify run 40335232644 | `cargo test --workspace` and `pnpm -r test` green (windows-latest) | `c4 sessions`, `c4 doctor`, `c4 install` and `c4 uninstall` against the real home, the Tauri window showing hook states and context figures from live sessions, and the Electron window against the real home read only, see Results |
+| Windows x64 | the crates, the page bundle and the Electron main process, verify run 40335232644 | `cargo test --workspace` and `pnpm -r test` green (windows-latest) | `c4 sessions`, `c4 doctor`, `c4 install` and `c4 uninstall` against the real home, the Tauri window showing hook states and context figures from live sessions, the Electron window against the real home read only, and the packaged app (the window with the core from its resources, the relay of headless commands, the console behaviour at a prompt), see Results |
 | macOS arm64 | the crates, the page bundle and the Electron main process, verify run 40335232644 | `cargo test --workspace` and `pnpm -r test` green (macos-latest) | no hardware in reach |
 | macOS x64 | the crates, the page bundle and the Electron main process, verify run 40335232644 | `cargo test --workspace` and `pnpm -r test` green (macos-15-intel) | no hardware in reach |
 | Linux x64 | the crates, the page bundle and the Electron main process, verify run 40335232644 | `cargo test --workspace` and `pnpm -r test` green (ubuntu-latest) | not yet |
@@ -320,3 +320,28 @@ result below the list when you run it.
 - 2026-10-26, the verify workflow for commit dd59861 (run 40335232644), the first without the
   Tauri shell: the lint job and the four test jobs green, no system packages installed on any
   runner, `pnpm -r build` writing the page bundle and the main process on all four.
+- 2026-10-26, the electron-builder package, locally on Windows. `python scripts/stage_bin.py`
+  copied the release `c4-cli.exe` and `c4-shim.exe` under `apps/desktop/resources/bin/`, and
+  `pnpm -C apps/desktop package:dir` wrote `release/win-unpacked/`: `c4.exe` with a version
+  resource saying product C4, company watchthelight, version 0.0.1 and the copyright line;
+  `resources/app.asar` holding the page bundle, the main process, `icons/` and
+  `@preact/signals-core` (42 entries, the icons unpacked beside it); `resources/bin/c4-cli.exe`
+  and `c4-shim.exe`; Electron's own files with `LICENSES.chromium.html`. By hand, that `c4.exe`
+  with no `C4_CLI` in the environment, a scratch C4 home and the fixture Claude home: the main
+  process started `resources\bin\c4-cli.exe serve` (the only `c4-cli` among its children), the
+  window listed the fixture sessions under the title bar mark, Ctrl+Shift+B over the DevTools
+  protocol folded the sidebar, and the close wrote `view` rail to `prefs.json` and ended with
+  exit 0 and no core left. The relay from PowerShell with the output piped:
+  `c4 sessions --files-only --json` exit 0 in 161 ms with the fixture sessions,
+  `c4 doctor --no-commands` exit 0 and reporting the shim beside `c4-cli` under `resources/bin`
+  as present, `c4 --version` the core's version, `c4 --help` the core's usage (its usage line
+  says `c4-cli.exe`, since the text is the core's), `c4 nonsense` exit 2. From an interactive
+  PowerShell prompt in its own console: the prompt came back after 25 ms with the exit code unset
+  and `c4.exe` still running, the doctor output appeared on that console afterwards, and the
+  process was gone 4 s later; `cmd /c` and a batch file waited (165 and 189 ms) and printed the
+  output before their next line. `pnpm -C apps/desktop package` then built the installers,
+  fetching WiX, NSIS and 7zip on the way (109 s on that first run): `c4-0.0.1-win-x64.exe`
+  (100 MiB) and `c4-0.0.1-win-x64.msi` (114 MiB), the names `artifactName` promised, and no
+  block map beside the installer since the NSIS differential package is off. Not checked: the
+  installers themselves (built, not run), and the macOS and Linux packages, which the verify
+  workflow builds unpacked.

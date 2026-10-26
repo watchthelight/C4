@@ -3,6 +3,8 @@ target/
 node_modules/
 dist/
 dist-electron/
+apps/desktop/release/
+apps/desktop/resources/
 coverage/
 playwright-report/
 test-results/

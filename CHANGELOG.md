@@ -179,5 +179,12 @@ stay at 0.y.z while the interfaces settle.
   `c4-cli serve`, the Electron main process that runs it and serves the page from its own scheme,
   and the page. The plan under docs/prompts carries a dated amendment that maps each Tauri piece to
   what replaced it.
+- The packaged app, through electron-builder (`apps/desktop/electron-builder.yml`): the page
+  bundle, the main process and the icons in the asar, `c4-cli` and `c4-shim` beside it under
+  `resources/bin/` (`scripts/stage_bin.py` copies them from `target/<profile>/`, and
+  `pnpm -C apps/desktop package` refuses to build without them), the executable named `c4`, NSIS
+  and MSI installers on Windows, a dmg for each macOS architecture, an AppImage and a deb on Linux,
+  all unsigned, under `apps/desktop/release/`. `package:dir` builds the unpacked app alone, which
+  the verify workflow now does on every runner with the debug core.
 
 [Unreleased]: https://github.com/watchthelight/C4/compare/c3a0a47...HEAD
