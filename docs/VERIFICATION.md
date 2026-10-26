@@ -278,3 +278,32 @@ result below the list when you run it.
   40 ms after the shim started, the session working with its name and one transition, the ingest
   report at one line and two observations folded. Closing stdin ended the process with exit 0
   after 22 ms, nothing on stderr, and `c4-cli doctor --no-commands` found the endpoint free.
+- 2026-10-26, the verify workflow for commit 22a5e90: the push run (40324861590) was cancelled
+  thirteen minutes in by the weekly scheduled run (40326508177), which shared its concurrency
+  group and started while the push run's lint job was still downloading the Linux webkit packages
+  on an Ubuntu 26 runner; the scheduled run passed on the same commit, lint and the four test jobs
+  green. The group now carries the event name, and the lint job no longer installs those packages.
+- 2026-10-26, the verify workflow for commit 594c015 (run 40330334635): the lint job and the four
+  test jobs green.
+- 2026-10-26, the Electron shell, locally on Windows: tsc for the page and for the main process,
+  eslint, vitest 91 (the argument rule, the page origin check, the scheme's path check, seven
+  sidecar tests against a stand-in core, five bridge tests), `pnpm build`, the notices check and
+  the header, slop and scan scripts green. By hand, Electron 45.0.0 (Chromium 156) started with
+  `electron .` against the cargo debug `c4-cli` and a scratch C4 home, the real Claude home read
+  only: the window handle 1.5 s after the start, the core's hello 66 to 172 ms after the main
+  process started it across the runs, Chromium rendering the sidebar with the four sessions, the
+  inspector placeholder and the strip reading `bridge: electron`. While the window was open,
+  `electron . sessions --json --files-only` relayed with exit 0 in 245 ms and the four sessions,
+  `electron . doctor --no-commands` with exit 0, `electron . frobnicate` with exit 2 and the core's
+  usage error; a second `electron .` exited 0 after 118 ms and the first window took focus;
+  closing the window ended the process with exit 0 after 0.8 s, the core gone with it, nothing on
+  stdout and no `core:` lines on stderr. Preferences through the shell, driven over the DevTools
+  protocol on a window started with `--remote-debugging-port` alone (switches open the window;
+  a word relays): Ctrl+Shift+B through Chromium's input pipeline folded the sidebar
+  (`data-sidebar` from full to rail), the close left `prefs.json` under the scratch home with
+  `view` rail, the next start came back folded with its four squares, the chord opened it again
+  and the file read `view` full after that close. `pnpm dev` built the main process, started Vite
+  on 127.0.0.1:1420, opened Electron against it with the core up and the page served from Vite,
+  and took Vite down when the window closed, exit 0. Not checked: the console behaviour of the
+  packaged windowed `c4` run from a terminal (the relay was checked with pipes only), and macOS
+  and Linux, where the shell has not run.

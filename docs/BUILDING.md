@@ -9,6 +9,7 @@
 | Rust | rustup from rustup.rs or `winget install Rustlang.Rustup`; the toolchain in `rust-toolchain.toml` installs itself on first use | rustup | rustup |
 | C toolchain | Visual Studio Build Tools 2022 with the "Desktop development with C++" workload (MSVC and a Windows SDK) | Xcode command line tools | `build-essential` |
 | WebView | WebView2 (preinstalled on Windows 11) | WKWebView (part of macOS) | `libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf xdg-utils` |
+| Electron | downloaded by `pnpm install` (about 120 MB per platform) | same | same |
 | Node and pnpm | Node 22 or later, pnpm 10 | same | same |
 | Python | 3.11 or later, for the scripts and the hook bridge | same | same |
 
@@ -21,7 +22,11 @@ cargo test --workspace                                 # every crate, including 
 cargo clippy --workspace --all-targets -- -D warnings  # what CI runs
 pnpm install                                           # frontend dependencies (apps/desktop)
 pnpm -r lint && pnpm -r typecheck && pnpm -r test      # eslint, tsc, vitest
-pnpm -C apps/desktop tauri dev                         # the app with hot reload
+pnpm -C apps/desktop dev                               # the Electron window against Vite, reloading on edit
+pnpm -C apps/desktop build                             # dist/ (the page) and dist-electron/ (the main process)
+pnpm -C apps/desktop start                             # the Electron window from that build
+pnpm -C apps/desktop dev:web                           # Vite alone, for a browser and the synthetic bridge
+pnpm -C apps/desktop tauri dev                         # the Tauri app with hot reload
 pnpm -C apps/desktop tauri build --debug --no-bundle   # the debug app without installers
 pnpm -C apps/desktop tauri build                       # a release bundle for this platform, without the shim
 python -I scripts/stage_shim.py                        # stage the built c4-shim as the app's sidecar (see below)
@@ -49,6 +54,9 @@ suite. The crate links `c4-cli`, `c4-core`, `c4-discovery` and `c4-ingest` direc
 server runs inside the app on a tokio runtime of its own, and the only other process is the shim
 that Claude Code starts.
 
+The window is moving to Electron; the section below describes that shell, and the Tauri notes here
+apply until it is removed.
+
 `pnpm -C apps/desktop tauri dev` starts Vite on port 1420 and opens the app against it. `tauri build`
 runs `pnpm build` first and embeds `dist/` in the executable. A plain `cargo build` or `cargo test` of
 the workspace needs neither Node nor `dist/`: without the Tauri CLI the crate is built in development
@@ -56,9 +64,9 @@ mode and its window would load `http://localhost:1420`, so the executable to run
 `tauri build` produces, `target/debug/c4` or `target/release/c4`.
 
 The window picks its data source at startup. Inside the app it calls the Rust commands. Opened in a
-browser (`pnpm -C apps/desktop dev`, then http://localhost:1420) it serves eight synthetic sessions
-from `src/bridge/mock.ts`, so the layout can be worked on without Claude Code; `VITE_C4_BRIDGE=mock`
-or `=tauri` forces either.
+browser (`pnpm -C apps/desktop dev:web`, then http://localhost:1420) it serves eight synthetic
+sessions from `src/bridge/mock.ts`, so the layout can be worked on without Claude Code;
+`VITE_C4_BRIDGE=mock`, `=electron` or `=tauri` forces one.
 
 The app refreshes from the Claude home's files every 2 s (`C4_REFRESH_MS`, floor 250) and runs the
 session list command on every eighth pass. Hook and status line payloads arrive through the shim on
@@ -94,9 +102,51 @@ and copy the files from `<dir>` (the command also writes Android and iOS sets, w
 The 256 px file is named `256x256.png` here; the generator names it with a `2x` suffix after an `@`,
 which reads as an e-mail address to the secret scan. The pixel size is what the Linux bundler reads.
 
+## The Electron shell
+
+The window is moving from the platform webview (WebView2 on Windows) to Electron, so that Chromium
+renders it everywhere. `apps/desktop/electron/` is the main process: `main.ts` decides between the
+window and the command line, `sidecar.ts` runs `c4-cli serve` as a child process and speaks its line
+protocol, `protocol.ts` serves `dist/` under the app's own `c4://app/` scheme with the content security
+policy the Tauri window had, `ipc.ts` carries the window's four requests and the core's event lines,
+`preload.cts` is the one script the sandboxed page gets (it puts `window.c4` there), and `window.ts`
+opens the window. `tsc -p electron/tsconfig.json` compiles the directory to `dist-electron/`, which git
+ignores; the preload is a `.cts` file because a sandboxed preload must be CommonJS while the main
+process is ES modules. The tests under `electron/tests/` run the sidecar against `fake-core.mjs`, a
+stand-in that speaks the serve protocol.
+
+`pnpm -C apps/desktop build` writes `dist/` and `dist-electron/`; `pnpm -C apps/desktop start` opens
+the window from them. The core is `target/debug/c4-cli` (`.exe` on Windows) after
+`cargo build -p c4-cli`, or whatever `C4_CLI` names; without it the window shows an error box and
+exits. `pnpm -C apps/desktop dev` compiles the main process, starts Vite on 127.0.0.1:1420 and opens
+Electron against it (`C4_DEV_URL`), so the page reloads on edit. `C4_DEVTOOLS=1` opens the developer
+tools, `C4_LOG=debug` (or `warn`, `error`) sets the main process's log level on stderr, and the core's
+own stderr lines appear there with a `core:` prefix. Chromium's files (cache, shader cache, local
+storage) live under `<C4 home>/electron`, so `C4_HOME` moves them with the rest.
+
+A request from the page waits for the core's hello line, so the window may load before the core is
+up. A core that exits is started again after a pause that grows from one second to thirty while it
+keeps failing, the requests in flight fail with the reason, and the page hears about each change as
+a `core` event. A core that speaks another protocol version is fatal: an error box names the path.
+On quit the shell closes the core's stdin first, after a short grace for the preferences the page
+flushes on its way out, and kills a core that has not left two seconds later.
+
+`pnpm install` downloads the Electron build for this platform (about 120 MB) through the package's
+install script; `ELECTRON_SKIP_BINARY_DOWNLOAD=1` skips it, which the lint and test jobs set. If
+`apps/desktop/node_modules/electron/dist` is missing after an install (pnpm did not run the script on
+one machine here; the cause was not found), `node node_modules/electron/install.js` in `apps/desktop`
+fetches it.
+
+With the `electron` binary itself (`pnpm start`, `electron .`) a few arguments never reach C4:
+Electron's default app answers `--version`, `--abi`, `--help` and `-i` on its own. Everything else
+relays as the packaged `c4` will: `electron . sessions --json`, `electron . doctor`. Switches alone
+open the window and reach Chromium, which is how a driver attaches to it:
+`electron . --remote-debugging-port=9333`.
+
 ## Headless commands
 
-Any argument on the command line makes `c4` run a headless command and exit without opening a window:
+A word on the command line, or `--help` or `--version`, makes `c4` run a headless command and exit
+without opening a window; a command line of switches alone opens the window:
 
 ```sh
 c4 sessions                        # every session discovery can see, as a table
@@ -152,6 +202,9 @@ check` until it is added to `deny.toml` and `about.toml` on purpose. MPL-2.0 is 
   variable that points at `cl.exe` makes cc-rs skip its own MSVC environment setup, so headers are not
   found outside a developer prompt. Unset it for the build (`$env:CC = $null` in PowerShell) or build
   from a "x64 Native Tools" prompt. `scripts/precommit.py` drops it for its own child processes.
+- **The Electron window says the core is missing.** It looked for `target/debug/c4-cli` (`.exe` on
+  Windows) two directories above `apps/desktop`, or the path in `C4_CLI`. `cargo build -p c4-cli`
+  puts it there.
 - **Slow terminal rendering on Linux.** WebKitGTK can put WebGL on a software path. Settings has a
   renderer toggle; the DOM renderer is the fallback and is always available.
 - **The app window is blank on Linux.** Check that the WebKitGTK 4.1 development package was present

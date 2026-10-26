@@ -22,6 +22,8 @@ env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
   RUST_BACKTRACE: 1
+  # lint and tests need the electron package, not its binary (about 120 MB per platform)
+  ELECTRON_SKIP_BINARY_DOWNLOAD: 1
 
 jobs:
   lint:

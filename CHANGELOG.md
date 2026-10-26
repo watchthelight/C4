@@ -158,5 +158,18 @@ stay at 0.y.z while the interfaces settle.
   `crates/c4-cli/src/serve/`, so the window and the child process share them. A test drives
   `c4-cli serve` as a child process through the whole protocol, including a hook line delivered
   through the shim's own code and the exit when stdin closes (`crates/c4-cli/tests/serve.rs`).
+- The window runs in Electron, over `c4-cli serve`. Chromium renders the page on every platform
+  (the Tauri window used the platform webview, WebView2 on Windows). `apps/desktop/electron/` is
+  the main process: it starts the core as a child process and speaks its JSON lines, serves the
+  page from the app's own `c4://app/` scheme with the same content security policy, and gives the
+  sandboxed page `window.c4` through a preload script. A request waits for the core's hello; a
+  core that exits is started again after a growing pause and the page hears about it as a `core`
+  event; a stop closes the core's stdin first, after a grace for the preferences the page flushes
+  on its way out. `c4 <args>` still runs the command line with no window. `pnpm -C apps/desktop
+  dev` and `start` open the Electron window; the Tauri shell stays in the tree for one more
+  commit. Tests cover the argument rule, the page origin check, the path check of the scheme, the
+  sidecar against a stand-in core (ids, events, a restart, a protocol mismatch, stop and kill) and
+  the renderer bridge (`apps/desktop/electron/tests/`, `apps/desktop/tests/electron.test.ts`).
+  Electron is listed in THIRD-PARTY-NOTICES.md with a pointer to its own LICENSES.chromium.html.
 
 [Unreleased]: https://github.com/watchthelight/C4/compare/c3a0a47...HEAD

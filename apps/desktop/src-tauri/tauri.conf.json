@@ -5,7 +5,7 @@
   "version": "0.0.1",
   "identifier": "org.watchthelight.c4",
   "build": {
-    "beforeDevCommand": "pnpm dev",
+    "beforeDevCommand": "pnpm dev:web",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "pnpm build",
     "frontendDist": "../dist"

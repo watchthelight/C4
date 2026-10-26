@@ -254,7 +254,7 @@ export interface PrefsDoc {
 
 /** What the window needs from the core, however it is reached. */
 export interface Bridge {
-  readonly kind: "tauri" | "mock";
+  readonly kind: "electron" | "tauri" | "mock";
   /** One files-only pass, then the snapshot. */
   listSessions(): Promise<Snapshot>;
   /** Called after every refresh. Resolves to the function that stops the calls. */

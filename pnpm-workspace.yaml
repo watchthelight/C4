@@ -2,6 +2,9 @@
 packages:
   - "apps/*"
 
-# esbuild's install script only places its platform binary; nothing else may run a script.
+# esbuild's install script only places its platform binary, and electron's downloads the Electron
+# build for this platform (skipped with ELECTRON_SKIP_BINARY_DOWNLOAD=1, as the CI lint and test
+# jobs do); nothing else may run a script.
 onlyBuiltDependencies:
+  - electron
   - esbuild

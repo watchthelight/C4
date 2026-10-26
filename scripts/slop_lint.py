@@ -19,7 +19,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TEXT_SUFFIXES = {".md", ".txt", ".html", ".css", ".ts", ".js", ".rs", ".py", ".toml", ".yml", ".yaml",
-                 ".sh", ".hbs", ".svg", ".cjs", ".mjs"}
+                 ".sh", ".hbs", ".svg", ".cjs", ".mjs", ".cts", ".mts"}
 PROSE_SUFFIXES = {".md", ".txt", ".html"}
 STRINGS_PREFIX = "apps/desktop/src/strings/"
 ASCII_EXEMPT_PREFIXES = ("fixtures/", "assets/fonts/", "vendor/", "node_modules/", "target/", "dist/")
