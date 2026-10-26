@@ -9,8 +9,9 @@ from a per-session host process.
 
 Status: Milestone 1 delivers `c4-core`, `c4-discovery`, `c4-transcript` (tailer, parser, follower,
 index and watcher), `c4-testkit`, `c4-cli` and `c4-desktop`, whose window lists sessions. Milestone 2
-has so far added `c4-shim`, `c4-ingest`, `Discovery::fold`, `c4 install` and `c4 uninstall`, and the
-app's ingest worker, which runs the server and folds its lines. The other crates are named below with
+has so far added `c4-shim`, `c4-ingest`, `Discovery::fold`, `c4 install` and `c4 uninstall`, the
+app's ingest worker, which runs the server and folds its lines, and the preferences file under the C4
+home with the two commands that read and write it. The other crates are named below with
 the milestone that brings them; solid edges in the crate graph are in the tree, dotted ones are
 planned.
 
@@ -105,7 +106,9 @@ stderr and the window runs without hooks.
 | Call | Direction | Payload |
 |---|---|---|
 | `list_sessions` | window to core (invoke) | runs one files-only pass and returns the document |
-| `about` | window to core (invoke) | C4 version, the Claude home and what chose it, the C4 home and what chose it, the ingest endpoint, refresh period, agents cadence, operating system |
+| `about` | window to core (invoke) | C4 version, the Claude home and what chose it, the C4 home and what chose it, the ingest endpoint, the preferences file and what was wrong with it at startup if anything, refresh period, agents cadence, operating system |
+| `prefs_get` | window to core (invoke) | the preferences document as the core holds it |
+| `prefs_set` | window to core (invoke) | `section`, `value`: replaces one section, writes the file, returns the document as written; an error string when the name is not a section name, the result would pass 1 MiB or the write failed |
 | `sessions` | core to window (event) | the document, after every pass and after every batch of ingested lines |
 
 The document is what `c4 sessions --json` prints (`schema`, `at`, `home`, `sessions[]`, `report`)
@@ -115,16 +118,21 @@ every state change in the pass or the batch) and `ingest` (the server's state an
 counts of connections, lines, replayed lines, drops, folded observations and subagent lines, and when
 the last line arrived). `apps/desktop/src/bridge/types.ts` mirrors every shape.
 
-The window is TypeScript without a framework. Four signals (`snapshot`, `about`, `selected`, a
-one-second `clock`) feed one render per animation frame; nothing renders while the window is hidden.
+The window is TypeScript without a framework. It reads the preferences first and builds the sidebar
+from them (`apps/desktop/src/prefs.ts`; a core that cannot give them yields the defaults and a note
+in the status strip). Five signals (`snapshot`, `about`, `selected`, `note` for a preferences
+problem of this run, a one-second `clock`) feed one render per animation frame; nothing renders
+while the window is hidden. Every change by hand in the sidebar (a pin, the grouping, a folded
+group, the density, the splitter) goes to a store that writes the `sidebar` section a quarter of a
+second after the last change, one write in flight at a time, and flushes on `pagehide`.
 `selectBridge()` picks the Tauri bridge when the page runs inside the app and the mock bridge (eight
 synthetic sessions on a scripted timeline) in a plain browser, so the layout can be worked on and
 tested without Claude Code; `VITE_C4_BRIDGE=mock|tauri` forces either. `fixtures/labels.json` is the
 label contract: the Rust side and the TypeScript side are both tested against it, so the window never
 shows a state label the command line would contradict.
 
-Capabilities: the window runs with Tauri's `core:default` capability only; the two commands above are
-the whole surface. The content security policy allows `self` and inline styles and nothing remote.
+Capabilities: the window runs with Tauri's `core:default` capability only; the four commands above
+are the whole surface. The content security policy allows `self` and inline styles and nothing remote.
 
 ## Event flow
 
@@ -237,14 +245,26 @@ between the Claude Code process and a pane the host enumerated. The router re-ch
 in `c4-core` already carry which hosts can take input, so the window labels every session Observed
 or Disconnected and draws no input control.
 
-## Store (Milestone 2)
+## Store
 
-SQLite through rusqlite with the bundled engine, WAL mode and FTS5. Tables: `sessions`, `identities`
-(pid and creation time history per session), `events` (append-only, per-session sequence),
-`cursors` (transcript path, byte offset, size, last record uuid), `usage_samples`, `agents`, `tasks`,
-`config_tx`, `audit`, `hosts`, `layouts`, `scrollback` (FTS5). Retention by age and row count with a
-vacuum job. The file lives under `~/.c4/` and can be opened with any SQLite tool. Nothing is
-persisted yet; every start of the window begins with an empty table and a fresh pass.
+What is kept between runs today is `prefs.json` under the C4 home
+(`apps/desktop/src-tauri/src/prefs.rs`): one JSON object with `schema` 1 and one section per part
+of the window, `sidebar` today (`density`, `group_by`, `pinned`, `collapsed`, `width`). The core
+treats a section as opaque JSON: `prefs_set` replaces one, refuses a result over 1 MiB, writes
+`prefs.json.tmp` (0600 on Unix, the directory 0700 when it creates it) and renames it over the file,
+with three tries for the rename on Windows. At startup a file that is not a JSON object, or is over
+the cap, is renamed to `prefs.json.bad-<stamp>`, the window starts from an empty document and
+`about` carries the problem for the status strip. A section or a `schema` number another version
+wrote is kept as it is. The window owns each section's shape and reads it one value at a time with
+a default for whatever is missing or malformed. The session table is not persisted: every start of
+the window begins with an empty table and a fresh pass.
+
+SQLite through rusqlite (Milestone 3 onwards) with the bundled engine, WAL mode and FTS5. Tables:
+`sessions`, `identities` (pid and creation time history per session), `events` (append-only,
+per-session sequence), `cursors` (transcript path, byte offset, size, last record uuid),
+`usage_samples`, `agents`, `tasks`, `config_tx`, `audit`, `hosts`, `layouts`, `scrollback` (FTS5).
+Retention by age and row count with a vacuum job. The file will live under `~/.c4/` beside
+`prefs.json` and can be opened with any SQLite tool.
 
 ## Performance budgets
 

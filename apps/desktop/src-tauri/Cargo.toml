@@ -30,6 +30,7 @@ c4-ingest = { path = "../../../crates/c4-ingest" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tauri = { workspace = true }
+thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 
@@ -39,6 +40,7 @@ windows-sys = { workspace = true }
 [dev-dependencies]
 c4-shim = { path = "../../../crates/c4-shim" }
 c4-testkit = { path = "../../../crates/c4-testkit" }
+tempfile = { workspace = true }
 
 [lints]
 workspace = true

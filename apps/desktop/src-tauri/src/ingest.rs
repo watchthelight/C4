@@ -394,6 +394,7 @@ mod tests {
             scratch.files_only(),
             refresh_period(),
             Ingest::new(c4_home.clone(), "test"),
+            crate::prefs::Prefs::open(c4_home),
         ))
     }
 

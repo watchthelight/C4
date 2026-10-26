@@ -1,7 +1,8 @@
 // <wtl> project: c4 | file: apps/desktop/src/bridge/mock.ts | author: watchthelight </wtl>
 // A synthetic core for the browser and the tests: eight invented sessions with fake paths, the same
-// command and event names as the real bridge, and a scripted state rotation so the window can be
-// watched changing. Nothing here comes from a real Claude home.
+// command and event names as the real bridge, a scripted state rotation so the window can be
+// watched changing, and preferences held in memory or in whatever storage it is given. Nothing
+// here comes from a real Claude home.
 
 import { attentionOrder } from "../format";
 import type {
@@ -9,6 +10,7 @@ import type {
   Bridge,
   Evidence,
   IngestReport,
+  PrefsDoc,
   SessionState,
   SessionView,
   Snapshot,
@@ -17,11 +19,22 @@ import type {
   TransitionOut,
 } from "./types";
 
+/** Where the mock keeps its preferences between page loads: the browser's storage, or nothing. */
+export interface PrefsStorage {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+}
+
+/** The storage key the mock's preferences live under. */
+export const PREFS_KEY = "c4.prefs";
+
 export interface MockOptions {
   /** Milliseconds between scripted passes once a listener is attached; 0 means advance by hand. */
   period?: number;
   /** The clock, for deterministic tests. */
   now?: () => number;
+  /** Where the preferences persist; memory alone when absent. */
+  storage?: PrefsStorage | null;
 }
 
 export interface MockBridge extends Bridge {
@@ -251,6 +264,27 @@ export function syntheticSessions(now: number): SessionView[] {
 const ALPHA = "0a1b2c3d-0001-4000-8000-000000000001";
 const GAMMA = "0a1b2c3d-0001-4000-8000-000000000004";
 
+/** A copy with no shared references, through JSON, which is what the real bridge gives. */
+function copy<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value === undefined ? null : value)) as T;
+}
+
+/** The preferences in `storage`, when it holds a JSON object; else nothing. */
+function loadPrefs(storage: PrefsStorage | null | undefined): PrefsDoc {
+  try {
+    const text = storage?.getItem(PREFS_KEY);
+    if (text) {
+      const parsed: unknown = JSON.parse(text);
+      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+        return parsed as PrefsDoc;
+      }
+    }
+  } catch {
+    // storage that is refused, or holds something that is not JSON: start from nothing
+  }
+  return {};
+}
+
 /** What alpha cycles through, one step per pass. */
 const ALPHA_SCRIPT: readonly { state: SessionState; evidence: (at: number) => Evidence }[] = [
   { state: { state: "running_tool", tool: "Bash" }, evidence: (at) => hook("PreToolUse", at) },
@@ -267,6 +301,7 @@ export function createMock(options: MockOptions = {}): MockBridge {
   let tick = 0;
   let sessions = syntheticSessions(now());
   let agents: AgentsRun | null = null;
+  let prefs: PrefsDoc = { schema: 1, ...loadPrefs(options.storage) };
 
   function report(): SnapshotReport {
     return {
@@ -393,6 +428,8 @@ export function createMock(options: MockOptions = {}): MockBridge {
         c4_home: "/home/example/.c4",
         c4_home_source: "synthetic",
         endpoint: "/home/example/.c4/ingest.sock",
+        prefs_path: "/home/example/.c4/prefs.json",
+        prefs_problem: null,
         refresh_ms: period,
         agents_every: 8,
         os: "mock",
@@ -409,6 +446,20 @@ export function createMock(options: MockOptions = {}): MockBridge {
           timer = null;
         }
       });
+    },
+    prefsGet: () => Promise.resolve(copy(prefs)),
+    prefsSet: (section, value) => {
+      // the same rule as the core: lowercase letters and underscores, and never the schema key
+      if (section === "schema" || !/^[a-z_]+$/.test(section)) {
+        return Promise.reject(new Error(`${JSON.stringify(section)} is not a section name`));
+      }
+      prefs = { ...prefs, [section]: copy(value) };
+      try {
+        options.storage?.setItem(PREFS_KEY, JSON.stringify(prefs));
+      } catch {
+        // storage that is full or refused keeps nothing; the window still has its copy
+      }
+      return Promise.resolve(copy(prefs));
     },
   };
 }

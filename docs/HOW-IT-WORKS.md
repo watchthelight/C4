@@ -222,11 +222,25 @@ ran and what it returned, how many files could not be read, the ingest server's 
 lines it has taken in, when the last one arrived, whether any were dropped, or that another C4 holds
 the endpoint), and where the Claude home came from.
 
+The splitter at the sidebar's right edge sets its width: drag it, or focus it and press Left or
+Right for 10px, Home or End for the limits; a double-click puts the 320px default back. The sidebar
+never goes under 220px and the workspace keeps 400px, so a narrower window shows less of the width
+you set and a wider one gives it back.
+
 Nothing in the window types into any session (the filter box narrows the list and reaches nothing
-else), and nothing is persisted: closing the window forgets the table, the pins, the grouping, the
-folded groups and the density, and stops the ingest server; the next start runs a fresh pass and
-replays what the shim spooled in the meantime. `c4 sessions`, `c4 doctor` and `c4 telemetry`
-print the same facts without a window; docs/BUILDING.md lists them.
+else). The sidebar's organization survives a restart: the pins, the grouping, the folded groups, the
+density and the width go to `prefs.json` under the C4 home (`~/.c4/` unless `C4_HOME` or
+`--c4-home` says otherwise) a quarter of a second after each change by hand (a change made in the
+quarter second before the window closes may not reach the file), and the next start builds the
+sidebar from them before the first pass. The file is one JSON object with a `schema`
+number and one section per part of the window (`sidebar` today). The core keeps it whole and
+replaces one section at a time through a temporary file and a rename; a section or a schema number
+another version wrote survives. A file that is not a JSON object is moved aside as
+`prefs.json.bad-<stamp>` and the status strip says so; a value the window does not understand falls
+back to its default on its own, so a file from another version never stops the window. The table
+of sessions is not kept: closing the window stops the ingest server, and the next start runs a
+fresh pass and replays what the shim spooled in the meantime. `c4 sessions`, `c4 doctor` and
+`c4 telemetry` print the same facts without a window; docs/BUILDING.md lists them.
 
 ## What C4 never reads
 

@@ -1,6 +1,6 @@
 // <wtl> project: c4 | file: apps/desktop/src/chrome.ts | author: watchthelight </wtl>
 // The top bar (mark, counts, home) and the status strip (refresh timing, session list command,
-// the ingest server, version, bridge).
+// the ingest server, version, what is wrong with the preferences file if anything, bridge).
 
 import { el } from "./dom";
 import { elapsed, needsAttention, plural } from "./format";
@@ -92,6 +92,9 @@ export function createStrip(bridge: string): Strip {
       }
       if (about) {
         parts.push(`home from ${about.home_source}`, `c4 ${about.version}`);
+        if (about.prefs_problem !== null) {
+          parts.push(`prefs: ${about.prefs_problem}`);
+        }
       }
       parts.push(`bridge: ${bridge}`);
       root.textContent = parts.join("  |  ");

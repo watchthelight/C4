@@ -234,9 +234,22 @@ export interface About {
   c4_home_source: string;
   /** The pipe name or socket path the shim writes to. */
   endpoint: string;
+  /** The preferences file under the C4 home, and what was wrong with it when the window opened. */
+  prefs_path: string;
+  prefs_problem: string | null;
   refresh_ms: number;
   agents_every: number;
   os: string;
+}
+
+/**
+ * What the window keeps between runs, as the core stores it under the C4 home: one object with a
+ * `schema` number and one section per part of the window. src/prefs.ts owns the sections' shapes
+ * and reads them tolerantly; the core keeps the file whole.
+ */
+export interface PrefsDoc {
+  schema?: number;
+  [section: string]: unknown;
 }
 
 /** What the window needs from the core, however it is reached. */
@@ -247,4 +260,8 @@ export interface Bridge {
   /** Called after every refresh. Resolves to the function that stops the calls. */
   onSessions(listener: (snapshot: Snapshot) => void): Promise<() => void>;
   about(): Promise<About>;
+  /** The preferences as the core holds them. */
+  prefsGet(): Promise<PrefsDoc>;
+  /** Replace one section and write the file. Resolves to the document as written. */
+  prefsSet(section: string, value: unknown): Promise<PrefsDoc>;
 }

@@ -10,7 +10,8 @@
 //! events and status line payloads have no cadence: the ingest worker (`ingest.rs`) folds each batch
 //! as it arrives and emits the same event. The document the window receives is the one
 //! `c4 sessions --json` prints, plus the transitions of the pass or batch, the pass counter, the
-//! last run of the session list command and the ingest report.
+//! last run of the session list command and the ingest report. Two more commands read and write
+//! the preferences file under the C4 home (`prefs.rs`).
 
 use c4_cli::sessions::snapshot_json;
 use c4_cli::{C4HomeArgs, HomeArgs};
@@ -27,6 +28,7 @@ use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::ingest::{Ingest, IngestReport, Worker};
+use crate::prefs::Prefs;
 
 /// The environment variable that sets the refresh period in milliseconds.
 pub const REFRESH_MS_ENV: &str = "C4_REFRESH_MS";
@@ -65,6 +67,10 @@ pub struct About {
     pub c4_home_source: &'static str,
     /// The ingest endpoint: the pipe name or socket path the shim writes to.
     pub endpoint: String,
+    /// The preferences file under the C4 home.
+    pub prefs_path: String,
+    /// What was wrong with the preferences file when the window opened, if anything.
+    pub prefs_problem: Option<String>,
     /// The refresh period in milliseconds.
     pub refresh_ms: u64,
     /// The session list command runs every this many passes.
@@ -87,13 +93,14 @@ pub struct AppState {
     home_source: &'static str,
     refresh: Duration,
     ingest: Ingest,
+    prefs: Prefs,
     inner: Mutex<Inner>,
 }
 
 impl AppState {
     /// Discovery over the home the environment names, with the session list command from the
-    /// environment (`C4_AGENTS_CMD`, else `claude agents --json`) and the ingest server on the C4
-    /// home the environment names (`C4_HOME`, else `~/.c4`).
+    /// environment (`C4_AGENTS_CMD`, else `claude agents --json`), and the ingest server and the
+    /// preferences file on the C4 home the environment names (`C4_HOME`, else `~/.c4`).
     #[must_use]
     pub fn from_env() -> Self {
         let args = HomeArgs { home: None };
@@ -101,16 +108,19 @@ impl AppState {
         let opts =
             DiscoveryOptions::files_only(home.clone()).with_agents(AgentsCommand::from_env());
         let c4 = C4HomeArgs { c4_home: None };
+        let c4_home = c4.resolve();
         Self::new(
             home,
             args.source(),
             opts,
             refresh_period(),
-            Ingest::new(c4.resolve(), c4.source()),
+            Ingest::new(c4_home.clone(), c4.source()),
+            Prefs::open(&c4_home),
         )
     }
 
-    /// Discovery over `home` with `opts`, refreshed every `refresh`, and the ingest handle.
+    /// Discovery over `home` with `opts`, refreshed every `refresh`, the ingest handle and the
+    /// preferences.
     #[must_use]
     pub fn new(
         home: ClaudeHome,
@@ -118,12 +128,14 @@ impl AppState {
         opts: DiscoveryOptions,
         refresh: Duration,
         ingest: Ingest,
+        prefs: Prefs,
     ) -> Self {
         Self {
             home,
             home_source,
             refresh,
             ingest,
+            prefs,
             inner: Mutex::new(Inner {
                 discovery: Discovery::new(opts),
                 probe: SysinfoProbe::new(),
@@ -204,6 +216,12 @@ impl AppState {
         &self.ingest
     }
 
+    /// The preferences file.
+    #[must_use]
+    pub fn prefs(&self) -> &Prefs {
+        &self.prefs
+    }
+
     /// The static facts.
     #[must_use]
     pub fn about(&self) -> About {
@@ -214,6 +232,8 @@ impl AppState {
             c4_home: self.ingest.home().root().display().to_string(),
             c4_home_source: self.ingest.report().home_source,
             endpoint: self.ingest.home().endpoint(),
+            prefs_path: self.prefs.path().display().to_string(),
+            prefs_problem: self.prefs.problem().map(str::to_string),
             refresh_ms: self.refresh.as_millis() as u64,
             agents_every: AGENTS_EVERY,
             os: std::env::consts::OS,
@@ -274,6 +294,27 @@ fn about(state: State<'_, Arc<AppState>>) -> About {
     state.about()
 }
 
+/// The preferences document as it is now.
+#[tauri::command]
+#[allow(clippy::needless_pass_by_value)]
+fn prefs_get(state: State<'_, Arc<AppState>>) -> Value {
+    state.prefs().document()
+}
+
+/// Replace one section of the preferences and write the file. Returns the document as written.
+#[tauri::command]
+#[allow(clippy::needless_pass_by_value)]
+fn prefs_set(
+    state: State<'_, Arc<AppState>>,
+    section: String,
+    value: Value,
+) -> Result<Value, String> {
+    state
+        .prefs()
+        .set_section(&section, value)
+        .map_err(|e| e.to_string())
+}
+
 /// Open the window and run until it closes. Returns the process exit code.
 ///
 /// The ingest worker starts once the app is built and stops on the exit event, before the process
@@ -285,7 +326,12 @@ pub fn run() -> ExitCode {
     let period = state.refresh;
     let built = tauri::Builder::default()
         .manage(state.clone())
-        .invoke_handler(tauri::generate_handler![list_sessions, about])
+        .invoke_handler(tauri::generate_handler![
+            list_sessions,
+            about,
+            prefs_get,
+            prefs_set
+        ])
         .setup(move |app| {
             spawn_refresh(app.handle().clone(), period);
             Ok(())
@@ -357,6 +403,7 @@ mod tests {
             scratch.files_only(),
             Duration::from_millis(DEFAULT_REFRESH_MS),
             Ingest::new(c4_home.clone(), "test"),
+            Prefs::open(&c4_home),
         );
         let doc = state.refresh(false);
         assert_eq!(doc["schema"], c4_cli::OUTPUT_SCHEMA);
@@ -382,6 +429,9 @@ mod tests {
         assert_eq!(about.c4_home, c4_home.root().display().to_string());
         assert_eq!(about.c4_home_source, "test");
         assert_eq!(about.endpoint, c4_home.endpoint());
+        assert_eq!(about.prefs_path, c4_home.prefs_path().display().to_string());
+        assert!(about.prefs_problem.is_none());
+        assert_eq!(state.prefs().document(), json!({ "schema": 1 }));
     }
 
     #[test]

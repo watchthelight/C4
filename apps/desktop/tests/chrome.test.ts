@@ -71,4 +71,20 @@ describe("status strip", () => {
     expect(strip.el.textContent).toContain("ingest: 2 lines, last 0s ago");
     expect(strip.el.textContent).toContain("bridge: mock");
   });
+
+  it("names what is wrong with the preferences file, and nothing when nothing is", async () => {
+    const bridge = createMock({ period: 0, now: () => NOW });
+    const strip = createStrip(bridge.kind);
+    const about = await bridge.about();
+    strip.update(await bridge.listSessions(), about, NOW);
+    expect(strip.el.textContent).not.toContain("prefs:");
+    strip.update(
+      await bridge.listSessions(),
+      { ...about, prefs_problem: "/home/example/.c4/prefs.json holds a JSON array where an object was expected" },
+      NOW,
+    );
+    expect(strip.el.textContent).toContain(
+      "prefs: /home/example/.c4/prefs.json holds a JSON array where an object was expected",
+    );
+  });
 });

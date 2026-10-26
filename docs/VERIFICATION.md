@@ -14,12 +14,12 @@ and passes; "manual" means someone ran the checklist on real hardware; "unverifi
 | B | a session started after C4 appears within 2 s | a stand-in started after the first discovery pass, and the Python stand-in through the binary | verified, headless |
 | C | state changes show live | a hook line delivered through the shim's own code moves a session in the window's document (`apps/desktop/src-tauri/src/ingest.rs`); a stand-in that flips its registry status on a timeline and the Playwright side come with later Milestone 2 commits | in part: the hook path is verified, headless, on every runner, and seen in the window against a live session on Windows (Results, item 3) |
 | D | subagents and background agents are listed with their totals | subagent transcript files appear mid-run | planned (Milestone 2, full in 5) |
-| E | sidebar interactions | vitest components plus Playwright on the mock bridge | in part: vitest covers the virtual list (`apps/desktop/tests/list.test.ts`: the rows near the viewport, node reuse while scrolling, the three densities, keyboard selection, the reorder rule, headers that fold, the filter, pins, keyboard travel over headers and a row that arrives under its header while the order is held), the order rules (`apps/desktop/tests/arrange.test.ts`: the filter grammar, the attention sort with pins first, grouping by project, host and state) the filter bar (`apps/desktop/tests/filterbar.test.ts`) and the hover card (`apps/desktop/tests/hovercard.test.ts`: what the card says about a view, where it goes, the 350 ms rest and what closes it); the detached window and the Playwright side come with later Milestone 2 commits |
+| E | sidebar interactions | vitest components plus Playwright on the mock bridge | in part: vitest covers the virtual list (`apps/desktop/tests/list.test.ts`: the rows near the viewport, node reuse while scrolling, the three densities, keyboard selection, the reorder rule, headers that fold, the filter, pins, keyboard travel over headers and a row that arrives under its header while the order is held), the order rules (`apps/desktop/tests/arrange.test.ts`: the filter grammar, the attention sort with pins first, grouping by project, host and state) the filter bar (`apps/desktop/tests/filterbar.test.ts`), the hover card (`apps/desktop/tests/hovercard.test.ts`: what the card says about a view, where it goes, the 350 ms rest and what closes it), the saved preferences (`apps/desktop/tests/prefs.test.ts`: the tolerant read, the width's limits, the section as written, the store's coalesced writes and error reports) and the splitter (`apps/desktop/tests/splitter.test.ts`: the separator's attributes, a drag within its limits, the keys, the double-click reset, dispose); the detached window and the Playwright side come with later Milestone 2 commits |
 | F | token numbers match the status line | the status line's own parser run against the same transcript | planned (Milestone 4) |
 | G | the REA toolkit can be assigned and reverted | scratch settings file, byte-identical revert | planned (Milestone 6) |
 | H | a managed terminal is a real pty | real shell, echo, interrupt, terminate | planned (Milestone 3) |
 | I | a session that cannot be attached is Observed with no input affordance | registry entry with an unmatched host; the window renders no input control for any session (`apps/desktop/tests/list.test.ts`) | in part: the window side is verified, the host match lands with the adapters (Milestone 3) |
-| J | organization and layouts survive a restart | store round trip plus a relaunch smoke test | planned (Milestone 3) |
+| J | organization and layouts survive a restart | the preferences file round trip (`apps/desktop/src-tauri/src/prefs.rs` unit tests: an absent file, a section round trip, a newer schema number and an unknown section kept, a file that is not a JSON object moved aside, the size cap, section names), the window's read of it and its store (`apps/desktop/tests/prefs.test.ts`), the mock bridge's copy in local storage (`apps/desktop/tests/mock.test.ts`); layouts and the relaunch smoke test come with the terminal workspace | in part: the sidebar's pins, grouping, folded groups, density and width are verified headless and were seen surviving a reload in Chromium against the mock bridge (Results); layouts planned (Milestone 3) |
 | K | performance targets | criterion benches, `c4 perf`, a 40-session load generator | planned (Milestone 7) |
 | L | releases are published with checksums and attestations | `scripts/verify_release.py` after each tag | planned (Milestone 2) |
 | M | an existing Claude Code setup keeps working after install | scratch home seeded with `fixtures/settings/full.json`; `c4 install`, the agents repo's installer twice (`python -I install/install.py --home <scratch>`; the repo is checked out at a pinned commit in CI, `~/src/agents` or `C4_AGENTS_REPO` locally), `c4 install` again, `c4 uninstall` (`crates/c4-cli/tests/install.rs`) | verified, headless, on every runner; the test skips with a notice where the agents repo is not reachable; run against the real home on Windows (Results, item 3) |
@@ -203,3 +203,22 @@ result below the list when you run it.
   350 ms on Chromium's own pointer event for the resting pointer, which is why the rule exists. No
   console errors or warnings. A Playwright screenshot that changes the device scale factor resets
   Chromium's hover state and closed the card, so the screenshots were taken at device scale.
+- 2026-10-26, the verify workflow for commit 9229b62 (run 40291782248): the lint job and the four
+  test jobs green.
+- 2026-10-26, saved preferences and the splitter, locally on Windows: `cargo test -p c4-desktop
+  --lib` 9 tests green (five for `prefs.rs`), vitest 69 tests green, eslint and tsc clean. Measured
+  in Chromium against the mock bridge, which keeps its preferences in local storage, at 1036x860
+  with the eight synthetic sessions: the splitter a 6px strip from the top bar to the status strip
+  at x 317 (3px either side of the sidebar's edge) with `cursor: col-resize`, its 1px line
+  transparent at rest, `--sage-deep` while dragging and `--sage-hi` with keyboard focus. A 100px
+  drag with the mouse moved `--sidebar-w` live (370px half way, nothing written yet) and ended at
+  420px, the sidebar 420 wide, the workspace starting at 420, and one write of the `sidebar`
+  section with `width` 420 within 400 ms. `p` on the selected row, `g` and Ctrl+Shift+= each wrote
+  the section (the pinned id, `group_by` project, density expanded), a click on the first header
+  wrote `collapsed`; a reload brought back the 420px width, the grouping with its eight headers,
+  the folded group with seven rows visible, the expanded density and the pin (inside the folded
+  group, visible once the group was opened). At 700px wide the sidebar was pulled to 300px with the
+  workspace at 400 and the stored width unchanged; a density change while narrow still wrote 420;
+  back at 1036px the 420 returned; a drag while narrow made 260 the kept width. Two ArrowLeft
+  presses on the focused splitter moved it 20px and wrote the width; a double-click put 320 back
+  and wrote it. No console errors or warnings.

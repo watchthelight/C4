@@ -3,7 +3,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { About, Bridge, Snapshot } from "./types";
+import type { About, Bridge, PrefsDoc, Snapshot } from "./types";
 
 export const SESSIONS_EVENT = "sessions";
 
@@ -16,5 +16,7 @@ export function tauriBridge(): Bridge {
       const unlisten = await listen<Snapshot>(SESSIONS_EVENT, (event) => listener(event.payload));
       return unlisten;
     },
+    prefsGet: () => invoke<PrefsDoc>("prefs_get"),
+    prefsSet: (section, value) => invoke<PrefsDoc>("prefs_set", { section, value }),
   };
 }

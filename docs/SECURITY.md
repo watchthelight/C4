@@ -26,8 +26,9 @@ cannot reach the SQLite store, the logs, an export or the screen.
 
 ## What C4 writes
 
-Under the user's own profile only: `~/.c4/` (the shim copy, the spool, the logs, the install manifest
-and, later, the store) and one file of Claude Code's, `~/.claude/settings.json`, through `c4 install`
+Under the user's own profile only: `~/.c4/` (the shim copy, the spool, the logs, the install manifest,
+the window's preferences in `prefs.json` and, later, the store) and one file of Claude Code's,
+`~/.claude/settings.json`, through `c4 install`
 and `c4 uninstall` alone. Every write of that file is preceded by a copy to
 `settings.json.bak-c4-<stamp>` beside it, goes through a temporary file and a rename, keeps the file's
 permissions, key order and layout, and is recorded in `~/.c4/install-manifest.json`. `c4 uninstall`
@@ -39,8 +40,10 @@ to count C4's own hook groups and check the status line wrapper, reporting nothi
 hooks C4 installs print nothing and return no decision, so none of them can approve, block or alter
 what a session does. The app itself writes under `~/.c4/` alone: on Unix it creates the directory
 (mode 0700) and the socket file when the ingest server starts and removes the socket file when it
-stops, and on every platform it removes each spool file once it has replayed it. It never writes
-under the Claude home.
+stops; on every platform it removes each spool file once it has replayed it, and it writes
+`prefs.json` (the sidebar's organization, nothing from any session) through `prefs.json.tmp` and a
+rename, 0600 on Unix, capped at 1 MiB. A `prefs.json` it cannot read is renamed to
+`prefs.json.bad-<stamp>`, never overwritten. It never writes under the Claude home.
 
 ## Redaction
 

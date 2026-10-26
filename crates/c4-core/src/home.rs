@@ -75,6 +75,12 @@ impl C4Home {
         self.root.join("install-manifest.json")
     }
 
+    /// `prefs.json`: what the window keeps between runs, the sidebar's organization and size.
+    #[must_use]
+    pub fn prefs_path(&self) -> PathBuf {
+        self.root.join("prefs.json")
+    }
+
     /// `ingest.sock`: the Unix socket the shim writes to.
     #[must_use]
     pub fn socket_path(&self) -> PathBuf {
@@ -149,6 +155,7 @@ mod tests {
             Path::new("/home/example/.c4/install-manifest.json")
         );
         assert_eq!(c.socket_path(), Path::new("/home/example/.c4/ingest.sock"));
+        assert_eq!(c.prefs_path(), Path::new("/home/example/.c4/prefs.json"));
     }
 
     #[test]

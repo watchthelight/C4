@@ -115,8 +115,7 @@ stay at 0.y.z while the interfaces settle.
   match the name, project and cwd, and `state:`, `project:`, `tool:`, `mode:` and `host:` tokens
   match one field each. `p` pins the selected session to the top of the list or of its group. What
   the user does by hand applies at once; a reorder from the core still waits for the pointer and
-  the keyboard, and a session that arrives meanwhile joins under its header. Pins, the grouping and
-  the folded groups live in memory until the preferences store lands.
+  the keyboard, and a session that arrives meanwhile joins under its header.
 - A hover card beside the row the pointer rests on for 350 ms: the attachment and why (the host
   and pane, or what ended the session), the state with its evidence, the model and effort, the
   context figure with its bar, the open tool, the agents with the last three named, the cwd, and
@@ -125,5 +124,18 @@ stay at 0.y.z while the interfaces settle.
   list scrolls or changes by hand, or a key goes down, then stays closed until the pointer moves
   again. Tokens, the cache ratio, the branch and the last tool calls join it with the telemetry and
   transcript readers.
+- Saved preferences and a sidebar splitter. The sidebar's pins, grouping, folded groups, density
+  and width go to `prefs.json` under the C4 home a quarter of a second after each change by hand,
+  and the next start builds the sidebar from them before the first pass (`prefs_get` and
+  `prefs_set`; `apps/desktop/src-tauri/src/prefs.rs`, `apps/desktop/src/prefs.ts`). The file is
+  one JSON object with a schema number and a section per part of the window; the core replaces one
+  section at a time through a temporary file and a rename, keeps a section or a schema number
+  another version wrote, caps the file at 1 MiB, and moves a file it cannot read aside as
+  `prefs.json.bad-<stamp>`, which the status strip reports. The window reads each value on its
+  own, so a bad one falls back alone. The 6px splitter at the sidebar's right edge drags with the
+  pointer (the starfield rests meanwhile), moves 10px per arrow key when focused, goes to its
+  limits on Home and End, and puts the 320px default back on a double-click; the sidebar never goes
+  under 220px and the workspace keeps 400px, so a narrower window shows less of the saved width and
+  a wider one gives it back. In a browser the mock bridge keeps the preferences in local storage.
 
 [Unreleased]: https://github.com/watchthelight/C4/compare/c3a0a47...HEAD

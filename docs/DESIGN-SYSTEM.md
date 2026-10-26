@@ -120,7 +120,7 @@ the same facts.
 | Region | Size | Content |
 |---|---|---|
 | Top bar | 32px | mark and "c4", layout name, attention count, shared quota meters |
-| Sidebar | 320px default, 220 minimum, collapses to a 36px rail of state squares, detachable | session rows, group headers, filter |
+| Sidebar | 320px default, 220 minimum, set by the 6px splitter at its right edge (the workspace keeps 400px), collapses to a 36px rail of state squares, detachable; the width, pins, grouping, folded groups and density are kept between runs | session rows, group headers, filter |
 | Workspace | the rest | tab strip 28px, split tree of panes, surface tabs (Library, Center, Telemetry, Settings) |
 | Inspector | 360px default, collapsible | Overview, Workflow, Tokens, Agents, Git, Capabilities, Log |
 | Status strip | 22px | attention count, quota meters, peer count, layout name, key hints |
@@ -144,8 +144,11 @@ row density `Ctrl+Shift+=`, cycle regions F6, Esc back to the terminal. In the s
 arrow keys, PageUp, PageDown, Home and End move the selection and scroll to it, `p` pins the
 selected session, `g` walks the grouping, Left folds the selected session's group and Right opens
 it. `/` anywhere outside a text field focuses the filter box; in the box Escape clears, then leaves,
-and Enter or the down arrow leaves for the list with the filter kept. Interrupt and terminate have
-no single-key binding; they go through the palette or the pane menu with a confirmation.
+and Enter or the down arrow leaves for the list with the filter kept. The splitter between the
+sidebar and the workspace is a focusable separator: Left and Right move it 10px, Home and End go to
+its limits, and a double-click puts the default back; its 1px line shows `--sage-deep` under the
+pointer and while dragging and `--sage-hi` with keyboard focus. Interrupt and terminate have no
+single-key binding; they go through the palette or the pane menu with a confirmation.
 
 ## Accessibility
 

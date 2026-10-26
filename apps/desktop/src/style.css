@@ -78,6 +78,43 @@
   overflow: hidden;
 }
 
+/* The handle between the sidebar and the workspace: a 6px strip over the sidebar's right edge,
+   outside the sidebar so its overflow does not clip it. Its 1px line sits on the sidebar's border
+   and shows on hover, on focus and while dragging. */
+
+.splitter {
+  position: absolute;
+  z-index: 2;
+  top: var(--topbar-h);
+  bottom: var(--strip-h);
+  left: calc(var(--sidebar-w) - 3px);
+  width: 6px;
+  cursor: col-resize;
+  outline: none;
+  user-select: none;
+  touch-action: none;
+}
+
+.splitter::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 2px;
+  width: 1px;
+  background: transparent;
+  transition: background-color var(--t-fast);
+}
+
+.splitter:hover::after,
+.splitter[data-dragging="true"]::after {
+  background: var(--sage-deep);
+}
+
+.splitter:focus-visible::after {
+  background: var(--sage-hi);
+}
+
 /* the line above the list: the filter box and the grouping button */
 
 .filterbar {
