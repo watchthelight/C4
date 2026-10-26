@@ -14,7 +14,7 @@ and passes; "manual" means someone ran the checklist on real hardware; "unverifi
 | B | a session started after C4 appears within 2 s | a stand-in started after the first discovery pass, and the Python stand-in through the binary | verified, headless |
 | C | state changes show live | a hook line delivered through the shim's own code moves a session in the window's document (`apps/desktop/src-tauri/src/ingest.rs`); a stand-in that flips its registry status on a timeline and the Playwright side come with later Milestone 2 commits | in part: the hook path is verified, headless, on every runner, and seen in the window against a live session on Windows (Results, item 3) |
 | D | subagents and background agents are listed with their totals | subagent transcript files appear mid-run | planned (Milestone 2, full in 5) |
-| E | sidebar interactions | vitest components plus Playwright on the mock bridge | in part: vitest covers the virtual list (`apps/desktop/tests/list.test.ts`: the rows near the viewport, node reuse while scrolling, the three densities, keyboard selection, the reorder rule); filter, grouping, pins and the Playwright side come with later Milestone 2 commits |
+| E | sidebar interactions | vitest components plus Playwright on the mock bridge | in part: vitest covers the virtual list (`apps/desktop/tests/list.test.ts`: the rows near the viewport, node reuse while scrolling, the three densities, keyboard selection, the reorder rule, headers that fold, the filter, pins, keyboard travel over headers and a row that arrives under its header while the order is held), the order rules (`apps/desktop/tests/arrange.test.ts`: the filter grammar, the attention sort with pins first, grouping by project, host and state) and the filter bar (`apps/desktop/tests/filterbar.test.ts`); the hover card, the detached window and the Playwright side come with later Milestone 2 commits |
 | F | token numbers match the status line | the status line's own parser run against the same transcript | planned (Milestone 4) |
 | G | the REA toolkit can be assigned and reverted | scratch settings file, byte-identical revert | planned (Milestone 6) |
 | H | a managed terminal is a real pty | real shell, echo, interrupt, terminate | planned (Milestone 3) |
@@ -162,3 +162,22 @@ result below the list when you run it.
   line present only at expanded with the long model text clipped so the cwd keeps room, the compact
   row carrying the state text in its tooltip, every secondary color `--dim`, no console messages.
   With the eight synthetic sessions nothing scrolls; the 200-session case is the vitest test.
+- 2026-10-26, the verify workflow for commit 87e194d (run 40285554095): the lint job and the four
+  test jobs green.
+- 2026-10-26, grouping, filter and pins, locally on Windows: vitest 39 tests green (the order rules
+  without a DOM in `apps/desktop/tests/arrange.test.ts`, the filter bar in
+  `apps/desktop/tests/filterbar.test.ts`, the list with headers, folding, filtering, pins, keyboard
+  travel over headers and a row arriving under a header while the order is held in
+  `apps/desktop/tests/list.test.ts`), eslint and tsc clean. Measured in Chromium against the mock
+  bridge at 1280x800 with the eight synthetic sessions: the filter line's input and button 24px tall
+  under the top bar; grouped by project, eight headers of 24px every 58px from the top with each row
+  24px below its header, the fold glyph 12x8 at the same x as the rows' state squares, the number in
+  `--sage`, the title in Space Mono 700, the rule 1px `--faint`, the count `--dim` and "1 needs you"
+  `--amber`, the count span hidden when empty; `/` focused the box and its border turned `--sage-hi`;
+  "state:wait" left one row under one header, "host:nowhere" none with "No sessions match the
+  filter." shown, "mode:observed" six rows in six groups; Escape cleared the box and a second Escape
+  moved the focus to the list; Down then `p` pinned the first session (aria-label ending ", pinned",
+  a 6x6 `--sage` square after the name); a click on the first header folded it (seven rows left, the
+  glyph a plus, the title `--dim`, the spacer 430px, the hidden selection no longer announced). No
+  console errors or warnings. A code edit while the dev server runs reloads the page and resets the
+  list, so every check was redone after the last edit.

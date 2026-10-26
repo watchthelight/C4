@@ -8,6 +8,7 @@ import { selectBridge } from "./bridge";
 import type { About, Snapshot } from "./bridge/types";
 import { createStrip, createTopBar } from "./chrome";
 import { el } from "./dom";
+import { createFilterBar } from "./sessions/filter";
 import { createInspector } from "./sessions/inspector";
 import { createSessionList, nextDensity } from "./sessions/list";
 import { createStarfield } from "./starfield";
@@ -38,12 +39,28 @@ const list = createSessionList({
   onSelect: (id) => {
     selected.value = id;
   },
+  // nothing is persisted yet; the bar only mirrors a grouping the `g` key chose
+  onPrefs: (prefs) => {
+    filterBar.setGroupBy(prefs.groupBy);
+  },
+});
+const filterBar = createFilterBar({
+  groupBy: list.groupBy,
+  onFilter: (text) => {
+    list.setFilter(text);
+  },
+  onGroupBy: (groupBy) => {
+    list.setGroupBy(groupBy);
+  },
+  onLeave: () => {
+    list.el.focus();
+  },
 });
 const inspector = createInspector();
 const strip = createStrip(bridge.kind);
 
 const sidebar = el("aside", "sidebar");
-sidebar.append(list.el);
+sidebar.append(filterBar.el, list.el);
 const workspace = el("main", "workspace");
 workspace.append(inspector.el);
 root.append(topBar.el, sidebar, workspace, strip.el);
@@ -97,12 +114,28 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
+/** True for a text field, where a plain key is typing and not a command. */
+function typing(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    (target instanceof HTMLElement && target.isContentEditable)
+  );
+}
+
 // Ctrl+Shift+= (Cmd+Shift+= on macOS) walks the row density: compact, standard, expanded.
+// `/` outside a text field focuses the filter box.
 document.addEventListener("keydown", (event) => {
   const chord = (event.ctrlKey || event.metaKey) && event.shiftKey && !event.altKey;
   if (chord && event.code === "Equal") {
     event.preventDefault();
     list.setDensity(nextDensity(list.density));
+    return;
+  }
+  const plain = !event.ctrlKey && !event.metaKey && !event.altKey;
+  if (plain && event.key === "/" && !typing(event.target)) {
+    event.preventDefault();
+    filterBar.focus();
   }
 });
 

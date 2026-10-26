@@ -9,9 +9,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createMock, syntheticSessions } from "../src/bridge/mock";
 import type { SessionView } from "../src/bridge/types";
+import { attachmentLabel, attentionOrder } from "../src/format";
 import { createInspector } from "../src/sessions/inspector";
-import { OVERSCAN, ROW_HEIGHT, SETTLE_MS, createSessionList, nextDensity } from "../src/sessions/list";
-import type { SessionList } from "../src/sessions/list";
+import { HEADER_HEIGHT, OVERSCAN, ROW_HEIGHT, SETTLE_MS, createSessionList, nextDensity } from "../src/sessions/list";
+import type { ListPrefs, SessionList } from "../src/sessions/list";
 import tokens from "../src/tokens.css?raw";
 
 const NOW = Date.UTC(2026, 9, 25, 12, 0, 0);
@@ -34,7 +35,16 @@ function idsOf(list: SessionList): (string | undefined)[] {
   return rowsOf(list).map((r) => r.dataset.id);
 }
 
-/** `n` sessions made from the synthetic eight, each with its own id. */
+function headsOf(list: SessionList): HTMLElement[] {
+  return [...list.el.querySelectorAll<HTMLElement>(".group")].sort((a, b) => y(a) - y(b));
+}
+
+/** Headers and rows together in layout order. */
+function itemsOf(list: SessionList): HTMLElement[] {
+  return [...list.el.querySelectorAll<HTMLElement>(".group, .row")].sort((a, b) => y(a) - y(b));
+}
+
+/** `n` sessions made from the synthetic eight, each with its own id, in the order the list shows. */
 function many(n: number): SessionView[] {
   const base = syntheticSessions(NOW);
   const out: SessionView[] = [];
@@ -44,7 +54,7 @@ function many(n: number): SessionView[] {
       out.push({ ...seed, id: `00000000-0000-4000-8000-${String(i).padStart(12, "0")}` });
     }
   }
-  return out;
+  return attentionOrder(out);
 }
 
 afterEach(() => {
@@ -180,7 +190,9 @@ describe("session list", () => {
     expect(expanded).toHaveLength(Math.ceil(200 / ROW_HEIGHT.expanded) + 2 * OVERSCAN);
     expect(expanded[OVERSCAN]?.dataset.id).toBe(views[50]?.id);
     expect(expanded[OVERSCAN]?.hasAttribute("title")).toBe(false);
-    expect(expanded[OVERSCAN]?.querySelector(".third .chip")?.textContent).toBe("observed");
+    expect(expanded[OVERSCAN]?.querySelector(".third .chip")?.textContent).toBe(
+      attachmentLabel(views[50]?.attachment ?? "observed"),
+    );
 
     expect(nextDensity("compact")).toBe("standard");
     expect(nextDensity("standard")).toBe("expanded");
@@ -286,10 +298,237 @@ describe("session list", () => {
     expect(picked).toHaveLength(5);
   });
 
-  it("uses the row heights that tokens.css declares", () => {
+  it("groups the rows under headers that collapse at once, even under the pointer", () => {
+    const views = syntheticSessions(NOW);
+    const prefs: ListPrefs[] = [];
+    const list = createSessionList({ onSelect: () => undefined, onPrefs: (p) => prefs.push(p) });
+    viewport(list, 400);
+    list.update(views, null, NOW);
+    list.el.dispatchEvent(new Event("pointerenter"));
+
+    list.setGroupBy("project");
+    expect(list.groupBy).toBe("project");
+    expect(list.el.dataset.group).toBe("project");
+    expect(prefs.at(-1)).toEqual({ density: "standard", groupBy: "project", pinned: [], collapsed: [] });
+    const heads = headsOf(list);
+    expect(heads).toHaveLength(8);
+    expect(heads[0]?.getAttribute("role")).toBe("presentation");
+    expect(heads[0]?.querySelector(".idx")?.textContent).toBe("01");
+    expect(heads[0]?.querySelector(".title")?.textContent).toBe("beta");
+    // the count stands alone when nobody needs you, and gives way when everyone does
+    expect(heads[0]?.querySelector(".count")?.textContent).toBe("");
+    expect(heads[0]?.querySelector(".need")?.textContent).toBe("1 needs you");
+    expect(heads[0]?.dataset.collapsed).toBe("false");
+    expect(heads[0]?.title).toBe("collapse beta");
+    expect(heads[3]?.querySelector(".count")?.textContent).toBe("1");
+    expect(heads[3]?.querySelector(".need")?.textContent).toBe("");
+    expect(heads.map(y)).toEqual(heads.map((_, i) => i * (HEADER_HEIGHT + ROW_HEIGHT.standard)));
+    const rows = rowsOf(list);
+    expect(rows).toHaveLength(8);
+    expect(y(rows[0] ?? heads[0]!)).toBe(HEADER_HEIGHT);
+    expect(rows[0]?.getAttribute("aria-posinset")).toBe("1");
+    expect(rows[0]?.getAttribute("aria-setsize")).toBe("8");
+    expect(rows[7]?.getAttribute("aria-posinset")).toBe("8");
+    expect(list.el.querySelector<HTMLElement>(".spacer")?.style.height).toBe(
+      `${8 * (HEADER_HEIGHT + ROW_HEIGHT.standard)}px`,
+    );
+    expect(list.el.querySelector("input, textarea, button, [contenteditable]")).toBeNull();
+
+    // a click on the header collapses the group now, pointer or not
+    heads[0]?.click();
+    expect(heads[0]?.dataset.collapsed).toBe("true");
+    expect(heads[0]?.title).toBe("expand beta");
+    expect(rowsOf(list)).toHaveLength(7);
+    expect(y(headsOf(list)[1] ?? heads[0]!)).toBe(HEADER_HEIGHT);
+    expect(list.prefs().collapsed).toEqual(["project:/home/example/proj/beta"]);
+    expect(headsOf(list)[0]?.querySelector(".need")?.textContent).toBe("1 needs you");
+
+    // Left collapses the selected session's group, Right expands it
+    const docs = views.find((v) => v.cwd === "/home/example/proj/docs")?.id ?? "";
+    list.update(views, docs, NOW);
+    list.el.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft" }));
+    expect(list.prefs().collapsed).toContain("project:/home/example/proj/docs");
+    expect(rowsOf(list)).toHaveLength(6);
+    expect(list.el.hasAttribute("aria-activedescendant")).toBe(false);
+    list.el.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" }));
+    expect(list.prefs().collapsed).not.toContain("project:/home/example/proj/docs");
+    expect(rowsOf(list)).toHaveLength(7);
+    expect(list.el.getAttribute("aria-activedescendant")).toBe(`session-${docs}`);
+
+    // the collapsed set is per grouping: by host every group is open, back by project beta is shut
+    list.setGroupBy("host");
+    expect(headsOf(list)).toHaveLength(6);
+    expect(headsOf(list).every((h) => h.dataset.collapsed === "false")).toBe(true);
+    // two Windows Terminal sessions, one of them failed
+    expect(headsOf(list)[1]?.querySelector(".count")?.textContent).toBe("2,");
+    expect(headsOf(list)[1]?.querySelector(".need")?.textContent).toBe("1 needs you");
+    list.setGroupBy("project");
+    expect(headsOf(list)[0]?.dataset.collapsed).toBe("true");
+
+    // g walks the modes; none has no headers
+    list.el.dispatchEvent(new KeyboardEvent("keydown", { key: "g" }));
+    expect(list.groupBy).toBe("host");
+    list.el.dispatchEvent(new KeyboardEvent("keydown", { key: "g" }));
+    list.el.dispatchEvent(new KeyboardEvent("keydown", { key: "g" }));
+    expect(list.groupBy).toBe("none");
+    expect(headsOf(list)).toHaveLength(0);
+    expect(rowsOf(list)).toHaveLength(8);
+  });
+
+  it("filters at once by words and by field tokens", () => {
+    const views = syntheticSessions(NOW);
+    const list = createSessionList({ onSelect: () => undefined });
+    viewport(list, 400);
+    list.update(views, null, NOW);
+    list.el.dispatchEvent(new Event("pointerenter"));
+
+    list.setFilter("beta");
+    expect(list.filter).toBe("beta");
+    expect(rowsOf(list).map((r) => r.querySelector(".name")?.textContent)).toEqual(["beta"]);
+    expect(rowsOf(list)[0]?.getAttribute("aria-setsize")).toBe("1");
+    list.setFilter("state:wait state:fail");
+    expect(rowsOf(list).map((r) => r.dataset.kind)).toEqual(["waiting_permission", "failed"]);
+    list.setFilter("host:nowhere");
+    expect(rowsOf(list)).toHaveLength(0);
+    expect(list.el.querySelector(".empty")?.hasAttribute("hidden")).toBe(false);
+    expect(list.el.querySelector(".empty")?.textContent).toBe("No sessions match the filter.");
+    expect(list.el.querySelector<HTMLElement>(".spacer")?.style.height).toBe("0px");
+    list.setFilter("");
+    expect(rowsOf(list)).toHaveLength(8);
+    expect(list.el.querySelector(".empty")?.hasAttribute("hidden")).toBe(true);
+
+    // the filter also narrows the groups, and an empty list says so over an empty filter result
+    list.setGroupBy("host");
+    list.setFilter("mode:disconnected");
+    expect(headsOf(list).map((h) => h.querySelector(".title")?.textContent)).toEqual(["unknown host", "kitty"]);
+    list.update([], null, NOW);
+    expect(list.el.querySelector(".empty")?.textContent).toBe("No Claude Code sessions found.");
+  });
+
+  it("pins a session to the top and toggles the selected one with p", () => {
+    const views = syntheticSessions(NOW);
+    const prefs: ListPrefs[] = [];
+    const list = createSessionList({ onSelect: () => undefined, onPrefs: (p) => prefs.push(p) });
+    viewport(list, 400);
+    list.update(views, null, NOW);
+    list.el.dispatchEvent(new Event("pointerenter"));
+
+    const review = views.find((v) => v.name === "review")?.id ?? "";
+    expect(rowsOf(list).at(-1)?.dataset.id).toBe(review);
+    list.togglePin(review);
+    expect(list.isPinned(review)).toBe(true);
+    const rows = rowsOf(list);
+    expect(rows[0]?.dataset.id).toBe(review);
+    expect(rows[0]?.dataset.pinned).toBe("true");
+    expect(rows[0]?.getAttribute("aria-label")).toBe("review, completed (logout), pinned");
+    expect(rows[1]?.dataset.pinned).toBe("false");
+    expect(prefs.at(-1)?.pinned).toEqual([review]);
+
+    list.update(views, review, NOW);
+    list.el.dispatchEvent(new KeyboardEvent("keydown", { key: "p" }));
+    expect(list.isPinned(review)).toBe(false);
+    expect(rowsOf(list)[0]?.dataset.id).not.toBe(review);
+    expect(rowsOf(list).at(-1)?.dataset.id).toBe(review);
+    expect(rowsOf(list).at(-1)?.dataset.pinned).toBe("false");
+    expect(rowsOf(list).at(-1)?.getAttribute("aria-label")).toBe("review, completed (logout)");
+    expect(prefs.at(-1)?.pinned).toEqual([]);
+
+    // pinned rows lead their group too
+    list.setGroupBy("host");
+    const alpha = views.find((v) => v.name === "alpha build")?.id ?? "";
+    list.togglePin(alpha);
+    const items = itemsOf(list);
+    expect(items[0]?.querySelector(".title")?.textContent).toBe("Windows Terminal");
+    expect(items[1]?.dataset.id).toBe(alpha);
+
+    // a list can start from saved prefs
+    const again = createSessionList({
+      onSelect: () => undefined,
+      pinned: [review],
+      collapsed: ["state:idle"],
+      groupBy: "state",
+      density: "compact",
+    });
+    expect(again.prefs()).toEqual({ density: "compact", groupBy: "state", pinned: [review], collapsed: ["state:idle"] });
+    viewport(again, 400);
+    again.update(views, null, NOW);
+    expect(rowsOf(again)[0]?.dataset.id).toBe(review);
+    expect(rowsOf(again)).toHaveLength(7);
+  });
+
+  it("skips the headers when selecting with the keyboard", () => {
+    const views = syntheticSessions(NOW);
+    const picked: string[] = [];
+    const list = createSessionList({ onSelect: (id) => picked.push(id), groupBy: "state" });
+    viewport(list, 400);
+    list.update(views, null, NOW);
+    expect(itemsOf(list)[0]?.classList.contains("group")).toBe(true);
+    const beta = views.find((v) => v.name === "beta")?.id ?? "";
+    const review = views.find((v) => v.name === "review")?.id ?? "";
+
+    list.el.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
+    expect(picked).toEqual([beta]);
+    list.update(views, beta, NOW);
+    list.el.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
+    expect(picked[1]).toBe(rowsOf(list)[1]?.dataset.id);
+    list.update(views, picked[1] ?? null, NOW);
+    list.el.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp" }));
+    expect(picked[2]).toBe(beta);
+    list.el.dispatchEvent(new KeyboardEvent("keydown", { key: "End" }));
+    expect(picked[3]).toBe(review);
+    expect(list.el.scrollTop).toBe(8 * (HEADER_HEIGHT + ROW_HEIGHT.standard) - 400);
+    list.update(views, review, NOW);
+    list.el.dispatchEvent(new KeyboardEvent("keydown", { key: "Home" }));
+    expect(picked[4]).toBe(beta);
+    expect(list.el.scrollTop).toBe(HEADER_HEIGHT);
+    list.el.dispatchEvent(new KeyboardEvent("keydown", { key: "p", ctrlKey: true }));
+    expect(list.isPinned(review)).toBe(false);
+  });
+
+  it("places a row that arrives under its header while the pointer holds the order", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    const views = syntheticSessions(NOW);
+    const list = createSessionList({ onSelect: () => undefined, groupBy: "host" });
+    viewport(list, 600);
+    list.update(views, null, NOW);
+    list.el.dispatchEvent(new Event("pointerenter"));
+
+    const gamma = views[3];
+    if (!gamma) {
+      throw new Error("no gamma");
+    }
+    const extra: SessionView = {
+      ...gamma,
+      id: "0a1b2c3d-0001-4000-8000-000000000099",
+      name: "gamma two",
+      state: { state: "working" },
+      state_since: NOW,
+      last_activity: NOW,
+      waiting_since: null,
+    };
+    list.update([...views, extra], null, NOW);
+    const held = itemsOf(list);
+    const at = held.findIndex((e) => e.querySelector(".title")?.textContent === "VS Code");
+    expect(at).toBeGreaterThan(0);
+    expect(held[at]?.querySelector(".count")?.textContent).toBe("2");
+    expect(held[at + 1]?.dataset.id).toBe(gamma.id);
+    expect(held[at + 2]?.dataset.id).toBe(extra.id);
+    expect(held[at + 3]?.classList.contains("group")).toBe(true);
+
+    // once the pointer leaves, the working session leads its group
+    list.el.dispatchEvent(new Event("pointerleave"));
+    const applied = itemsOf(list);
+    const at2 = applied.findIndex((e) => e.querySelector(".title")?.textContent === "VS Code");
+    expect(applied[at2 + 1]?.dataset.id).toBe(extra.id);
+    expect(applied[at2 + 2]?.dataset.id).toBe(gamma.id);
+  });
+
+  it("uses the row and header heights that tokens.css declares", () => {
     for (const [density, px] of Object.entries(ROW_HEIGHT)) {
       expect(tokens).toContain(`--row-${density}: ${px}px;`);
     }
+    expect(tokens).toContain(`--row-header: ${HEADER_HEIGHT}px;`);
   });
 });
 

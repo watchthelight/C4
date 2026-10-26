@@ -108,5 +108,14 @@ stay at 0.y.z while the interfaces settle.
   reorder waits while the pointer is inside the list or the list has keyboard focus and applies on
   leave or after two seconds at rest. Secondary text at 10 and 11px uses `--dim`, as the design
   system says; `--mute` paints only the idle and completed squares.
+- Grouping, filter and pins in the sidebar. The list groups by project, host or state (the button
+  above it, or `g` in the list), with a 24px header per group carrying its number, name, member
+  count and how many need you; a click or Left folds a group, Right opens it, and groups come in
+  the order of their most urgent session. The filter box (`/`) narrows the list as you type: words
+  match the name, project and cwd, and `state:`, `project:`, `tool:`, `mode:` and `host:` tokens
+  match one field each. `p` pins the selected session to the top of the list or of its group. What
+  the user does by hand applies at once; a reorder from the core still waits for the pointer and
+  the keyboard, and a session that arrives meanwhile joins under its header. Pins, the grouping and
+  the folded groups live in memory until the preferences store lands.
 
 [Unreleased]: https://github.com/watchthelight/C4/compare/c3a0a47...HEAD

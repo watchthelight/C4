@@ -249,20 +249,26 @@ export function contextBand(pct: number): "ok" | "warn" | "hot" {
   return pct >= 75 ? "warn" : "ok";
 }
 
-/** The attention order the core uses: weight down, the longest wait first, then the latest activity. */
+/** The attention comparison the core uses: weight down, the longest wait first, then the latest activity. */
+export function compareAttention<T extends Pick<SessionView, "state" | "waiting_since" | "last_activity">>(
+  a: T,
+  b: T,
+): number {
+  const weight = stateWeight(b.state.state) - stateWeight(a.state.state);
+  if (weight !== 0) {
+    return weight;
+  }
+  const wa = a.waiting_since ?? Number.MAX_SAFE_INTEGER;
+  const wb = b.waiting_since ?? Number.MAX_SAFE_INTEGER;
+  if (wa !== wb) {
+    return wa - wb;
+  }
+  return b.last_activity - a.last_activity;
+}
+
+/** The views in attention order. */
 export function attentionOrder<T extends Pick<SessionView, "state" | "waiting_since" | "last_activity">>(
   views: readonly T[],
 ): T[] {
-  return [...views].sort((a, b) => {
-    const weight = stateWeight(b.state.state) - stateWeight(a.state.state);
-    if (weight !== 0) {
-      return weight;
-    }
-    const wa = a.waiting_since ?? Number.MAX_SAFE_INTEGER;
-    const wb = b.waiting_since ?? Number.MAX_SAFE_INTEGER;
-    if (wa !== wb) {
-      return wa - wb;
-    }
-    return b.last_activity - a.last_activity;
-  });
+  return [...views].sort(compareAttention);
 }

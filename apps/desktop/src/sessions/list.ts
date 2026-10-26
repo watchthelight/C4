@@ -1,10 +1,12 @@
 // <wtl> project: c4 | file: apps/desktop/src/sessions/list.ts | author: watchthelight </wtl>
-// The session list, as a virtual list over the sessions in the order the core gives (attention
-// first). Only the rows near the viewport exist in the DOM, eight beyond each edge, on pooled nodes
-// placed with a transform, so a thousand sessions cost the frame that twenty do. Each row carries a
-// state square and the state text, a `~` on guessed states, and nothing to type into. A row changes
-// its glyph and text at once; a reorder waits while the pointer is inside the list or the list has
-// keyboard focus, and applies on leave or once both have rested for two seconds.
+// The session list, as a virtual list over the items arrange() returns: group headers and session
+// rows, filtered, pinned sessions first, then the core's attention order. Only the items near the
+// viewport exist in the DOM, eight beyond each edge, on pooled nodes placed with a transform, so a
+// thousand sessions cost the frame that twenty do. Each row carries a state square and the state
+// text, a `~` on guessed states, and nothing to type into. A row changes its glyph and text at
+// once; a reorder from the core waits while the pointer is inside the list or the list has keyboard
+// focus, and applies on leave or once both have rested for two seconds. What the user does by hand
+// (filter, pin, collapse, regroup) applies at once.
 
 import { el } from "../dom";
 import {
@@ -18,6 +20,8 @@ import {
   needsAttention,
   sourceLabel,
 } from "../format";
+import { arrange, groupOf, nextGroupBy, parseQuery, rowKey } from "./arrange";
+import type { GroupBy, HeadItem, Item, Query } from "./arrange";
 import type { SessionView, StateKind } from "../bridge/types";
 
 export type Density = "compact" | "standard" | "expanded";
@@ -27,13 +31,16 @@ export const DENSITIES: readonly Density[] = ["compact", "standard", "expanded"]
 /** Row heights in CSS pixels; tokens.css carries the same numbers as --row-compact and friends. */
 export const ROW_HEIGHT: Readonly<Record<Density, number>> = { compact: 22, standard: 34, expanded: 56 };
 
-/** Rows kept rendered beyond each edge of the viewport. */
+/** The group header height; --row-header in tokens.css. */
+export const HEADER_HEIGHT = 24;
+
+/** Items kept rendered beyond each edge of the viewport. */
 export const OVERSCAN = 8;
 
 /** How long the pointer or the keyboard rests inside the list before a pending reorder applies. */
 export const SETTLE_MS = 2000;
 
-/** Row nodes kept for reuse once they scroll out. */
+/** Nodes of each kind kept for reuse once they scroll out. */
 const POOL_MAX = 64;
 
 /** The density after `d` in the cycle the keyboard chord walks. */
@@ -42,24 +49,52 @@ export function nextDensity(d: Density): Density {
   return DENSITIES[(i + 1) % DENSITIES.length] ?? "standard";
 }
 
+/** Everything the user set by hand; what persistence will keep between runs. */
+export interface ListPrefs {
+  density: Density;
+  groupBy: GroupBy;
+  pinned: string[];
+  /** Group ids as the headers carry them: `<groupBy>:<key>`. */
+  collapsed: string[];
+}
+
 export interface SessionListOptions {
   onSelect(id: string): void;
+  /** Called after every change made by hand: a pin, a collapse, the grouping, the density. */
+  onPrefs?(prefs: ListPrefs): void;
   density?: Density;
+  groupBy?: GroupBy;
+  pinned?: readonly string[];
+  collapsed?: readonly string[];
 }
 
 export interface SessionList {
   el: HTMLElement;
   readonly density: Density;
-  /** Render `views` in the given order. `selected` is the highlighted id; `now` drives the clocks. */
+  readonly groupBy: GroupBy;
+  readonly filter: string;
+  /** Render `views`. `selected` is the highlighted id; `now` drives the clocks. */
   update(views: readonly SessionView[], selected: string | null, now: number): void;
-  /** Place the rows for the current scroll position and height; runs after a scroll or a resize. */
+  /** Place the items for the current scroll position and height; runs after a scroll or a resize. */
   paint(): void;
-  /** Change the row height, keeping the row at the top of the viewport where it is. */
+  /** Change the row height, keeping the item at the top of the viewport where it is. */
   setDensity(density: Density): void;
+  setGroupBy(groupBy: GroupBy): void;
+  /**
+   * Narrow the list: words match the name, the project and the cwd; `state:`, `project:`, `tool:`,
+   * `mode:` and `host:` tokens match one field each. Applies at once.
+   */
+  setFilter(text: string): void;
+  togglePin(id: string): void;
+  isPinned(id: string): boolean;
+  /** Collapse or expand a group by the id its header carries. Applies at once. */
+  toggleGroup(group: string): void;
+  prefs(): ListPrefs;
   dispose(): void;
 }
 
 interface Row {
+  kind: "row";
   el: HTMLElement;
   name: HTMLElement;
   ctx: HTMLElement;
@@ -71,11 +106,23 @@ interface Row {
   mode: HTMLElement;
   model: HTMLElement;
   cwd: HTMLElement;
-  id: string | null;
+  /** What the static content was last filled for; a change in any refills it. */
   seq: number;
-  kind: StateKind | null;
+  state: StateKind | null;
   density: Density | null;
+  pinned: boolean | null;
 }
+
+interface Head {
+  kind: "head";
+  el: HTMLElement;
+  idx: HTMLElement;
+  title: HTMLElement;
+  count: HTMLElement;
+  need: HTMLElement;
+}
+
+type Node = Row | Head;
 
 function makeRow(): Row {
   const root = el("div", "row");
@@ -104,6 +151,7 @@ function makeRow(): Row {
   third.append(mode, model, cwd);
   root.append(sq, first, second, third);
   return {
+    kind: "row",
     el: root,
     name,
     ctx,
@@ -115,11 +163,45 @@ function makeRow(): Row {
     mode,
     model,
     cwd,
-    id: null,
     seq: -1,
-    kind: null,
+    state: null,
     density: null,
+    pinned: null,
   };
+}
+
+/** A group header: the collapse glyph, the index, the title, a rule, the count, the need. */
+function makeHead(): Head {
+  const root = el("div", "group");
+  root.setAttribute("role", "presentation");
+  const tog = el("span", "tog");
+  tog.setAttribute("aria-hidden", "true");
+  const idx = el("span", "idx");
+  const title = el("span", "title");
+  const rule = el("span", "rule");
+  rule.setAttribute("aria-hidden", "true");
+  const count = el("span", "count");
+  const need = el("span", "need");
+  root.append(tog, idx, title, rule, count, need);
+  return { kind: "head", el: root, idx, title, count, need };
+}
+
+function setText(node: HTMLElement, text: string): void {
+  if (node.textContent !== text) {
+    node.textContent = text;
+  }
+}
+
+/** "3" when nobody needs you, "3, 1 needs you" when some do, "2 need you" when all do. */
+function fillHead(head: Head, item: HeadItem): void {
+  setText(head.idx, String(item.index).padStart(2, "0"));
+  setText(head.title, item.title);
+  const some = item.attention > 0 && item.attention < item.count;
+  setText(head.count, item.attention === 0 ? String(item.count) : some ? `${item.count},` : "");
+  setText(head.need, item.attention > 0 ? `${item.attention} need${item.attention === 1 ? "s" : ""} you` : "");
+  head.el.dataset.group = item.group;
+  head.el.dataset.collapsed = String(item.collapsed);
+  head.el.title = `${item.collapsed ? "expand" : "collapse"} ${item.title}`;
 }
 
 /** The context figure from the status line, its band, a 24px bar and a tooltip naming the model. */
@@ -167,16 +249,18 @@ function modelText(v: SessionView): string {
   return parts.length === 0 ? "no status line yet" : parts.join(", ");
 }
 
-function fill(row: Row, v: SessionView, selected: boolean, now: number, density: Density): void {
-  const kind = v.state.state;
-  if (row.seq !== v.seq || row.kind !== kind || row.density !== density) {
+function fill(row: Row, v: SessionView, selected: boolean, now: number, density: Density, pinned: boolean): void {
+  const state = v.state.state;
+  if (row.seq !== v.seq || row.state !== state || row.density !== density || row.pinned !== pinned) {
     row.seq = v.seq;
-    row.kind = kind;
+    row.state = state;
     row.density = density;
-    row.el.dataset.kind = kind;
-    row.el.dataset.attention = String(needsAttention(kind));
+    row.pinned = pinned;
+    row.el.dataset.kind = state;
+    row.el.dataset.attention = String(needsAttention(state));
     row.el.dataset.certainty = v.evidence.certainty;
     row.el.dataset.alive = String(v.alive);
+    row.el.dataset.pinned = String(pinned);
     const name = displayName(v);
     const guessed = v.evidence.certainty === "heuristic";
     const text = describeState(v.state);
@@ -188,7 +272,7 @@ function fill(row: Row, v: SessionView, selected: boolean, now: number, density:
     row.mode.textContent = attachmentLabel(v.attachment);
     row.model.textContent = modelText(v);
     row.cwd.textContent = v.cwd ?? "";
-    row.el.setAttribute("aria-label", `${name}, ${text}`);
+    row.el.setAttribute("aria-label", `${name}, ${text}${pinned ? ", pinned" : ""}`);
     // the compact row has no room for the state text, so the tooltip carries it
     if (density === "compact") {
       row.el.title = shown;
@@ -203,7 +287,40 @@ function fill(row: Row, v: SessionView, selected: boolean, now: number, density:
 }
 
 function sameOrder(a: readonly string[], b: readonly string[]): boolean {
-  return a.length === b.length && a.every((id, i) => id === b[i]);
+  return a.length === b.length && a.every((key, i) => key === b[i]);
+}
+
+/**
+ * The order to show while a reorder is held back: items that are gone leave now, and a new row
+ * joins after the last row of its group when its header is present, else at the end.
+ */
+function holdOrder(held: readonly string[], next: readonly string[], byKey: ReadonlyMap<string, Item>): string[] {
+  const out = held.filter((key) => byKey.has(key));
+  const known = new Set(out);
+  for (const key of next) {
+    if (known.has(key)) {
+      continue;
+    }
+    known.add(key);
+    const item = byKey.get(key);
+    const head = item?.kind === "row" ? item.head : null;
+    const at = head === null ? -1 : out.indexOf(head);
+    if (at === -1) {
+      out.push(key);
+      continue;
+    }
+    let end = at + 1;
+    while (end < out.length) {
+      const member = byKey.get(out[end] ?? "");
+      if (member?.kind === "row" && member.head === head) {
+        end += 1;
+      } else {
+        break;
+      }
+    }
+    out.splice(end, 0, key);
+  }
+  return out;
 }
 
 export function createSessionList(options: SessionListOptions): SessionList {
@@ -212,21 +329,32 @@ export function createSessionList(options: SessionListOptions): SessionList {
   root.setAttribute("aria-label", "sessions");
   root.tabIndex = 0;
   const spacer = el("div", "spacer");
-  const empty = el("p", "empty", "No Claude Code sessions found.");
+  const empty = el("p", "empty");
   root.append(spacer, empty);
 
   let density: Density = options.density ?? "standard";
   root.dataset.density = density;
+  let groupBy: GroupBy = options.groupBy ?? "none";
+  root.dataset.group = groupBy;
+  let filterText = "";
+  let query: Query = parseQuery("");
+  const pinned = new Set<string>(options.pinned ?? []);
+  const collapsed = new Set<string>(options.collapsed ?? []);
 
-  const byId = new Map<string, SessionView>();
-  const live = new Map<string, Row>();
-  const pool: Row[] = [];
-  /** The ids in the order the rows are laid out. */
+  let views: readonly SessionView[] = [];
+  const viewById = new Map<string, SessionView>();
+  const byKey = new Map<string, Item>();
+  const live = new Map<string, Node>();
+  const rowPool: Row[] = [];
+  const headPool: Head[] = [];
+  /** The item keys in the order they are laid out. */
   let order: string[] = [];
-  /** The order the core wants, held back while the pointer or the keyboard is in the list. */
+  /** The order arrange() wants, held back while the pointer or the keyboard is in the list. */
   let pending: string[] | null = null;
-  /** offsets[i] is the top of row i; offsets[order.length] is the height of the list. */
+  /** offsets[i] is the top of item i; offsets[order.length] is the height of the list. */
   let offsets: number[] = [0];
+  /** ordinal[i] is how many rows come before item i; ordinal[order.length] is the row count. */
+  let ordinal: number[] = [0];
   let selected: string | null = null;
   let now = 0;
   let hovering = false;
@@ -234,15 +362,30 @@ export function createSessionList(options: SessionListOptions): SessionList {
   let lastInput = 0;
   let scheduled = false;
 
-  function layout(): void {
-    const h = ROW_HEIGHT[density];
-    offsets = new Array<number>(order.length + 1);
-    for (let i = 0; i <= order.length; i++) {
-      offsets[i] = i * h;
-    }
+  function heightOf(item: Item | undefined): number {
+    return item?.kind === "head" ? HEADER_HEIGHT : ROW_HEIGHT[density];
   }
 
-  /** The index of the row at `y`, clamped to the list. */
+  function layout(): void {
+    const n = order.length;
+    offsets = new Array<number>(n + 1);
+    ordinal = new Array<number>(n + 1);
+    let y = 0;
+    let rows = 0;
+    for (let i = 0; i < n; i++) {
+      offsets[i] = y;
+      ordinal[i] = rows;
+      const item = byKey.get(order[i] ?? "");
+      y += heightOf(item);
+      if (item?.kind === "row") {
+        rows += 1;
+      }
+    }
+    offsets[n] = y;
+    ordinal[n] = rows;
+  }
+
+  /** The index of the item at `y`, clamped to the list. */
   function indexAt(y: number): number {
     let lo = 0;
     let hi = order.length - 1;
@@ -260,14 +403,17 @@ export function createSessionList(options: SessionListOptions): SessionList {
     return lo;
   }
 
-  function release(id: string, row: Row): void {
-    live.delete(id);
-    row.el.remove();
-    row.id = null;
-    row.seq = -1;
-    row.kind = null;
-    if (pool.length < POOL_MAX) {
-      pool.push(row);
+  function release(key: string, node: Node): void {
+    live.delete(key);
+    node.el.remove();
+    if (node.kind === "row") {
+      node.seq = -1;
+      node.state = null;
+      if (rowPool.length < POOL_MAX) {
+        rowPool.push(node);
+      }
+    } else if (headPool.length < POOL_MAX) {
+      headPool.push(node);
     }
   }
 
@@ -282,34 +428,46 @@ export function createSessionList(options: SessionListOptions): SessionList {
       first = Math.max(0, indexAt(top) - OVERSCAN);
       last = Math.min(n, indexAt(top + height - 1) + 1 + OVERSCAN);
     }
-    // rows that left the range go back to the pool first, so the rows entering it reuse their nodes
+    // items that left the range go back to the pools first, so the items entering it reuse nodes
     const keep = new Set(order.slice(first, last));
-    for (const [id, row] of live) {
-      if (!keep.has(id)) {
-        release(id, row);
+    for (const [key, node] of live) {
+      if (!keep.has(key)) {
+        release(key, node);
       }
     }
+    const total = ordinal[n] ?? 0;
     for (let i = first; i < last; i++) {
-      const id = order[i];
-      const view = id === undefined ? undefined : byId.get(id);
-      if (id === undefined || view === undefined) {
+      const key = order[i];
+      const item = key === undefined ? undefined : byKey.get(key);
+      if (key === undefined || item === undefined) {
         continue;
       }
-      let row = live.get(id);
-      if (!row) {
-        row = pool.pop() ?? makeRow();
-        row.id = id;
-        row.el.id = `session-${id}`;
-        row.el.dataset.id = id;
-        live.set(id, row);
-        spacer.append(row.el);
+      const node = live.get(key);
+      if (item.kind === "row") {
+        let row = node?.kind === "row" ? node : undefined;
+        if (!row) {
+          row = rowPool.pop() ?? makeRow();
+          row.el.id = `session-${item.id}`;
+          row.el.dataset.id = item.id;
+          live.set(key, row);
+          spacer.append(row.el);
+        }
+        row.el.style.transform = `translateY(${offsets[i] ?? 0}px)`;
+        row.el.setAttribute("aria-posinset", String((ordinal[i] ?? 0) + 1));
+        row.el.setAttribute("aria-setsize", String(total));
+        fill(row, item.view, selected === item.id, now, density, item.pinned);
+      } else {
+        let head = node?.kind === "head" ? node : undefined;
+        if (!head) {
+          head = headPool.pop() ?? makeHead();
+          live.set(key, head);
+          spacer.append(head.el);
+        }
+        head.el.style.transform = `translateY(${offsets[i] ?? 0}px)`;
+        fillHead(head, item);
       }
-      row.el.style.transform = `translateY(${offsets[i] ?? 0}px)`;
-      row.el.setAttribute("aria-posinset", String(i + 1));
-      row.el.setAttribute("aria-setsize", String(n));
-      fill(row, view, selected === id, now, density);
     }
-    if (selected !== null && live.has(selected)) {
+    if (selected !== null && live.has(rowKey(selected))) {
       root.setAttribute("aria-activedescendant", `session-${selected}`);
     } else {
       root.removeAttribute("aria-activedescendant");
@@ -337,6 +495,34 @@ export function createSessionList(options: SessionListOptions): SessionList {
     return (!hovering && !focused) || Date.now() - lastInput >= SETTLE_MS;
   }
 
+  /** Arrange the views again. A change made by hand applies at once; one from the core may wait. */
+  function rebuild(immediate: boolean): void {
+    const arranged = arrange(views, { groupBy, query, pinned, collapsed });
+    byKey.clear();
+    for (const item of arranged.items) {
+      byKey.set(item.key, item);
+    }
+    const next = arranged.items.map((item) => item.key);
+    if (immediate || sameOrder(order, next) || settled()) {
+      order = next;
+      pending = null;
+    } else {
+      order = holdOrder(order, next, byKey);
+      pending = sameOrder(order, next) ? null : next;
+    }
+    layout();
+    if (views.length === 0) {
+      empty.textContent = "No Claude Code sessions found.";
+      empty.hidden = false;
+    } else if (arranged.matched === 0) {
+      empty.textContent = "No sessions match the filter.";
+      empty.hidden = false;
+    } else {
+      empty.hidden = true;
+    }
+    paint();
+  }
+
   function applyPending(): void {
     if (pending !== null) {
       order = pending;
@@ -346,7 +532,7 @@ export function createSessionList(options: SessionListOptions): SessionList {
     }
   }
 
-  /** Scroll so that row `index` is inside the viewport. */
+  /** Scroll so that item `index` is inside the viewport. */
   function reveal(index: number): void {
     const height = root.clientHeight;
     if (height <= 0) {
@@ -359,6 +545,44 @@ export function createSessionList(options: SessionListOptions): SessionList {
     } else if (y1 > root.scrollTop + height) {
       root.scrollTop = y1 - height;
     }
+  }
+
+  function prefs(): ListPrefs {
+    return { density, groupBy, pinned: [...pinned], collapsed: [...collapsed] };
+  }
+
+  function notify(): void {
+    options.onPrefs?.(prefs());
+  }
+
+  function setGroupBy(g: GroupBy): void {
+    if (g === groupBy) {
+      return;
+    }
+    groupBy = g;
+    root.dataset.group = g;
+    rebuild(true);
+    notify();
+  }
+
+  function togglePin(id: string): void {
+    if (pinned.has(id)) {
+      pinned.delete(id);
+    } else {
+      pinned.add(id);
+    }
+    rebuild(true);
+    notify();
+  }
+
+  function toggleGroup(group: string): void {
+    if (collapsed.has(group)) {
+      collapsed.delete(group);
+    } else {
+      collapsed.add(group);
+    }
+    rebuild(true);
+    notify();
   }
 
   function touch(): void {
@@ -394,20 +618,71 @@ export function createSessionList(options: SessionListOptions): SessionList {
 
   function onClick(event: Event): void {
     touch();
-    const target = event.target instanceof Element ? event.target.closest<HTMLElement>(".row") : null;
-    const id = target?.dataset.id;
+    const target = event.target instanceof Element ? event.target : null;
+    const head = target?.closest<HTMLElement>(".group");
+    if (head?.dataset.group !== undefined) {
+      toggleGroup(head.dataset.group);
+      return;
+    }
+    const id = target?.closest<HTMLElement>(".row")?.dataset.id;
     if (id) {
       options.onSelect(id);
     }
   }
 
+  /** The item indexes that are rows, in order. */
+  function rowIndexes(): number[] {
+    const out: number[] = [];
+    for (let i = 0; i < order.length; i++) {
+      if (byKey.get(order[i] ?? "")?.kind === "row") {
+        out.push(i);
+      }
+    }
+    return out;
+  }
+
+  /** Left collapses the selected session's group, Right expands it. */
+  function fold(collapse: boolean): boolean {
+    const view = selected === null ? undefined : viewById.get(selected);
+    const group = view === undefined ? null : groupOf(groupBy, view);
+    if (group === null || collapsed.has(group) === collapse) {
+      return false;
+    }
+    toggleGroup(group);
+    return true;
+  }
+
   function onKeyDown(event: KeyboardEvent): void {
     touch();
-    const n = order.length;
+    if (event.ctrlKey || event.metaKey || event.altKey) {
+      return;
+    }
+    switch (event.key) {
+      case "p":
+        if (selected !== null) {
+          event.preventDefault();
+          togglePin(selected);
+        }
+        return;
+      case "g":
+        event.preventDefault();
+        setGroupBy(nextGroupBy(groupBy));
+        return;
+      case "ArrowLeft":
+      case "ArrowRight":
+        if (fold(event.key === "ArrowLeft")) {
+          event.preventDefault();
+        }
+        return;
+      default:
+        break;
+    }
+    const rows = rowIndexes();
+    const n = rows.length;
     if (n === 0) {
       return;
     }
-    const current = selected === null ? -1 : order.indexOf(selected);
+    const current = selected === null ? -1 : rows.indexOf(order.indexOf(rowKey(selected)));
     const from = current === -1 ? 0 : current;
     const page = Math.max(1, Math.floor(root.clientHeight / ROW_HEIGHT[density]));
     let next: number;
@@ -434,10 +709,11 @@ export function createSessionList(options: SessionListOptions): SessionList {
         return;
     }
     event.preventDefault();
-    const id = order[next];
-    if (id !== undefined) {
-      options.onSelect(id);
-      reveal(next);
+    const index = rows[next];
+    const item = index === undefined ? undefined : byKey.get(order[index] ?? "");
+    if (index !== undefined && item?.kind === "row") {
+      options.onSelect(item.id);
+      reveal(index);
     }
   }
 
@@ -457,33 +733,21 @@ export function createSessionList(options: SessionListOptions): SessionList {
     get density() {
       return density;
     },
-    update(views, sel, at) {
+    get groupBy() {
+      return groupBy;
+    },
+    get filter() {
+      return filterText;
+    },
+    update(v, sel, at) {
+      views = v;
       selected = sel;
       now = at;
-      byId.clear();
-      for (const v of views) {
-        byId.set(v.id, v);
+      viewById.clear();
+      for (const view of views) {
+        viewById.set(view.id, view);
       }
-      const next = views.map((v) => v.id);
-      if (sameOrder(order, next)) {
-        pending = null;
-      } else if (settled()) {
-        order = next;
-        pending = null;
-      } else {
-        // rows that are gone leave now; new ones join at the end until the reorder applies
-        order = order.filter((id) => byId.has(id));
-        const known = new Set(order);
-        for (const id of next) {
-          if (!known.has(id)) {
-            order.push(id);
-          }
-        }
-        pending = sameOrder(order, next) ? null : next;
-      }
-      layout();
-      empty.hidden = views.length > 0;
-      paint();
+      rebuild(false);
     },
     paint,
     setDensity(d) {
@@ -496,7 +760,21 @@ export function createSessionList(options: SessionListOptions): SessionList {
       layout();
       root.scrollTop = offsets[anchor] ?? 0;
       paint();
+      notify();
     },
+    setGroupBy,
+    setFilter(text) {
+      if (text === filterText) {
+        return;
+      }
+      filterText = text;
+      query = parseQuery(text);
+      rebuild(true);
+    },
+    togglePin,
+    isPinned: (id) => pinned.has(id),
+    toggleGroup,
+    prefs,
     dispose() {
       root.removeEventListener("pointerenter", onPointerEnter);
       root.removeEventListener("pointermove", touch);
@@ -508,8 +786,10 @@ export function createSessionList(options: SessionListOptions): SessionList {
       root.removeEventListener("scroll", schedule);
       observer?.disconnect();
       live.clear();
-      pool.length = 0;
-      byId.clear();
+      rowPool.length = 0;
+      headPool.length = 0;
+      byKey.clear();
+      viewById.clear();
       root.replaceChildren();
     },
   };

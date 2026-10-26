@@ -187,25 +187,37 @@ window and `c4 sessions` print guesses with a `~` in front of the state.
 
 `c4` with no arguments opens one window. Its sidebar lists every session discovery can see, in
 attention order (the waiting states first, then failed and disconnected, then running, then idle and
-completed). The list is virtual: only the rows near the viewport exist, so a thousand sessions
-scroll like twenty. Each row shows the state square and the state text (a `~` in front of a guess),
-the context figure from the status line with a small bar, how long the session has been in its
-state, and its host, attachment and pid; the third line of an expanded row adds the attachment
-chip, the model and effort, and the cwd. Three densities (22, 34 and 56px rows) cycle on
-Ctrl+Shift+= (Cmd+Shift+= on macOS); the compact row keeps the state text in its tooltip and its
-accessible name. The arrow, page, Home and End keys move the selection and scroll to it. A row
-changes its glyph and text the moment a fact arrives, but a reorder waits while the pointer is
-inside the list or the list has keyboard focus, and applies on leave or after two seconds at rest,
-so a row never moves out from under a click. Selecting a row opens a read-only inspector: the state with the source and time of its evidence, the process, cwd,
+completed), pinned sessions ahead of the rest. The list is virtual: only the rows near the viewport
+exist, so a thousand sessions scroll like twenty. Each row shows the state square and the state
+text (a `~` in front of a guess), the context figure from the status line with a small bar, how long
+the session has been in its state, and its host, attachment and pid; the third line of an expanded
+row adds the attachment chip, the model and effort, and the cwd. Three densities (22, 34 and 56px
+rows) cycle on Ctrl+Shift+= (Cmd+Shift+= on macOS); the compact row keeps the state text in its
+tooltip and its accessible name. The arrow, page, Home and End keys move the selection and scroll
+to it; `p` pins the selected session, which lifts it to the top of the list, or of its group.
+
+The list groups by project, host or state (the button above it, or `g` in the list). Each group
+gets a 24px header with its number, its name, how many sessions it holds and how many need you;
+groups come in the order of their most urgent session. A click on the header, or Left on a selected
+row, folds the group, and Right opens it again. The filter box above the list (`/` focuses it,
+Escape clears it) narrows the list as you type: words match the name, the project and the cwd;
+`state:`, `project:`, `tool:`, `mode:` and `host:` tokens match one field each, two values of one
+key mean either, and tokens of different keys all have to hold. A row changes its glyph and text
+the moment a fact arrives, but a reorder from the core waits while the pointer is inside the list
+or the list has keyboard focus, and applies on leave or after two seconds at rest, so a row never
+moves out from under a click. What you do by hand (filter, pin, fold, regroup) applies at once, and
+a session that arrives while the order is held joins under its header. Selecting a row opens a
+read-only inspector: the state with the source and time of its evidence, the process, cwd,
 name, version, host, attachment, transcript path, agents and tasks as far as the files say. The
 status strip shows when the last pass ran and how long it took, when the session list command last
 ran and what it returned, how many files could not be read, the ingest server's state (how many
 lines it has taken in, when the last one arrived, whether any were dropped, or that another C4 holds
 the endpoint), and where the Claude home came from.
 
-Nothing in the window types into any session, and nothing is persisted: closing the window forgets
-the table and stops the ingest server, and the next start runs a fresh pass and replays what the
-shim spooled in the meantime. `c4 sessions`, `c4 doctor` and `c4 telemetry`
+Nothing in the window types into any session (the filter box narrows the list and reaches nothing
+else), and nothing is persisted: closing the window forgets the table, the pins, the grouping, the
+folded groups and the density, and stops the ingest server; the next start runs a fresh pass and
+replays what the shim spooled in the meantime. `c4 sessions`, `c4 doctor` and `c4 telemetry`
 print the same facts without a window; docs/BUILDING.md lists them.
 
 ## What C4 never reads

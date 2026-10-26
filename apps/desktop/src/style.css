@@ -78,9 +78,62 @@
   overflow: hidden;
 }
 
-/* The list is virtual: a spacer holds the height of every row, and only the rows near the viewport
-   exist, placed on the spacer with a transform. The density sets one row height for the whole list:
-   22px with one line, 34px with two, 56px with three. */
+/* the line above the list: the filter box and the grouping button */
+
+.filterbar {
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  border-bottom: 1px solid var(--line);
+}
+
+.filterbar .filter {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: var(--ctl-md);
+  padding: 0 var(--s-3);
+  border: 1px solid var(--faint);
+  background: var(--panel-2);
+  color: var(--text);
+  font: var(--fs-12) / 1 var(--mono);
+}
+
+.filterbar .filter::placeholder {
+  color: var(--dim);
+}
+
+.filterbar .filter:focus {
+  outline: none;
+  border-color: var(--sage-hi);
+}
+
+.filterbar .groupby {
+  flex: 0 0 auto;
+  height: var(--ctl-md);
+  padding: 0 var(--s-3);
+  border: 1px solid var(--faint);
+  background: transparent;
+  color: var(--dim);
+  font: var(--fs-11) / 1 var(--mono);
+  letter-spacing: var(--track-chip);
+  text-transform: uppercase;
+  cursor: default;
+}
+
+.filterbar .groupby:hover {
+  border-color: var(--dim);
+  color: var(--text);
+}
+
+.filterbar .groupby:focus-visible {
+  outline: 1px solid var(--sage-hi);
+  outline-offset: -1px;
+}
+
+/* The list is virtual: a spacer holds the height of every item, and only the items near the
+   viewport exist, placed on the spacer with a transform. The density sets one row height for the
+   whole list: 22px with one line, 34px with two, 56px with three. Group headers are 24px. */
 
 .sessions {
   position: relative;
@@ -155,6 +208,107 @@
   display: none;
 }
 
+/* a group header: the collapse glyph in the square's column, the index in sage, the title in Space
+   Mono, a rule, the count and, in amber, how many members need you */
+
+.group {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--row-header);
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: 0 var(--s-5) 0 var(--s-4);
+  /* the same transparent stripe the rows carry, so the glyph lines up with the state squares */
+  border-left: 2px solid transparent;
+  border-bottom: 1px solid var(--line);
+  cursor: default;
+  user-select: none;
+}
+
+.group:hover {
+  background: var(--panel);
+}
+
+.group .tog {
+  position: relative;
+  flex: 0 0 12px;
+  height: 8px;
+}
+
+.group .tog::before,
+.group .tog::after {
+  content: "";
+  position: absolute;
+  background: var(--dim);
+}
+
+.group .tog::before {
+  left: 0;
+  top: 3px;
+  width: 8px;
+  height: 2px;
+}
+
+.group .tog::after {
+  left: 3px;
+  top: 0;
+  width: 2px;
+  height: 8px;
+  display: none;
+}
+
+.group[data-collapsed="true"] .tog::after {
+  display: block;
+}
+
+.group .idx {
+  flex: 0 0 auto;
+  font-family: var(--display);
+  font-size: var(--fs-11);
+  color: var(--sage);
+}
+
+.group .title {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-family: var(--display);
+  font-size: var(--fs-12);
+  font-weight: 700;
+  color: var(--head);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group[data-collapsed="true"] .title {
+  color: var(--dim);
+}
+
+.group .rule {
+  flex: 1 1 auto;
+  min-width: var(--s-4);
+  height: 1px;
+  background: var(--faint);
+}
+
+.group .count,
+.group .need {
+  flex: 0 0 auto;
+  font-size: var(--fs-11);
+  color: var(--dim);
+}
+
+.group .need {
+  color: var(--amber);
+}
+
+.group .need:empty {
+  display: none;
+}
+
 .row:hover {
   background: var(--panel);
 }
@@ -189,6 +343,18 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* a pinned row carries a 6px sage square after its name */
+
+.row[data-pinned="true"] .name::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: var(--s-2);
+  vertical-align: middle;
+  background: var(--sage);
 }
 
 /* the context figure with a 24px bar in front of it; both take the band's color */

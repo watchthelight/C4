@@ -94,7 +94,14 @@ colored by the status line's bands (sage under 75 percent, amber from 75, red fr
 (56px) adds a third line: the attachment chip, the model and effort from the last status line
 payload, and the cwd. A 2px amber stripe on the left marks the two waiting states, red marks Failed.
 Every piece of secondary text is `--dim` at 10 or 11px; `--mute` paints only the idle and completed
-squares.
+squares. A pinned row carries a 6px sage square after its name.
+
+Group headers are 24px, laid out like the labs site's group heads: the fold glyph (an 8px minus, a
+plus once folded) in the state square's column, the group's number in `--sage`, the title in Space
+Mono 700, a 1px `--faint` rule filling the line, the member count in `--dim` and, when any member
+needs you, that count in `--amber`. A folded header keeps its counts and dims its title. The line
+above the list holds the filter box, a 24px input on `--panel-2` with a 1px `--faint` border that
+turns `--sage-hi` on focus, and the grouping button beside it, an uppercase 11px chip.
 
 ## Layout
 
@@ -122,9 +129,11 @@ through to the terminal. Palette `Ctrl+Shift+P`, switcher `Ctrl+K`, split right 
 `Ctrl+Shift+D` and `Ctrl+Shift+E`, focus pane `Ctrl+Shift+Arrow`, tabs `Ctrl+Tab` and `Ctrl+1..9`,
 zoom `Ctrl+Shift+Enter`, focus mode `Ctrl+Shift+F`, find `Ctrl+F`, regions `Ctrl+Shift+B/I/L/M/Y`,
 row density `Ctrl+Shift+=`, cycle regions F6, Esc back to the terminal. In the session list the
-arrow keys, PageUp, PageDown, Home and End move the selection and scroll to it. Interrupt and
-terminate have no single-key binding; they go through the palette or the pane menu with a
-confirmation.
+arrow keys, PageUp, PageDown, Home and End move the selection and scroll to it, `p` pins the
+selected session, `g` walks the grouping, Left folds the selected session's group and Right opens
+it. `/` anywhere outside a text field focuses the filter box; in the box Escape clears, then leaves,
+and Enter or the down arrow leaves for the list with the filter kept. Interrupt and terminate have
+no single-key binding; they go through the palette or the pane menu with a confirmation.
 
 ## Accessibility
 
