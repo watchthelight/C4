@@ -104,14 +104,7 @@ impl ClaudeHome {
     }
 }
 
-/// The user's home directory: `HOME`, else `USERPROFILE`, else the current directory.
-#[must_use]
-pub fn user_home() -> PathBuf {
-    std::env::var_os("HOME")
-        .filter(|p| !p.is_empty())
-        .or_else(|| std::env::var_os("USERPROFILE").filter(|p| !p.is_empty()))
-        .map_or_else(|| PathBuf::from("."), PathBuf::from)
-}
+pub use c4_core::home::user_home;
 
 /// Claude Code's project directory name for a working directory: every character that is not an
 /// ASCII letter or digit becomes a dash, so `C:\Users\example\proj` is `C--Users-example-proj` and

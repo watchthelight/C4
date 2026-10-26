@@ -3,13 +3,14 @@
 //! transition, the observations that feed the state machine, and the versioned event envelope that
 //! crosses process boundaries.
 //!
-//! Nothing in this crate touches the filesystem or the network. Readers in `c4-discovery`,
-//! `c4-transcript` and `c4-ingest` turn what they see into [`Observation`]s; [`reduce`] folds them
-//! into [`SessionView`]s; the desktop app renders those.
+//! Nothing in this crate reads a file or the network; [`home`] only derives paths from the
+//! environment. Readers in `c4-discovery`, `c4-transcript` and `c4-ingest` turn what they see into
+//! [`Observation`]s; [`reduce`] folds them into [`SessionView`]s; the desktop app renders those.
 
 pub mod clock;
 pub mod envelope;
 pub mod evidence;
+pub mod home;
 pub mod ids;
 pub mod observation;
 pub mod redact;
@@ -21,6 +22,7 @@ pub mod view;
 pub use clock::Timestamp;
 pub use envelope::{Envelope, Event, NoticeLevel, SCHEMA_VERSION};
 pub use evidence::{Certainty, Evidence, Source};
+pub use home::C4Home;
 pub use ids::{AgentId, HostKind, ProcessRef, SessionId, SessionKind};
 pub use observation::{
     Attachment, BackgroundTask, BgState, HookEvent, Observation, ObservationBody, OscKind,

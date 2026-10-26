@@ -141,6 +141,20 @@
   white-space: nowrap;
 }
 
+.row .ctx {
+  flex: 0 0 auto;
+  color: var(--dim);
+  font-size: var(--fs-11);
+}
+
+.row .ctx[data-band="warn"] {
+  color: var(--amber);
+}
+
+.row .ctx[data-band="hot"] {
+  color: var(--red);
+}
+
 .row .when {
   flex: 0 0 auto;
   color: var(--mute);

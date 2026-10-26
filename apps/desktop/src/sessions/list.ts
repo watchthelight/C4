@@ -7,6 +7,8 @@
 import { el } from "../dom";
 import {
   attachmentLabel,
+  compactTokens,
+  contextBand,
   describeState,
   displayName,
   elapsed,
@@ -30,6 +32,7 @@ export interface SessionList {
 interface Row {
   el: HTMLElement;
   name: HTMLElement;
+  ctx: HTMLElement;
   when: HTMLElement;
   activity: HTMLElement;
   tags: HTMLElement;
@@ -44,15 +47,30 @@ function makeRow(id: string): Row {
   const sq = el("span", "sq");
   sq.setAttribute("aria-hidden", "true");
   const name = el("span", "name");
+  const ctx = el("span", "ctx");
   const when = el("span", "when");
   const activity = el("span", "activity");
   const tags = el("span", "tags");
   const first = el("span", "line");
-  first.append(name, when);
+  first.append(name, ctx, when);
   const second = el("span", "line");
   second.append(activity, tags);
   root.append(sq, first, second);
-  return { el: root, name, when, activity, tags, seq: -1, kind: null };
+  return { el: root, name, ctx, when, activity, tags, seq: -1, kind: null };
+}
+
+/** The context figure from the status line, with its band and a tooltip naming the model. */
+function fillContext(row: Row, v: SessionView): void {
+  if (v.context_pct === null) {
+    row.ctx.textContent = "";
+    row.ctx.title = "";
+    delete row.ctx.dataset.band;
+    return;
+  }
+  row.ctx.textContent = `${v.context_pct}%`;
+  row.ctx.dataset.band = contextBand(v.context_pct);
+  const size = v.context_size === null ? "" : ` of ${compactTokens(v.context_size)}`;
+  row.ctx.title = `context ${v.context_pct}%${size}${v.model ? `, ${v.model}` : ""}`;
 }
 
 function tagsFor(v: SessionView): string[] {
@@ -87,6 +105,7 @@ function fill(row: Row, v: SessionView, selected: boolean, now: number): void {
     row.activity.title = `${guessed ? "guessed" : "observed"} from ${sourceLabel(v.evidence.source)}`;
     row.tags.textContent = tagsFor(v).join("  ");
     row.el.setAttribute("aria-label", `${name}, ${text}`);
+    fillContext(row, v);
   }
   row.when.textContent = elapsed(now - v.state_since);
   row.el.setAttribute("aria-selected", String(selected));

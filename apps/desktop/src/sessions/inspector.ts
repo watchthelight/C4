@@ -5,6 +5,7 @@
 import { el } from "../dom";
 import {
   attachmentLabel,
+  compactTokens,
   describeState,
   displayName,
   elapsed,
@@ -53,6 +54,15 @@ function telemetry(v: SessionView): string {
   return parts.join(", ");
 }
 
+function contextText(v: SessionView): string {
+  if (v.context_pct === null) {
+    return "unknown";
+  }
+  return v.context_size === null
+    ? `${v.context_pct}% used`
+    : `${v.context_pct}% of ${compactTokens(v.context_size)}`;
+}
+
 /** The fact rows, in display order. */
 export function facts(v: SessionView, now: number): [string, string][] {
   const running = v.agents.filter((a) => a.observed_running && a.ended_at === null).length;
@@ -71,6 +81,10 @@ export function facts(v: SessionView, now: number): [string, string][] {
         : "unknown",
     ],
     ["version", v.version ?? "unknown"],
+    ["model", v.model ?? "unknown"],
+    ["context", contextText(v)],
+    ["effort", v.effort ?? "unknown"],
+    ["status line", v.statusline_at === null ? "none received" : `${elapsed(now - v.statusline_at)} ago`],
     ["started", v.started_at === null ? "unknown" : `${clock(v.started_at)}, ${elapsed(now - v.started_at)} ago`],
     ["last activity", `${elapsed(now - v.last_activity)} ago`],
     ["first seen by c4", `${elapsed(now - v.first_seen)} ago`],

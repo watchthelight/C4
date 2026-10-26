@@ -134,6 +134,12 @@ export interface SessionView {
   ended: boolean;
   peer_socket: string | null;
   transcript_path: string | null;
+  /** From the last status line payload; null until one arrives. */
+  model: string | null;
+  context_pct: number | null;
+  context_size: number | null;
+  effort: string | null;
+  statusline_at: number | null;
   seq: number;
 }
 

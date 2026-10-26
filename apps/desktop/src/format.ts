@@ -227,6 +227,28 @@ export function plural(n: number, noun: string): string {
   return `${n} ${noun}${n === 1 ? "" : "s"}`;
 }
 
+/** A token count for a label: "850", "200K", "1.0M". */
+export function compactTokens(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) {
+    return "0";
+  }
+  if (n >= 1_000_000) {
+    return `${(n / 1_000_000).toFixed(1)}M`;
+  }
+  if (n >= 1_000) {
+    return `${Math.round(n / 1_000)}K`;
+  }
+  return String(Math.round(n));
+}
+
+/** The status line's context bands: sage under 75 percent, amber from 75, red from 90. */
+export function contextBand(pct: number): "ok" | "warn" | "hot" {
+  if (pct >= 90) {
+    return "hot";
+  }
+  return pct >= 75 ? "warn" : "ok";
+}
+
 /** The attention order the core uses: weight down, the longest wait first, then the latest activity. */
 export function attentionOrder<T extends Pick<SessionView, "state" | "waiting_since" | "last_activity">>(
   views: readonly T[],

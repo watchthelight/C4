@@ -341,6 +341,46 @@ pub fn reduce(view: &mut SessionView, obs: &Observation) -> Option<Transition> {
             }
             None
         }
+        ObservationBody::Statusline {
+            model,
+            context_used_pct,
+            context_size,
+            effort,
+        } => {
+            if view.statusline_at.is_some_and(|last| at < last) {
+                // A replayed payload older than the last one: its numbers are history.
+                return None;
+            }
+            view.statusline_at = Some(at);
+            if model.is_some() {
+                view.model.clone_from(model);
+            }
+            if context_used_pct.is_some() {
+                view.context_pct = *context_used_pct;
+            }
+            if context_size.is_some() {
+                view.context_size = *context_size;
+            }
+            if effort.is_some() {
+                view.effort.clone_from(effort);
+            }
+            if view.ended {
+                return None;
+            }
+            // The status line runs inside the process, so the process is alive. What it is doing
+            // is not in the payload: a disconnected view gets a guessed Idle, like a sighting.
+            view.alive = true;
+            if matches!(view.state.kind(), StateKind::Disconnected) {
+                view.attachment = Attachment::Observed;
+                set_state(
+                    view,
+                    rest_state(view),
+                    Evidence::heuristic(Source::Statusline, at),
+                )
+            } else {
+                None
+            }
+        }
     }
 }
 
@@ -1653,6 +1693,58 @@ mod tests {
                 detail: None
             }
         );
+    }
+
+    #[test]
+    fn a_status_line_payload_fills_context_and_proves_life_without_a_state() {
+        let mut v = fresh();
+        hook(&mut v, 1000, HookEvent::UserPromptSubmit);
+        let payload = |at, pct| {
+            Observation::new(
+                sid(),
+                Timestamp::from_millis(at),
+                ObservationBody::Statusline {
+                    model: Some("claude-opus-5-5".into()),
+                    context_used_pct: Some(pct),
+                    context_size: Some(200_000),
+                    effort: Some("high".into()),
+                },
+            )
+        };
+        assert!(reduce(&mut v, &payload(1500, 42)).is_none());
+        assert_eq!(v.state, SessionState::Working, "presence only");
+        assert_eq!(v.model.as_deref(), Some("claude-opus-5-5"));
+        assert_eq!(v.context_pct, Some(42));
+        assert_eq!(v.context_size, Some(200_000));
+        assert_eq!(v.effort.as_deref(), Some("high"));
+        assert_eq!(v.statusline_at, Some(Timestamp::from_millis(1500)));
+        // A replayed older payload does not roll the numbers back.
+        assert!(reduce(&mut v, &payload(1200, 10)).is_none());
+        assert_eq!(v.context_pct, Some(42));
+        assert_eq!(v.statusline_at, Some(Timestamp::from_millis(1500)));
+        // After an observed disconnect a payload proves the process lives, but what it does is a
+        // guess, so the guard window applies (rule 3) before the view leaves Disconnected.
+        reduce(
+            &mut v,
+            &Observation::new(
+                sid(),
+                Timestamp::from_millis(2000),
+                ObservationBody::ProcessDead {
+                    process: Some(ProcessRef::new(10, 1)),
+                    reason: DisconnectReason::ProcessGone,
+                },
+            ),
+        );
+        assert!(!v.alive);
+        assert!(reduce(&mut v, &payload(2500, 43)).is_none());
+        assert!(v.alive);
+        assert_eq!(v.state.kind(), StateKind::Disconnected);
+        assert_eq!(v.context_pct, Some(43));
+        let t = reduce(&mut v, &payload(2000 + HEURISTIC_GUARD_MS + 1, 44)).unwrap();
+        assert_eq!(t.to, SessionState::Idle);
+        assert_eq!(t.evidence.source, Source::Statusline);
+        assert!(!t.evidence.is_observed());
+        assert_eq!(v.attachment, Attachment::Observed);
     }
 
     #[test]

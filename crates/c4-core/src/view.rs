@@ -135,6 +135,21 @@ pub struct SessionView {
     pub peer_socket: Option<String>,
     /// The transcript path, when known.
     pub transcript_path: Option<String>,
+    /// The model id from the last status line payload.
+    #[serde(default)]
+    pub model: Option<String>,
+    /// Context used, in percent, from the last status line payload.
+    #[serde(default)]
+    pub context_pct: Option<u8>,
+    /// The context window size in tokens, from the last status line payload.
+    #[serde(default)]
+    pub context_size: Option<u32>,
+    /// The effort level from the last status line payload.
+    #[serde(default)]
+    pub effort: Option<String>,
+    /// When the last status line payload arrived.
+    #[serde(default)]
+    pub statusline_at: Option<Timestamp>,
     /// Bumped on every change, so consumers can skip unchanged views.
     pub seq: u64,
 }
@@ -178,6 +193,11 @@ impl SessionView {
             ended: false,
             peer_socket: None,
             transcript_path: None,
+            model: None,
+            context_pct: None,
+            context_size: None,
+            effort: None,
+            statusline_at: None,
             seq: 0,
         }
     }

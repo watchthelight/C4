@@ -82,6 +82,11 @@ function view(now: number, seed: Seed): SessionView {
     ended: false,
     peer_socket: null,
     transcript_path: null,
+    model: null,
+    context_pct: null,
+    context_size: null,
+    effort: null,
+    statusline_at: null,
     seq: 1,
   };
   return { ...base, ...seed };
@@ -103,6 +108,11 @@ export function syntheticSessions(now: number): SessionView[] {
       last_activity: now - 20_000,
       transcript_path: "C:\\Users\\example\\.claude\\projects\\C--Users-example-src-alpha\\0a1b2c3d-0001-4000-8000-000000000001.jsonl",
       peer_socket: "\\\\.\\pipe\\LOCAL\\cc-msg-example",
+      model: "claude-opus-5-5",
+      context_pct: 42,
+      context_size: 200_000,
+      effort: "high",
+      statusline_at: now - 20_000,
     }),
     view(now, {
       id: "0a1b2c3d-0001-4000-8000-000000000002",
@@ -119,6 +129,11 @@ export function syntheticSessions(now: number): SessionView[] {
       state_since: now - 3 * MINUTE,
       waiting_since: now - 3 * MINUTE,
       last_activity: now - 3 * MINUTE,
+      model: "claude-sonnet-5-5",
+      context_pct: 78,
+      context_size: 200_000,
+      effort: "medium",
+      statusline_at: now - 3 * MINUTE,
     }),
     view(now, {
       id: "0a1b2c3d-0001-4000-8000-000000000003",
@@ -134,6 +149,11 @@ export function syntheticSessions(now: number): SessionView[] {
       state_since: now - 4_000,
       last_activity: now - 4_000,
       compactions: 1,
+      model: "claude-fable-5-1",
+      context_pct: 91,
+      context_size: 1_000_000,
+      effort: "max",
+      statusline_at: now - 4_000,
     }),
     view(now, {
       id: "0a1b2c3d-0001-4000-8000-000000000004",

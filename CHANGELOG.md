@@ -44,5 +44,11 @@ stay at 0.y.z while the interfaces settle.
   status strip: three drifting layers, one star in ten sage, a rare shooting star drawn as fading
   pixels, 30 fps inside a 1 ms budget, frozen while hidden or under reduced motion, seedable for
   screenshots.
+- `c4-core::home`: where C4 keeps its own files (`C4_HOME`, else `~/.c4`) and the ingest endpoint
+  for each home, a named pipe on Windows keyed by a hash of the home path and a socket file
+  elsewhere. A `Statusline` observation carries the model, the context figures and the effort from
+  a status line payload; it proves the process is alive and never changes the state on its own.
+  The session view, the sidebar row (a context percentage in the status line's bands) and the
+  inspector (model, context, effort, age of the last payload) show the new fields.
 
 [Unreleased]: https://github.com/watchthelight/C4/compare/c3a0a47...HEAD

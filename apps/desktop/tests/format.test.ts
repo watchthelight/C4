@@ -1,7 +1,16 @@
 // <wtl> project: c4 | file: apps/desktop/tests/format.test.ts | author: watchthelight </wtl>
 
 import { describe, expect, it } from "vitest";
-import { attentionOrder, cwdTail, displayName, elapsed, plural, shortId } from "../src/format";
+import {
+  attentionOrder,
+  compactTokens,
+  contextBand,
+  cwdTail,
+  displayName,
+  elapsed,
+  plural,
+  shortId,
+} from "../src/format";
 
 describe("format", () => {
   it("takes the cwd tail with either separator", () => {
@@ -30,6 +39,20 @@ describe("format", () => {
     expect(elapsed(51 * 3_600_000)).toBe("2d 3h");
     expect(plural(1, "session")).toBe("1 session");
     expect(plural(3, "session")).toBe("3 sessions");
+  });
+
+  it("formats token counts and context bands like the status line", () => {
+    expect(compactTokens(0)).toBe("0");
+    expect(compactTokens(-1)).toBe("0");
+    expect(compactTokens(850)).toBe("850");
+    expect(compactTokens(200_000)).toBe("200K");
+    expect(compactTokens(312_500)).toBe("313K");
+    expect(compactTokens(1_000_000)).toBe("1.0M");
+    expect(contextBand(0)).toBe("ok");
+    expect(contextBand(74)).toBe("ok");
+    expect(contextBand(75)).toBe("warn");
+    expect(contextBand(89)).toBe("warn");
+    expect(contextBand(90)).toBe("hot");
   });
 
   it("orders by weight, then the longest wait, then the latest activity", () => {

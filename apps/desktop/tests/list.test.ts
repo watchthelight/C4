@@ -36,6 +36,12 @@ describe("session list", () => {
     const tool = rows.find((r) => r.dataset.kind === "running_tool");
     expect(tool?.querySelector(".activity")?.textContent).toBe("running Read");
     expect(tool?.querySelector(".tags")?.textContent).toContain("tmux");
+    const ctx = tool?.querySelector<HTMLElement>(".ctx");
+    expect(ctx?.textContent).toBe("91%");
+    expect(ctx?.dataset.band).toBe("hot");
+    expect(ctx?.title).toBe("context 91% of 1.0M, claude-fable-5-1");
+    const idle = rows.find((r) => r.dataset.kind === "idle");
+    expect(idle?.querySelector(".ctx")?.textContent).toBe("");
 
     expect(list.el.querySelector("input, textarea, button, [contenteditable]")).toBeNull();
     expect(list.el.querySelector(".empty")?.hasAttribute("hidden")).toBe(true);
@@ -115,6 +121,12 @@ describe("inspector", () => {
     const terms = [...inspector.el.querySelectorAll("dt")].map((d) => d.textContent);
     expect(terms).toContain("cwd");
     expect(terms).toContain("telemetry");
+    const fact = (term: string) =>
+      [...inspector.el.querySelectorAll("dt")].find((d) => d.textContent === term)?.nextElementSibling?.textContent;
+    expect(fact("model")).toBe("claude-sonnet-5-5");
+    expect(fact("context")).toBe("78% of 200K");
+    expect(fact("effort")).toBe("medium");
+    expect(fact("status line")).toBe("3m 00s ago");
     expect(inspector.el.querySelector("input, textarea, button, [contenteditable]")).toBeNull();
 
     const nightly = snap.sessions.find((s) => s.name === "nightly");
@@ -122,5 +134,7 @@ describe("inspector", () => {
     const facts = [...inspector.el.querySelectorAll("dd")].map((d) => d.textContent);
     expect(facts).toContain("2 seen, 2 running");
     expect(facts.some((f) => f?.startsWith("0b2c3d4e, 2 tasks in flight"))).toBe(true);
+    expect(fact("context")).toBe("unknown");
+    expect(fact("status line")).toBe("none received");
   });
 });

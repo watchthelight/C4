@@ -432,6 +432,18 @@ pub enum ObservationBody {
         /// The Claude Code version.
         version: Option<String>,
     },
+    /// A status line payload arrived: the process is rendering, and these are its latest numbers.
+    /// Presence only; the payload says nothing about whether a turn is running.
+    Statusline {
+        /// `model.id`.
+        model: Option<String>,
+        /// `context_window.used_percentage`, rounded.
+        context_used_pct: Option<u8>,
+        /// `context_window.context_window_size`, in tokens.
+        context_size: Option<u32>,
+        /// The effort level.
+        effort: Option<String>,
+    },
 }
 
 #[cfg(test)]
