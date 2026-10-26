@@ -22,8 +22,9 @@ cargo clippy --workspace --all-targets -- -D warnings  # what CI runs
 pnpm install                                           # frontend dependencies (apps/desktop)
 pnpm -r lint && pnpm -r typecheck && pnpm -r test      # eslint, tsc, vitest
 pnpm -C apps/desktop tauri dev                         # the app with hot reload
-pnpm -C apps/desktop tauri build --debug --no-bundle   # the debug app without installers (what CI builds)
-pnpm -C apps/desktop tauri build                       # a release bundle for this platform
+pnpm -C apps/desktop tauri build --debug --no-bundle   # the debug app without installers
+pnpm -C apps/desktop tauri build                       # a release bundle for this platform, without the shim
+python -I scripts/stage_shim.py                        # stage the built c4-shim as the app's sidecar (see below)
 cargo bench --workspace                                # criterion benches
 python scripts/precommit.py                            # what the git hook runs
 python scripts/gen_notices.py                          # regenerate THIRD-PARTY-NOTICES.md
@@ -60,6 +61,28 @@ or `=tauri` forces either.
 
 The app refreshes from the Claude home's files every 2 s (`C4_REFRESH_MS`, floor 250) and runs the
 session list command on every eighth pass. Hook and status line telemetry arrive in Milestone 2.
+
+### The shim as a sidecar
+
+The app ships `c4-shim` beside `c4`, which is where `c4 install` takes its copy from. Tauri calls
+such a file a sidecar: the bundler reads it from `src-tauri/binaries/c4-shim-<target triple>` (with
+`.exe` on Windows), places it next to the app without the triple, and `tauri-build` copies it into
+`target/<profile>/` as well, so a development build finds it there. The declaration lives in
+`src-tauri/tauri.sidecar.conf.json`, not in `tauri.conf.json`: Tauri's build script refuses to build
+while a declared sidecar is missing, and a plain `cargo build` or `cargo test` of the workspace should
+never need a staged file. A release bundle with the shim inside is three commands:
+
+```sh
+cargo build -p c4-shim --release
+python -I scripts/stage_shim.py                                              # to src-tauri/binaries/
+pnpm -C apps/desktop tauri build --config src-tauri/tauri.sidecar.conf.json
+```
+
+`--profile debug` stages the debug shim, which is what CI does on every runner before
+`tauri build --debug --no-bundle --config src-tauri/tauri.sidecar.conf.json`; `--target <triple>`
+names a shim built with `cargo --target`, under `target/<triple>/`. The config file must not be named
+`tauri.<platform>.conf.json`: Tauri merges files named that way on its own, which would make every
+build of the desktop crate need the staged shim.
 
 The icons under `src-tauri/icons/` come from `assets/icons/c4-1024.png`, which `scripts/make_icon.py`
 draws. To regenerate them run `pnpm -C apps/desktop exec tauri icon ../../assets/icons/c4-1024.png -o <dir>`

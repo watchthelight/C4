@@ -106,3 +106,12 @@ result below the list when you run it.
   endpoint free, the spool empty, and the one note that `c4 install` has not run. Afterwards
   `~/.c4/install-manifest.json` did not exist and `settings.json` had its previous size and
   modification time.
+- 2026-10-26, the verify workflow for commit 84201f5 (run 40278916290): the lint job and the four
+  test jobs green, the doctor audit tests included on every runner.
+- 2026-10-26, Windows 11 Pro, the sidecar chain CI runs: `scripts/stage_shim.py --profile debug`
+  staged the debug shim as `src-tauri/binaries/c4-shim-x86_64-pc-windows-msvc.exe`, and
+  `tauri build --debug --no-bundle --config src-tauri/tauri.sidecar.conf.json` built the debug app.
+  With the sidecar declared and the staged file moved away, the desktop crate's build script failed
+  the build; with the file back and `target/debug/c4-shim.exe` moved aside, the build put a copy
+  there with the staged file's hash. The built `c4.exe install --dry-run` named that copy as the
+  shim it would install, and wrote nothing.

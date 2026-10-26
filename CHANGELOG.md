@@ -86,5 +86,9 @@ stay at 0.y.z while the interfaces settle.
   unknown) and the spool, with notes that name the command to run. The session list command type
   can carry environment variables for its child, which is how the shim copy is pointed at the same
   C4 home.
+- The shim ships as a Tauri sidecar beside `c4`: `scripts/stage_shim.py` copies the built `c4-shim`
+  to `src-tauri/binaries/c4-shim-<triple>`, `tauri.sidecar.conf.json` declares it for
+  `tauri build --config`, and CI stages it before the debug app build on every runner. A plain cargo
+  build or test never needs the staged file.
 
 [Unreleased]: https://github.com/watchthelight/C4/compare/c3a0a47...HEAD

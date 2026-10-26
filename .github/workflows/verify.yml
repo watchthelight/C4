@@ -130,6 +130,12 @@ jobs:
         run: |
           pnpm -C apps/desktop exec playwright install --with-deps chromium
           pnpm -C apps/desktop e2e
-      - name: debug app build
+      - name: stage the shim as the app's sidecar
         if: hashFiles('apps/desktop/src-tauri/tauri.conf.json') != ''
-        run: pnpm -C apps/desktop tauri build --debug --no-bundle
+        shell: bash
+        run: |
+          cargo build -p c4-shim
+          python -I scripts/stage_shim.py --profile debug
+      - name: debug app build, with the sidecar
+        if: hashFiles('apps/desktop/src-tauri/tauri.conf.json') != ''
+        run: pnpm -C apps/desktop tauri build --debug --no-bundle --config src-tauri/tauri.sidecar.conf.json
