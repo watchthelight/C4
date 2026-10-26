@@ -161,8 +161,10 @@ stay at 0.y.z while the interfaces settle.
   sandboxed page `window.c4` through a preload script. A request waits for the core's hello; a
   core that exits is started again after a growing pause and the page hears about it as a `core`
   event; a stop closes the core's stdin first, after a grace for the preferences the page flushes
-  on its way out. `c4 <args>` still runs the command line with no window. `pnpm -C apps/desktop
-  dev` and `start` open the Electron window. Tests cover the argument rule, the page origin check,
+  on its way out. `c4 <args>` still runs the command line with no window; a switch before the
+  command is the window's (`c4 --no-sandbox doctor` gives Chromium its switch and the core
+  `doctor`), the core's own `--log` goes along, and a switch after the command is the command's.
+  `pnpm -C apps/desktop dev` and `start` open the Electron window. Tests cover the argument rule, the page origin check,
   the path check of the scheme, the sidecar against a stand-in core (ids, events, a restart, a
   protocol mismatch, stop and kill) and the renderer bridge (`apps/desktop/electron/tests/`,
   `apps/desktop/tests/electron.test.ts`). Electron is listed in THIRD-PARTY-NOTICES.md with a

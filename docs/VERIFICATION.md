@@ -373,4 +373,14 @@ result below the list when you run it.
   Chromium stops before the main process runs (docs/BUILDING.md, Packaging). From the next commit
   the workflow loads the AppArmor profile the deb's post-install script installs, written for the
   unpacked binary, the check launches the window with the sandbox on everywhere, a relay that
-  fails names its signal and stderr, and the macOS result counts; its run is the next entry.
+  fails names its signal and stderr, and the macOS result counts; its run is recorded below.
+- 2026-10-26, the switch rule of the packaged `c4`, by hand on Windows with the output piped
+  (`release/win-unpacked/c4.exe` rebuilt from the main process with the rule, the fixture Claude
+  home, a scratch C4 home): `c4 --no-sandbox --version` exit 0 with the version in 154 ms, so a
+  switch before the command stays with Chromium and never reaches the core; `c4 --no-sandbox
+  doctor --no-commands` exit 0 with the doctor report; `c4 --log debug doctor --no-commands` exit
+  0; `c4 --log=c4_discovery=trace sessions --files-only --json` exit 0 with the core's trace lines
+  on stderr, so the core's own option goes along with its value; `c4 doctor --no-sandbox` exit 2
+  with the core's `unexpected argument '--no-sandbox'`, since a switch after the command is the
+  command's. The Playwright check over that build passes with the `--no-sandbox --version` relay
+  added to it (3.4 s); the rule's cases are in `apps/desktop/electron/tests/cli.test.ts`.

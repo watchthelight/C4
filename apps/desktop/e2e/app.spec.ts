@@ -140,6 +140,11 @@ test("a headless command runs in the core and its exit code comes back", () => {
   expect(version.status, report(version)).toBe(0);
   expect(version.stdout.trim()).toMatch(/^c4 \d+\.\d+\.\d+/);
 
+  // a switch before the command is the window's: Chromium reads it, the core never sees it
+  const switched = run(["--no-sandbox", "--version"]);
+  expect(switched.status, report(switched)).toBe(0);
+  expect(switched.stdout.trim()).toMatch(/^c4 \d+\.\d+\.\d+/);
+
   const bad = run(["nonsense"]);
   expect(bad.status, report(bad)).toBe(2);
   expect(bad.stderr).toContain("unrecognized subcommand");

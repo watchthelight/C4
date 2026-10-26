@@ -156,9 +156,9 @@ namespaces do not work at all. The AppImage and the unpacked build get neither, 
 they stop before the main process runs, for the window and for a headless command alike, with
 `The SUID sandbox helper binary was found, but is not configured correctly` on stderr and a SIGTRAP
 exit. The ways out are a profile like the deb's for the binary's path (what the verify workflow loads
-for the unpacked build), `--no-sandbox` on the command line (the page then runs without its renderer
-sandbox; SECURITY.md), or the sysctl `kernel.apparmor_restrict_unprivileged_userns=0` for the whole
-system. `resources/bin/c4-cli` beside the executable runs the headless commands with no Chromium in
+for the unpacked build), `--no-sandbox` on the command line, before the command for a headless one
+(the page then runs without its renderer sandbox; SECURITY.md), or the sysctl
+`kernel.apparmor_restrict_unprivileged_userns=0` for the whole system. `resources/bin/c4-cli` beside the executable runs the headless commands with no Chromium in
 the way.
 
 `pnpm -C apps/desktop e2e` runs Playwright over that unpacked app (`apps/desktop/e2e/`, started
@@ -174,7 +174,10 @@ the package step, under xvfb and with the AppArmor profile above on Linux.
 ## Headless commands
 
 A word on the command line, or `--help` or `--version`, makes `c4` run a headless command and exit
-without opening a window; a command line of switches alone opens the window:
+without opening a window; a command line without a command opens the window. A switch before the
+command is the window's: `c4 --no-sandbox doctor` gives Chromium its switch and the core `doctor`,
+while `--log <filter>`, the core's own option, goes along (`c4 --log debug sessions`). A switch after
+the command is the command's:
 
 ```sh
 c4 sessions                        # every session discovery can see, as a table
