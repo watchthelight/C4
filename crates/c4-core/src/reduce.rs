@@ -843,7 +843,13 @@ fn set_state(view: &mut SessionView, next: SessionState, evidence: Evidence) -> 
         return None; // rule 3
     }
     if view.state == next {
-        if evidence.at >= view.evidence.at {
+        // The same state again: keep the newer evidence, except that an observed fact always
+        // replaces a heuristic, however the clocks compare. A fresh view starts as a heuristic
+        // Idle from the clock, and a registry record stamped before the view existed is still the
+        // better source for it.
+        if evidence.at >= view.evidence.at
+            || (evidence.is_observed() && !view.evidence.is_observed())
+        {
             view.evidence = evidence;
         }
         return None;
@@ -914,6 +920,32 @@ mod tests {
                 started_at: Some(Timestamp::from_millis(0)),
             },
         )
+    }
+
+    #[test]
+    fn an_observed_fact_upgrades_the_placeholder_evidence_of_a_fresh_view() {
+        // A view starts as a heuristic Idle from the clock. A registry record that says idle,
+        // stamped before the view was created, is still a better source for the same state.
+        let mut v = SessionView::new(sid(), Timestamp::from_millis(1000));
+        assert!(!v.evidence.is_observed());
+        let t = reduce(&mut v, &registry(RegistryStatus::Idle, None, 500));
+        assert!(t.is_none(), "the state did not change: {t:?}");
+        assert_eq!(v.state, SessionState::Idle);
+        assert!(v.evidence.is_observed());
+        assert_eq!(v.evidence.source, Source::Registry);
+        assert_eq!(v.evidence.at, Timestamp::from_millis(500));
+        // A later heuristic for the same state does not take the observed fact away.
+        reduce(
+            &mut v,
+            &Observation::new(
+                sid(),
+                Timestamp::from_millis(600),
+                ObservationBody::ProcessAlive {
+                    process: ProcessRef::new(10, 1),
+                },
+            ),
+        );
+        assert!(v.evidence.is_observed());
     }
 
     #[test]
