@@ -57,6 +57,7 @@ function runWindow(): void {
   const dev = devUrl();
   const url = dev ?? `${ORIGIN}/index.html`;
   let stopped = false;
+  let quitting = false;
 
   app.on("second-instance", () => {
     const [win] = BrowserWindow.getAllWindows();
@@ -70,12 +71,20 @@ function runWindow(): void {
   app.on("window-all-closed", () => {
     app.quit();
   });
-  // the core goes first: stdin closed, the ingest endpoint freed, then the process may leave
+  // the windows go first, so what a page still holds (a preference written moments ago) reaches
+  // the core; then the core: stdin closed, the ingest endpoint freed; then the process may leave
   app.on("before-quit", (event) => {
     if (stopped) {
       return;
     }
     event.preventDefault();
+    if (quitting) {
+      return;
+    }
+    quitting = true;
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.close();
+    }
     void core.stop().then(() => {
       stopped = true;
       app.quit();

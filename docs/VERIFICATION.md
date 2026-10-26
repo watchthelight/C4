@@ -345,3 +345,18 @@ result below the list when you run it.
   block map beside the installer since the NSIS differential package is off. Not checked: the
   installers themselves (built, not run), and the macOS and Linux packages, which the verify
   workflow builds unpacked.
+- 2026-10-26, the verify workflow for commit 205ed08 (run 40340688289): the lint job and the four
+  test jobs green, the unpacked app packaged on every runner with the debug core.
+- 2026-10-26, Playwright over the unpacked app, locally on Windows: `pnpm -C apps/desktop e2e`
+  (Playwright 1.64.1 driving `release/win-unpacked/c4.exe` with the release core under its
+  resources) passes its two checks in 2.7 s. The window check: `app.isPackaged` true and no
+  `C4_CLI` in the environment, the title `c4`, `data-sidebar` full, the strip's `bridge: electron`
+  and `home from C4_CLAUDE_HOME`, the fixture names, Ctrl+Shift+B to rail, exit 0 after the close,
+  and `prefs.json` with `view` rail. The relay check: `sessions --files-only --json` exit 0 with the
+  fixture sessions, `doctor --no-commands` exit 0 naming the shim beside the core as present,
+  `--version`, `nonsense` exit 2. The first run failed on the file: `prefs.json` was missing after
+  the quit, because the main process stopped the core before the windows closed, so the
+  preference the page flushes on `pagehide` never reached it; the hand checks before this one
+  closed the window first and never took that path. With the windows closed first the check
+  passes. The verify workflow runs the same checks on all four runners from this commit on, under
+  xvfb on Linux; the macOS result is recorded when the run is in.

@@ -99,9 +99,9 @@ the core's own (`hello` first, then `sessions` after every pass and every batch)
 the protocol number in the hello (a mismatch is fatal: a dialog, exit 1), starts a core that exits
 on its own again after a pause that grows from 1 s to 30 s while it keeps failing and resets after a
 minute of steady running, and tells the page about each of these as a `core` event. On quit the
-core goes first: a grace of 50 ms for a request the page sent in its last moments (the preferences
-it flushes on `pagehide`), then stdin closed, then up to 2 s for the exit before a kill, so the
-ingest endpoint is free before the process leaves.
+windows go first, so the preferences a page flushes on `pagehide` reach the core; then the core: a
+grace of 50 ms for a request sent in those last moments, then stdin closed, then up to 2 s for the
+exit before a kill, so the ingest endpoint is free before the process leaves.
 
 Inside the core (`state.rs`) one `Discovery` sits behind a mutex, shared by the refresh thread and
 the thread that answers requests. The refresh thread (`c4-refresh`) runs a pass every `C4_REFRESH_MS` milliseconds (2000 by default, floor

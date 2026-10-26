@@ -121,11 +121,6 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm -r test
-      - name: playwright (mock bridge)
-        if: runner.os == 'Linux' && hashFiles('apps/desktop/e2e/playwright.config.ts') != ''
-        run: |
-          pnpm -C apps/desktop exec playwright install --with-deps chromium
-          pnpm -C apps/desktop e2e
       - name: the window builds (the page bundle and the main process)
         if: hashFiles('pnpm-lock.yaml') != ''
         run: pnpm -r build
@@ -143,3 +138,25 @@ jobs:
         if: hashFiles('pnpm-lock.yaml') != ''
         shell: bash
         run: find apps/desktop/release -maxdepth 4 -not -path '*/locales/*' | sort | head -n 60
+      # the unpacked app under Playwright's Electron launcher: the window with the core from its
+      # resources against the fixture home, the fold chord, the relay of headless commands. Linux
+      # runners have no display, so xvfb; the macOS build is unsigned, and whether it starts there
+      # is an open question until this step is green, so that runner's result does not fail the job
+      - name: the app runs (playwright over the unpacked app)
+        if: hashFiles('apps/desktop/e2e/playwright.config.ts') != ''
+        continue-on-error: ${{ runner.os == 'macOS' }}
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            command -v xvfb-run >/dev/null || sudo apt-get install -y xvfb
+            xvfb-run -a pnpm -C apps/desktop e2e
+          else
+            pnpm -C apps/desktop e2e
+          fi
+      - name: playwright output, kept when a check failed
+        if: always() && hashFiles('apps/desktop/e2e/playwright.config.ts') != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-${{ matrix.os }}
+          path: apps/desktop/test-results
+          if-no-files-found: ignore

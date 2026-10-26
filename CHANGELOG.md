@@ -186,5 +186,10 @@ stay at 0.y.z while the interfaces settle.
   and MSI installers on Windows, a dmg for each macOS architecture, an AppImage and a deb on Linux,
   all unsigned, under `apps/desktop/release/`. `package:dir` builds the unpacked app alone, which
   the verify workflow now does on every runner with the debug core.
+- Playwright over the unpacked app (`apps/desktop/e2e/`, `pnpm -C apps/desktop e2e`): the window
+  with the core from its resources against the fixture home, the fold chord and the preference it
+  leaves behind, the relay of headless commands with their exit codes. The verify workflow runs it
+  on every runner after the package step. Found by it: a quit stopped the core before the windows
+  closed, so a preference the page still held was lost; the windows now close first.
 
 [Unreleased]: https://github.com/watchthelight/C4/compare/c3a0a47...HEAD

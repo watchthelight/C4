@@ -30,6 +30,7 @@ pnpm -C apps/desktop dev:web                           # Vite alone, for a brows
 python scripts/stage_bin.py                            # copy the release c4-cli and c4-shim under apps/desktop/resources/bin
 pnpm -C apps/desktop package                           # the installers for this platform, under apps/desktop/release/
 pnpm -C apps/desktop package:dir                       # the unpacked app alone
+pnpm -C apps/desktop e2e                               # Playwright over that unpacked app
 cargo bench --workspace                                # criterion benches
 python scripts/precommit.py                            # what the git hook runs
 python scripts/gen_notices.py                          # regenerate THIRD-PARTY-NOTICES.md
@@ -121,7 +122,7 @@ open the window and reach Chromium, which is how a driver attaches to it:
 electron-builder (`apps/desktop/electron-builder.yml`) turns the build into the app: the asar holds
 the page bundle, the main process and the icons; `c4-cli` and `c4-shim` sit beside it under
 `resources/bin/`; Electron's own files, `LICENSES.chromium.html` among them, sit around it. The
-executable is `c4` (`C4.app` on macOS, with `c4` inside) and the product name is C4.
+executable is `c4` (`c4.app` on macOS, with `c4` inside) and the product name is C4.
 
 ```sh
 cargo build --release -p c4-cli -p c4-shim
@@ -143,6 +144,15 @@ and no Apple identity, so Windows shows its unknown-publisher warning for the in
 the unsigned macOS build starts on Apple silicon is not verified yet (no macOS hardware is in reach).
 The verify workflow packages the unpacked app with the debug core on every runner, which proves the
 configuration on all four platforms; the release workflow that builds the installers is the next step.
+
+`pnpm -C apps/desktop e2e` runs Playwright over that unpacked app (`apps/desktop/e2e/`, started
+through Playwright's Electron launcher, no browser download): the window with the core from its
+resources against the fixture Claude home, the fold chord and the preference it leaves behind, and
+the relay of headless commands with their exit codes. A fresh temporary C4 home per test, and the
+session list command replaced with one that prints an empty list, keep the real home out of it;
+`C4_APP` names another build to test. The verify workflow runs it on every runner after the package
+step, under xvfb on Linux; the macOS result does not fail the job until the unsigned app is known to
+start there.
 
 ## Headless commands
 
