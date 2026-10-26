@@ -139,16 +139,24 @@ jobs:
         shell: bash
         run: find apps/desktop/release -maxdepth 4 -not -path '*/locales/*' | sort | head -n 60
       # the unpacked app under Playwright's Electron launcher: the window with the core from its
-      # resources against the fixture home, the fold chord, the relay of headless commands. Linux
-      # runners have no display, so xvfb; the macOS build is unsigned, and whether it starts there
-      # is an open question until this step is green, so that runner's result does not fail the job
+      # resources against the fixture home, the fold chord, the relay of headless commands, with
+      # Chromium's sandbox on as an installed app has it (the launcher adds --no-sandbox on Linux
+      # unless told otherwise). Linux runners have no display, so xvfb; and Ubuntu 24.04 and later
+      # restrict user namespaces, so the binary gets the AppArmor profile the deb's post-install
+      # script installs for the installed executable, written for the unpacked path: without it
+      # Chromium stops before the main process runs, which the relay check hit on run 40342371620
       - name: the app runs (playwright over the unpacked app)
         if: hashFiles('apps/desktop/e2e/playwright.config.ts') != ''
-        continue-on-error: ${{ runner.os == 'macOS' }}
         shell: bash
         run: |
           if [ "$RUNNER_OS" = Linux ]; then
             command -v xvfb-run >/dev/null || sudo apt-get install -y xvfb
+            exe="$PWD/apps/desktop/release/linux-unpacked/c4"
+            sysctl kernel.apparmor_restrict_unprivileged_userns || true
+            ls -l "$(dirname "$exe")/chrome-sandbox"
+            printf 'abi <abi/4.0>,\ninclude <tunables/global>\n\nprofile c4-unpacked "%s" flags=(unconfined) {\n  userns,\n}\n' "$exe" \
+              | sudo tee /etc/apparmor.d/c4-unpacked
+            sudo apparmor_parser --replace --skip-read-cache /etc/apparmor.d/c4-unpacked
             xvfb-run -a pnpm -C apps/desktop e2e
           else
             pnpm -C apps/desktop e2e

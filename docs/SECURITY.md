@@ -106,7 +106,10 @@ loaded, every permission request (notifications, media, and the rest) is refused
 and the window does not navigate away from the page. Chromium's own files (its cache and local
 storage) live under `~/.c4/electron/`, not under the Claude home. The core runs as a child process of
 the shell with pipes for stdin and stdout, so nothing else on the machine can send it a request.
-Terminal bytes are written to xterm.js, never interpreted as HTML.
+Terminal bytes are written to xterm.js, never interpreted as HTML. On Linux the renderer sandbox
+needs user namespaces or Chromium's setuid helper, which the deb sets up and the AppImage cannot;
+`--no-sandbox` on the command line runs the page without it, and BUILDING.md says when a system asks
+for that and what to do instead.
 
 ## Reporting
 

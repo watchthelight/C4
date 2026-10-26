@@ -26,16 +26,17 @@ and passes; "manual" means someone ran the checklist on real hardware; "unverifi
 
 ## Platform status
 
-"Built in CI" covers the window: `pnpm -r build` writes the page bundle and compiles the Electron
-main process on every runner, and the crates build as part of the tests. Nothing in CI starts the
-app yet; a Playwright smoke test that does is planned.
+"Built in CI" covers the crates, the page bundle, the Electron main process and the unpacked app
+electron-builder packages from them with the debug core, on every runner. "Tests in CI" names the
+suites and the Playwright check that starts that app: the window with the core from its resources,
+the fold chord and its preference, the relay of headless commands, all with Chromium's sandbox on.
 
 | Platform | Built in CI | Tests in CI | Run on hardware |
 |---|---|---|---|
-| Windows x64 | the crates, the page bundle and the Electron main process, verify run 40335232644 | `cargo test --workspace` and `pnpm -r test` green (windows-latest) | `c4 sessions`, `c4 doctor`, `c4 install` and `c4 uninstall` against the real home, the Tauri window showing hook states and context figures from live sessions, the Electron window against the real home read only, and the packaged app (the window with the core from its resources, the relay of headless commands, the console behaviour at a prompt), see Results |
-| macOS arm64 | the crates, the page bundle and the Electron main process, verify run 40335232644 | `cargo test --workspace` and `pnpm -r test` green (macos-latest) | no hardware in reach |
-| macOS x64 | the crates, the page bundle and the Electron main process, verify run 40335232644 | `cargo test --workspace` and `pnpm -r test` green (macos-15-intel) | no hardware in reach |
-| Linux x64 | the crates, the page bundle and the Electron main process, verify run 40335232644 | `cargo test --workspace` and `pnpm -r test` green (ubuntu-latest) | not yet |
+| Windows x64 | the crates, the page bundle, the Electron main process and the unpacked app, verify run 40340688289 | `cargo test --workspace`, `pnpm -r test` and the Playwright check green (windows-latest, run 40342371620) | `c4 sessions`, `c4 doctor`, `c4 install` and `c4 uninstall` against the real home, the Tauri window showing hook states and context figures from live sessions, the Electron window against the real home read only, and the packaged app (the window with the core from its resources, the relay of headless commands, the console behaviour at a prompt), see Results |
+| macOS arm64 | the crates, the page bundle, the Electron main process and the unpacked app, verify run 40340688289 | `cargo test --workspace`, `pnpm -r test` and the Playwright check green (macos-latest, run 40342371620): the unsigned `c4.app` starts there | no hardware in reach |
+| macOS x64 | the crates, the page bundle, the Electron main process and the unpacked app, verify run 40340688289 | `cargo test --workspace`, `pnpm -r test` and the Playwright check green (macos-15-intel, run 40342371620) | no hardware in reach |
+| Linux x64 | the crates, the page bundle, the Electron main process and the unpacked app, verify run 40340688289 | `cargo test --workspace` and `pnpm -r test` green (ubuntu-latest); the Playwright check on run 40342371620: the window green under xvfb, the relay stopped by Chromium's sandbox (Results); from the commit after f6b0dec the check runs with the sandbox on under the AppArmor profile the deb installs, loaded for the unpacked binary, and its run goes in Results | not yet |
 
 ## Manual checklist
 
@@ -359,4 +360,17 @@ result below the list when you run it.
   preference the page flushes on `pagehide` never reached it; the hand checks before this one
   closed the window first and never took that path. With the windows closed first the check
   passes. The verify workflow runs the same checks on all four runners from this commit on, under
-  xvfb on Linux; the macOS result is recorded when the run is in.
+  xvfb on Linux; the first run is the next entry.
+- 2026-10-26, the verify workflow for commit f6b0dec (run 40342371620), the first with the
+  Playwright check: the lint job green; Windows, macOS arm64 and macOS x64 green with both checks
+  passing (3.1 s, 5.4 s and 8.5 s), so the unsigned `c4.app` starts on both macOS runners; Linux
+  red: the window check passed under xvfb in 1.3 s, the relay check failed in 200 ms with a null
+  `status` (a signal, no exit code) on `sessions --files-only --json`, and nothing else captured.
+  The two differences between the checks: Playwright's Electron launcher adds `--no-sandbox` on
+  Linux unless told otherwise, so the window ran without Chromium's sandbox while the relay spawned
+  the bare binary with it on; and the unpacked build's `chrome-sandbox` is not setuid while the
+  runner, Ubuntu 26, restricts user namespaces as Ubuntu has since 24.04, which is the case where
+  Chromium stops before the main process runs (docs/BUILDING.md, Packaging). From the next commit
+  the workflow loads the AppArmor profile the deb's post-install script installs, written for the
+  unpacked binary, the check launches the window with the sandbox on everywhere, a relay that
+  fails names its signal and stderr, and the macOS result counts; its run is the next entry.

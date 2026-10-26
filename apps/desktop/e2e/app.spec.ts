@@ -1,11 +1,15 @@
 // <wtl> project: c4 | file: apps/desktop/e2e/app.spec.ts | author: watchthelight </wtl>
 // The packaged app end to end: the window with the core from the app's own resources against the
 // fixture Claude home, the fold chord and the preference it leaves behind, and the relay of
-// headless commands with their exit codes. Nothing here touches the real Claude home: the C4 home
-// is a fresh temporary directory, the Claude home is fixtures/home, and the session list command
-// is replaced with one that prints an empty list.
+// headless commands with their exit codes. The app runs as an installed one does, with Chromium's
+// sandbox on (Playwright's Electron launcher would add --no-sandbox on Linux by itself), so on a
+// system that restricts user namespaces the binary needs what the deb's post-install script sets
+// up; docs/BUILDING.md, Packaging. Nothing here touches the real Claude home: the C4 home is a
+// fresh temporary directory, the Claude home is fixtures/home, and the session list command is
+// replaced with one that prints an empty list.
 
 import { spawnSync } from "node:child_process";
+import type { SpawnSyncReturns } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -63,6 +67,18 @@ function remove(dir: string): void {
   rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
 }
 
+/** What a relay left behind, for the message of an exit code that is not the expected one. */
+function report(result: SpawnSyncReturns<string>): string {
+  const lines = [`status ${result.status}, signal ${result.signal}`];
+  if (result.error !== undefined) {
+    lines.push(`error: ${result.error.message}`);
+  }
+  if (result.stderr !== "") {
+    lines.push(`stderr: ${result.stderr.slice(0, 2000)}`);
+  }
+  return lines.join("\n");
+}
+
 test("the window runs the core from its resources and keeps the fold", async () => {
   const home = scratchHome();
   const app = await electron.launch({
@@ -70,6 +86,7 @@ test("the window runs the core from its resources and keeps the fold", async () 
     args: [],
     env: environment(home),
     cwd: home,
+    chromiumSandbox: true,
     timeout: 45_000,
   });
   const exited = new Promise<number | null>((resolve) => {
@@ -110,21 +127,21 @@ test("a headless command runs in the core and its exit code comes back", () => {
     spawnSync(exe, args, { env: environment(home), encoding: "utf8", timeout: 60_000, windowsHide: true });
 
   const sessions = run(["sessions", "--files-only", "--json"]);
-  expect(sessions.status).toBe(0);
+  expect(sessions.status, report(sessions)).toBe(0);
   const doc = JSON.parse(sessions.stdout) as { home: string; sessions: { name: string | null }[] };
   expect(doc.home).toBe(fixturesHome);
   expect(doc.sessions.map((s) => s.name)).toContain("nightly build");
 
   const doctor = run(["doctor", "--no-commands"]);
-  expect(doctor.status).toBe(0);
+  expect(doctor.status, report(doctor)).toBe(0);
   expect(doctor.stdout).toMatch(/sidecar: .*c4-shim(\.exe)?: present/);
 
   const version = run(["--version"]);
-  expect(version.status).toBe(0);
+  expect(version.status, report(version)).toBe(0);
   expect(version.stdout.trim()).toMatch(/^c4 \d+\.\d+\.\d+/);
 
   const bad = run(["nonsense"]);
-  expect(bad.status).toBe(2);
+  expect(bad.status, report(bad)).toBe(2);
   expect(bad.stderr).toContain("unrecognized subcommand");
   remove(home);
 });

@@ -140,19 +140,36 @@ macOS (`c4-<version>-mac-arm64.dmg`, `c4-<version>-mac-x64.dmg`), an AppImage an
 (`c4-<version>-linux-x64.AppImage` and `.deb`). The version is the one in `apps/desktop/package.json`,
 kept equal to the workspace version in `Cargo.toml`; the icons come from `apps/desktop/icons/`
 (`icon.ico`, `icon.icns`, `icon.png`). Nothing is signed: there is no certificate for Windows or Linux
-and no Apple identity, so Windows shows its unknown-publisher warning for the installer, and whether
-the unsigned macOS build starts on Apple silicon is not verified yet (no macOS hardware is in reach).
-The verify workflow packages the unpacked app with the debug core on every runner, which proves the
-configuration on all four platforms; the release workflow that builds the installers is the next step.
+and no Apple identity, so Windows shows its unknown-publisher warning for the installer. The unsigned
+macOS build starts on both macOS runners, where nothing marks it as downloaded; a dmg from a release
+carries the quarantine attribute, and what Gatekeeper then says about an unsigned app is not verified
+here (no macOS hardware is in reach). The verify workflow packages the unpacked app with the debug
+core on every runner, which proves the configuration on all four platforms; the release workflow that
+builds the installers is the next step.
+
+On Linux, Chromium's sandbox needs one of two things from the system: a kernel that lets an
+unprivileged process create user namespaces, or the setuid helper `chrome-sandbox` beside the
+executable, owned by root with mode 4755. Ubuntu 24.04 and later restrict user namespaces through
+AppArmor, so electron-builder's post-install script in the deb installs a profile
+(`/etc/apparmor.d/c4`) that allows them for `/opt/C4/c4`, and sets the helper setuid only where user
+namespaces do not work at all. The AppImage and the unpacked build get neither, so on such a system
+they stop before the main process runs, for the window and for a headless command alike, with
+`The SUID sandbox helper binary was found, but is not configured correctly` on stderr and a SIGTRAP
+exit. The ways out are a profile like the deb's for the binary's path (what the verify workflow loads
+for the unpacked build), `--no-sandbox` on the command line (the page then runs without its renderer
+sandbox; SECURITY.md), or the sysctl `kernel.apparmor_restrict_unprivileged_userns=0` for the whole
+system. `resources/bin/c4-cli` beside the executable runs the headless commands with no Chromium in
+the way.
 
 `pnpm -C apps/desktop e2e` runs Playwright over that unpacked app (`apps/desktop/e2e/`, started
 through Playwright's Electron launcher, no browser download): the window with the core from its
 resources against the fixture Claude home, the fold chord and the preference it leaves behind, and
 the relay of headless commands with their exit codes. A fresh temporary C4 home per test, and the
 session list command replaced with one that prints an empty list, keep the real home out of it;
-`C4_APP` names another build to test. The verify workflow runs it on every runner after the package
-step, under xvfb on Linux; the macOS result does not fail the job until the unsigned app is known to
-start there.
+`C4_APP` names another build to test. The app runs with Chromium's sandbox on, as an installed one
+does (`chromiumSandbox: true`; Playwright's Electron launcher adds `--no-sandbox` on Linux otherwise),
+and a relay that fails reports its signal and stderr. The verify workflow runs it on every runner after
+the package step, under xvfb and with the AppArmor profile above on Linux.
 
 ## Headless commands
 
@@ -176,7 +193,9 @@ executable, so an interactive PowerShell prompt comes back before the command ha
 with no exit code), and the output lands on the console afterwards. Piping the output
 (`c4 sessions --json | Out-String`) makes PowerShell wait, cmd.exe waits either way, and
 `resources\bin\c4-cli.exe` beside `c4.exe` is the console program with the same command line, which
-is what a script should call.
+is what a script should call. On Linux the relay starts Chromium's browser process before the main
+process can run the command, so the sandbox note under Packaging applies to `c4 doctor` as much as to
+the window; `resources/bin/c4-cli` has no such need.
 
 `sessions` and `doctor` read the Claude home named by `C4_CLAUDE_HOME`, else `CLAUDE_CONFIG_DIR`, else
 `~/.claude`, or the one given with `--home`. `C4_AGENTS_CMD` replaces `claude agents --json` with
