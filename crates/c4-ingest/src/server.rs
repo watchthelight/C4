@@ -392,12 +392,21 @@ mod platform {
     use tokio::net::windows::named_pipe::{NamedPipeServer, PipeMode, ServerOptions};
     use tokio::sync::watch;
     use tokio::task::JoinSet;
+    use windows_sys::Win32::System::Pipes::{NMPWAIT_NOWAIT, WaitNamedPipeW};
 
     use super::{Ctx, StartError, drain, serve};
     use crate::acl::SecurityAttributes;
 
     /// `ERROR_ACCESS_DENIED`: what creating the first instance fails with when the name is taken.
     const ERROR_ACCESS_DENIED: i32 = 5;
+    /// `ERROR_FILE_NOT_FOUND`: what `WaitNamedPipeW` reports once no instance of the name exists.
+    const ERROR_FILE_NOT_FOUND: i32 = 2;
+    /// How long the accept loop waits for the pipe name to come free before it gives up.
+    const RELEASE_WAIT: Duration = Duration::from_secs(10);
+    /// The first pause between two looks at the name; each one after is twice as long.
+    const RELEASE_POLL_MIN: Duration = Duration::from_millis(2);
+    /// The longest pause between two looks at the name.
+    const RELEASE_POLL_MAX: Duration = Duration::from_millis(50);
 
     pub(super) struct Listener {
         name: String,
@@ -482,8 +491,40 @@ mod platform {
             listener.next = create(&listener.name, &mut listener.attrs, false).ok();
             conns.spawn(serve(server, ctx.clone()));
         }
+        let name = listener.name.clone();
         drop(listener);
         drain(conns).await;
+        released(&name).await;
+    }
+
+    /// Wait until no instance of the pipe exists. Dropping an instance with a connect or a read
+    /// in flight cancels that call, and the handle closes only when the runtime takes the
+    /// cancellation off the completion port, a moment after the task that held the instance has
+    /// ended: within a few milliseconds as a rule, seconds on a machine that stalls. The next
+    /// server on the home claims the name as the first instance and would be refused while the
+    /// old handle is on its way out, so the accept loop ends only once the name is free and
+    /// [`super::Server::shutdown`], which waits for the loop, keeps its word.
+    async fn released(name: &str) {
+        let deadline = tokio::time::Instant::now() + RELEASE_WAIT;
+        let mut pause = RELEASE_POLL_MIN;
+        while exists(name) {
+            if tokio::time::Instant::now() >= deadline {
+                tracing::warn!(endpoint = %name, "pipe name still held after shutdown");
+                return;
+            }
+            tokio::time::sleep(pause).await;
+            pause = (pause * 2).min(RELEASE_POLL_MAX);
+        }
+    }
+
+    /// Whether any instance of the pipe exists, asked without opening or creating one.
+    #[allow(unsafe_code)]
+    fn exists(name: &str) -> bool {
+        let wide: Vec<u16> = name.encode_utf16().chain(std::iter::once(0)).collect();
+        // SAFETY: `wide` is a NUL-terminated UTF-16 string that outlives the call, which reads it
+        // and writes nothing.
+        let available = unsafe { WaitNamedPipeW(wide.as_ptr(), NMPWAIT_NOWAIT) };
+        available != 0 || io::Error::last_os_error().raw_os_error() != Some(ERROR_FILE_NOT_FOUND)
     }
 
     pub(super) fn cleanup(_home: &C4Home) {}

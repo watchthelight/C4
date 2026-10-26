@@ -127,7 +127,7 @@ async fn lines_over_the_socket_reach_the_inbox() {
     assert_eq!(inbox.stats().dropped, 0);
 
     server.shutdown().await;
-    assert_eq!(probe(&s.home), Probe::Free);
+    assert_eq!(probe(&s.home), Probe::Free, "{}", s.home.endpoint());
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -247,6 +247,33 @@ async fn a_second_server_on_the_same_home_is_refused() {
         .await
         .unwrap();
     third.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn the_home_is_free_the_moment_shutdown_returns() {
+    let s = scratch();
+    let inbox = Arc::new(Inbox::new(64));
+    for round in 0..12u32 {
+        let server = Server::start(s.home.clone(), inbox.clone(), ServerConfig::default())
+            .await
+            .unwrap_or_else(|e| panic!("round {round}: {e}"));
+        // Every other round leaves a connection open through the shutdown, so the instance that
+        // serves it is dropped with a read in flight, the way the one waiting for a connect is.
+        let open = if round % 2 == 1 {
+            let mut c = client(&s.home).await;
+            c.write_all(hook_line("stop-idle").as_bytes())
+                .await
+                .unwrap();
+            let _ = collect(&inbox, 1).await;
+            Some(c)
+        } else {
+            None
+        };
+        server.shutdown().await;
+        // A client end left open holds no claim on the name; only server ends do.
+        assert_eq!(probe(&s.home), Probe::Free, "round {round}");
+        drop(open);
+    }
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

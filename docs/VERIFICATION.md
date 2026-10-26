@@ -224,7 +224,7 @@ result below the list when you run it.
   and wrote it. No console errors or warnings.
 - 2026-10-26, the verify workflow for commit ca65a1e (run 40295638390): the lint job and the four
   test jobs green.
-- 2026-10-26, the sidebar rail, locally on Windows: vitest 74 tests green (five new in
+- 2026-10-26, the sidebar rail, locally on Windows: vitest 74 tests green (four new in
   `rail.test.ts`, one in `filterbar.test.ts`), eslint and tsc clean. Measured in Chromium against
   the mock bridge at 1036x850 with the eight synthetic sessions: the fold button 24x24 at the right
   end of the filter line; a click on it put `data-sidebar="rail"` on the app root, the grid columns
@@ -241,3 +241,22 @@ result below the list when you run it.
   session) and wrote `view` full; the chord again folded it with focus on the squares; `/` opened
   it with focus in the filter box; folded again and reloaded, the window came back folded with its
   eight squares. No console errors or warnings.
+- 2026-10-26, the verify workflow for commit 98f8fa6 (run 40298350276): the lint job and three
+  test jobs green; test (windows-latest) failed in `crates/c4-ingest/tests/server.rs`,
+  `a_second_server_on_the_same_home_is_refused`: the third server, started right after the first
+  one's shutdown, was refused with the endpoint taken. The commit changed no Rust; the cause was in
+  the server. Dropping a pipe instance with a connect or a read in flight cancels the call, and the
+  handle closes only when the runtime takes the cancellation off the completion port, which can be
+  after `shutdown` has returned; the next server claims the name as the first instance and found it
+  held. The fix (the commit after 98f8fa6) ends the accept loop only once `WaitNamedPipeW` reports
+  no instance of the name, so `shutdown` returns with the name free.
+- 2026-10-26, the ingest shutdown fix, locally on Windows: the `crates/c4-ingest/tests/server.rs`
+  binary green 100 times in a row (the new `the_home_is_free_the_moment_shutdown_returns` restarts
+  the server twelve times on one home, with a connection open through every other shutdown, and
+  expects the name free the moment `shutdown` returns); clippy with pedantic lints,
+  `cargo test --workspace`, vitest 74, tsc, eslint and the header, slop and scan scripts green.
+  The same change with the wait capped at one second ran 400 times as two parallel loops of that
+  binary: no run found the name held after `shutdown`, and one run stalled as a whole (a 2 ms
+  sleep inside the wait took 1.08 s, and the spool replay test in the same process timed out at
+  10 s), which is why the cap is ten seconds with a pause that grows. The refusal CI saw was not
+  reproduced locally; the fix rests on the mechanism and on run 40298350276.
