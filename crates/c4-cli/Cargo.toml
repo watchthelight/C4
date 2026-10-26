@@ -1,0 +1,32 @@
+# <wtl> project: c4 | file: crates/c4-cli/Cargo.toml | author: watchthelight </wtl>
+
+[package]
+name = "c4-cli"
+description = "The headless side of C4: c4 sessions, c4 doctor and c4 telemetry"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "c4"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+c4-core = { path = "../c4-core" }
+c4-discovery = { path = "../c4-discovery" }
+c4-transcript = { path = "../c4-transcript" }
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[dev-dependencies]
+c4-testkit = { path = "../c4-testkit" }
+
+[lints]
+workspace = true

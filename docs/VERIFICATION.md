@@ -10,8 +10,8 @@ and passes; "manual" means someone ran the checklist on real hardware; "unverifi
 
 | Test | What it checks | Automation | Status |
 |---|---|---|---|
-| A | sessions that were running before C4 started appear | three fake sessions started before `c4 sessions --json` | planned (Milestone 1) |
-| B | a session started after C4 appears within 2 s | fake session started after discovery runs | planned (Milestone 1) |
+| A | sessions that were running before C4 started appear | three stand-in sessions started before `c4 sessions --json` (`crates/c4-testkit/tests/discovery.rs`, `crates/c4-cli/tests/cli.rs`) | verified, headless; the desktop app and real terminals are manual item 1 |
+| B | a session started after C4 appears within 2 s | a stand-in started after the first discovery pass, and the Python stand-in through the binary | verified, headless |
 | C | state changes show live | fake session flips its registry status on a timeline | planned (Milestone 2) |
 | D | subagents and background agents are listed with their totals | subagent transcript files appear mid-run | planned (Milestone 2, full in 5) |
 | E | sidebar interactions | vitest components plus Playwright on the mock bridge | planned (Milestone 2) |
@@ -26,12 +26,14 @@ and passes; "manual" means someone ran the checklist on real hardware; "unverifi
 
 ## Platform status
 
+"Built in CI" covers the desktop app; the crates build as part of the tests on every runner.
+
 | Platform | Built in CI | Tests in CI | Run on hardware |
 |---|---|---|---|
-| Windows x64 | not yet | not yet | not yet |
-| macOS arm64 | not yet | not yet | no hardware in reach |
-| macOS x64 | not yet | not yet | no hardware in reach |
-| Linux x64 | not yet | not yet | not yet |
+| Windows x64 | crates only | `cargo test --workspace` green (windows-latest) | `c4 sessions` and `c4 doctor` against a real home, see Results |
+| macOS arm64 | crates only | `cargo test --workspace` green (macos-latest) | no hardware in reach |
+| macOS x64 | crates only | `cargo test --workspace` green (macos-15-intel) | no hardware in reach |
+| Linux x64 | crates only | `cargo test --workspace` green (ubuntu-latest) | not yet |
 
 ## Manual checklist
 
@@ -58,4 +60,12 @@ result below the list when you run it.
 
 ## Results
 
-None recorded yet.
+- 2026-10-25, C4 0.0.1, Claude Code 2.1.299, Windows 11 Pro, Windows Terminal. Headless part of
+  item 1 (A): `c4 sessions` against the real Claude home listed both live interactive sessions as
+  Observed in Windows Terminal with their registry states, a daemon-backed background session, and
+  a background job whose supervisor had died as disconnected rather than blocked. 611 ms including
+  the session list command. `c4 doctor` found the home, the `claude.cmd` shim on PATH (version in
+  80 ms) and three entries from `claude agents --json` in 527 ms. The desktop app part of item 1 is
+  still open.
+- 2026-10-25, the verify workflow for commit 561dc2c: `cargo test --workspace` green on
+  windows-latest, ubuntu-latest, macos-latest and macos-15-intel. Tests A and B are in that suite.

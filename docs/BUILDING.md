@@ -27,9 +27,27 @@ python scripts/precommit.py            # what the git hook runs
 python scripts/gen_notices.py          # regenerate THIRD-PARTY-NOTICES.md
 ```
 
-`c4 sessions --json` runs the discovery pipeline headless and prints what the sidebar would show; it is
-the quickest way to check a build against a real `~/.claude`. Set `C4_CLAUDE_HOME` to point it at a
-scratch home instead.
+## Headless commands
+
+Until the desktop app lands, `cargo run -p c4-cli --` builds and runs the `c4` executable:
+
+```sh
+cargo run -p c4-cli -- sessions                        # every session discovery can see, as a table
+cargo run -p c4-cli -- sessions --json                 # the same as JSON; --redact for pasting
+cargo run -p c4-cli -- sessions --watch                # keep refreshing, print state changes
+cargo run -p c4-cli -- doctor                          # where the Claude home is, whether claude runs
+cargo run -p c4-cli -- telemetry --transcript <file>   # tokens, cost and agents of one transcript
+```
+
+`sessions` and `doctor` read the Claude home named by `C4_CLAUDE_HOME`, else `CLAUDE_CONFIG_DIR`, else
+`~/.claude`, or the one given with `--home`. `C4_AGENTS_CMD` replaces `claude agents --json` with
+another command, which is how the tests feed fixtures in; `--files-only` runs no command at all.
+`scripts/fake_claude.py` registers a stand-in session in a scratch home for manual checks:
+
+```sh
+python scripts/fake_claude.py --home /tmp/scratch --cwd /tmp/proj --status busy --name demo &
+C4_CLAUDE_HOME=/tmp/scratch cargo run -p c4-cli -- sessions --files-only
+```
 
 ## Troubleshooting
 
