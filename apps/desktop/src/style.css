@@ -1,0 +1,415 @@
+/* <wtl> project: c4 | file: apps/desktop/src/style.css | author: watchthelight </wtl> */
+/* Tokens from docs/DESIGN-SYSTEM.md: near-black chrome, sage accents, square geometry, mono type.
+   No rounded corners, gradients, blur or drop shadows; elevation is a 1px border. */
+
+:root {
+  --bg: #08080c;
+  --panel: #0d0e12;
+  --panel-2: #111217;
+  --head: #e1e5e8;
+  --text: #c8ccd0;
+  --dim: #8a8e96;
+  --mute: #5a5e66;
+  --faint: #2a2d33;
+  --line: #1c1e23;
+  --sage: #6a9a6e;
+  --sage-hi: #7bc67e;
+  --sage-deep: #4d7a51;
+  --sage-wash: rgba(106, 154, 110, 0.08);
+  --amber: #b8a44a;
+  --red: #c45454;
+  --display: "Space Mono", "JetBrains Mono", "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+  --mono: "JetBrains Mono", "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+  --s-1: 2px;
+  --s-2: 4px;
+  --s-3: 6px;
+  --s-4: 8px;
+  --s-5: 12px;
+  --s-6: 16px;
+  --s-7: 24px;
+  --s-8: 32px;
+  --radius: 0;
+  --t-fast: 100ms;
+  --t-base: 150ms;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.5 var(--mono);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+#app {
+  display: grid;
+  grid-template-rows: 32px 1fr 22px;
+  grid-template-columns: 320px 1fr;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* top bar */
+
+.topbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--s-5);
+  padding: 0 var(--s-5);
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  font-family: var(--display);
+  user-select: none;
+}
+
+.topbar .mark {
+  width: 10px;
+  height: 10px;
+  background: var(--sage);
+}
+
+.topbar .word {
+  color: var(--head);
+  font-weight: 700;
+}
+
+.topbar .counts {
+  color: var(--dim);
+}
+
+.topbar .home {
+  margin-left: auto;
+  color: var(--mute);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* sidebar */
+
+.sidebar {
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--bg);
+}
+
+.sessions {
+  outline: none;
+}
+
+.sessions:focus-visible {
+  outline: 1px solid var(--sage-hi);
+  outline-offset: -1px;
+}
+
+.sessions .empty {
+  margin: 0;
+  padding: var(--s-6) var(--s-5);
+  color: var(--dim);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  grid-template-rows: 17px 17px;
+  column-gap: var(--s-3);
+  padding: 0 var(--s-5) 0 var(--s-4);
+  border-left: 2px solid transparent;
+  border-bottom: 1px solid var(--line);
+  cursor: default;
+  user-select: none;
+  transition: background-color var(--t-fast), border-color var(--t-fast);
+}
+
+.row:hover {
+  background: var(--panel);
+}
+
+.row.selected {
+  background: var(--sage-wash);
+}
+
+.row[data-attention="true"] {
+  border-left-color: var(--amber);
+}
+
+.row[data-kind="failed"] {
+  border-left-color: var(--red);
+}
+
+/* each line is a flex row: the left part takes the room, the right part keeps its size until the
+   line is full, then both get ellipses; the row never grows wider than the sidebar */
+
+.row .line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.row .name {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--head);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row .when {
+  flex: 0 0 auto;
+  color: var(--mute);
+  font-size: 11px;
+}
+
+.row .activity {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row[data-kind="waiting_permission"] .activity,
+.row[data-kind="waiting_user_input"] .activity {
+  color: var(--amber);
+}
+
+.row[data-kind="failed"] .activity {
+  color: var(--red);
+}
+
+.row[data-certainty="heuristic"] .activity {
+  color: var(--mute);
+}
+
+.row .tags {
+  flex: 0 3 auto;
+  min-width: 0;
+  max-width: 55%;
+  font-size: 10px;
+  color: var(--mute);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row[data-alive="false"] .name {
+  color: var(--dim);
+}
+
+/* state squares: 8 by 8, the label beside them always carries the state too */
+
+.row .sq {
+  grid-row: 1 / span 2;
+  position: relative;
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  background: var(--mute);
+}
+
+.row[data-kind="idle"] .sq {
+  background: transparent;
+  border: 1px solid var(--mute);
+}
+
+.row[data-kind="completed"] .sq {
+  background: var(--mute);
+}
+
+.row[data-kind="working"] .sq {
+  background: var(--sage);
+}
+
+.row[data-kind="running_tool"] .sq {
+  background: var(--sage-hi);
+}
+
+.row[data-kind="running_tool"] .sq::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  width: 2px;
+  height: 2px;
+  background: var(--sage-hi);
+  animation: advance 1s steps(4, end) infinite;
+}
+
+.row[data-kind="background_agents_active"] .sq {
+  background: var(--sage);
+  box-shadow: 2px 2px 0 0 var(--sage-deep);
+}
+
+.row[data-kind="waiting_permission"] .sq {
+  background: var(--amber);
+  animation: pulse 1s steps(2, end) infinite;
+}
+
+.row[data-kind="waiting_permission"] .sq::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 2px;
+  height: 2px;
+  background: var(--bg);
+}
+
+.row[data-kind="waiting_user_input"] .sq {
+  background: transparent;
+  border: 1px solid var(--amber);
+}
+
+.row[data-kind="failed"] .sq {
+  background: var(--red);
+}
+
+.row[data-kind="disconnected"] .sq {
+  background: transparent;
+  border: 1px solid var(--red);
+}
+
+.row[data-kind="disconnected"] .sq::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 2px;
+  height: 2px;
+  background: var(--red);
+}
+
+@keyframes pulse {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.35;
+  }
+}
+
+@keyframes advance {
+  from {
+    left: 0;
+  }
+  to {
+    left: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row .sq,
+  .row .sq::after {
+    animation: none;
+  }
+}
+
+/* workspace and inspector */
+
+.workspace {
+  background: var(--panel);
+  overflow: auto;
+}
+
+.inspector {
+  padding: var(--s-7) var(--s-8);
+  max-width: 880px;
+}
+
+.inspector .eyebrow {
+  margin: 0 0 var(--s-2);
+  font-family: var(--display);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--sage);
+}
+
+.inspector .title {
+  margin: 0 0 var(--s-4);
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--head);
+}
+
+.inspector .state {
+  margin: 0 0 var(--s-4);
+  color: var(--text);
+}
+
+.inspector .state[data-kind="waiting_permission"],
+.inspector .state[data-kind="waiting_user_input"] {
+  color: var(--amber);
+}
+
+.inspector .state[data-kind="failed"] {
+  color: var(--red);
+}
+
+.inspector .state[data-certainty="heuristic"] {
+  color: var(--dim);
+}
+
+.inspector .note,
+.inspector .hint {
+  margin: 0 0 var(--s-6);
+  color: var(--dim);
+}
+
+.inspector .facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: var(--s-6);
+  row-gap: var(--s-2);
+  margin: 0;
+  padding: var(--s-5);
+  border: 1px solid var(--faint);
+  background: var(--bg);
+}
+
+.inspector .facts dt {
+  color: var(--mute);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding-top: 2px;
+}
+
+.inspector .facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* status strip */
+
+.strip {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--s-5);
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--mute);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  user-select: none;
+}
+
+[hidden] {
+  display: none !important;
+}

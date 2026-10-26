@@ -1,0 +1,7 @@
+# <wtl> project: c4 | file: pnpm-workspace.yaml | author: watchthelight </wtl>
+packages:
+  - "apps/*"
+
+# esbuild's install script only places its platform binary; nothing else may run a script.
+onlyBuiltDependencies:
+  - esbuild

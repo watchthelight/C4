@@ -18,7 +18,7 @@ and passes; "manual" means someone ran the checklist on real hardware; "unverifi
 | F | token numbers match the status line | the status line's own parser run against the same transcript | planned (Milestone 4) |
 | G | the REA toolkit can be assigned and reverted | scratch settings file, byte-identical revert | planned (Milestone 6) |
 | H | a managed terminal is a real pty | real shell, echo, interrupt, terminate | planned (Milestone 3) |
-| I | a session that cannot be attached is Observed with no input affordance | registry entry with an unmatched host | planned (Milestone 2) |
+| I | a session that cannot be attached is Observed with no input affordance | registry entry with an unmatched host; the window renders no input control for any session (`apps/desktop/tests/list.test.ts`) | in part: the window side is verified, the host match lands with the adapters (Milestone 3) |
 | J | organization and layouts survive a restart | store round trip plus a relaunch smoke test | planned (Milestone 3) |
 | K | performance targets | criterion benches, `c4 perf`, a 40-session load generator | planned (Milestone 7) |
 | L | releases are published with checksums and attestations | `scripts/verify_release.py` after each tag | planned (Milestone 2) |
@@ -69,3 +69,11 @@ result below the list when you run it.
   still open.
 - 2026-10-25, the verify workflow for commit 561dc2c: `cargo test --workspace` green on
   windows-latest, ubuntu-latest, macos-latest and macos-15-intel. Tests A and B are in that suite.
+- 2026-10-25, C4 0.0.1 (debug build of the desktop shell), Claude Code 2.1.299, Windows 11 Pro.
+  Desktop part of item 1 (A): `c4` with no arguments opened its window and listed the four sessions
+  discovery sees in the real Claude home: the two interactive sessions in Windows Terminal (observed,
+  working), a daemon-backed background session (observed, idle) and the background job whose
+  supervisor had died (disconnected). The first pass took 37 ms; the session list command's three
+  entries arrived on the same pass. `c4 sessions --json --files-only` from the same executable
+  returned the same four sessions; the window closed with exit code 0 and nothing on stderr. Checked
+  by screenshot, not by a test; the Playwright suite arrives in Milestone 2.

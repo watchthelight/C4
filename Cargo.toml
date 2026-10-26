@@ -2,7 +2,7 @@
 
 [workspace]
 resolver = "2"
-members = ["crates/*"]
+members = ["crates/*", "apps/desktop/src-tauri"]
 
 [workspace.package]
 version = "0.0.1"
@@ -30,6 +30,9 @@ rusqlite = { version = "0.41", features = ["bundled"] }
 portable-pty = "0.9"
 vt100 = "0.18"
 tempfile = "3"
+tauri = { version = "2.12", features = [] }
+tauri-build = { version = "2.7", features = [] }
+windows-sys = { version = "0.61", features = ["Win32_System_Console"] }
 
 [workspace.lints.rust]
 unsafe_code = "warn"

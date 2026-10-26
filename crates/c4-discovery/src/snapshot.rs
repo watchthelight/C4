@@ -339,6 +339,37 @@ impl Discovery {
     /// Take a snapshot and fold it in. Sessions that left the registry are told so; processes seen
     /// alive before are probed until they are gone.
     pub fn refresh(&mut self, probe: &mut dyn ProcessProbe, now: Timestamp) -> RefreshResult {
+        self.refresh_inner(probe, now, true)
+    }
+
+    /// [`Self::refresh`] without the session list command, whatever the options say: the files
+    /// under the home and the process table only. For a caller that polls the files often and runs
+    /// the command on a slower schedule of its own, since the command starts a Node process and, on
+    /// macOS and Linux, can revive Claude Code's background supervisor. The report's
+    /// `agents_entries` and `agents_error` stay `None`.
+    pub fn refresh_files_only(
+        &mut self,
+        probe: &mut dyn ProcessProbe,
+        now: Timestamp,
+    ) -> RefreshResult {
+        self.refresh_inner(probe, now, false)
+    }
+
+    fn refresh_inner(
+        &mut self,
+        probe: &mut dyn ProcessProbe,
+        now: Timestamp,
+        run_agents: bool,
+    ) -> RefreshResult {
+        let opts = DiscoveryOptions {
+            home: self.opts.home.clone(),
+            agents: if run_agents {
+                self.opts.agents.clone()
+            } else {
+                None
+            },
+            agents_timeout: self.opts.agents_timeout,
+        };
         let known: Vec<KnownProcess> = self
             .table
             .iter()
@@ -351,7 +382,7 @@ impl Discovery {
                 })
             })
             .collect();
-        let snapshot = take_snapshot(&self.opts, probe, now, &known);
+        let snapshot = take_snapshot(&opts, probe, now, &known);
         let mut result = RefreshResult {
             report: snapshot.report,
             ..RefreshResult::default()
@@ -536,6 +567,28 @@ mod tests {
         let order: Vec<&str> = disc.views().iter().map(|v| v.id.as_str()).collect();
         assert_eq!(order.len(), 7);
         assert!(res.transitions.len() >= 6, "{:?}", res.transitions);
+    }
+
+    #[test]
+    fn a_files_only_refresh_skips_the_command() {
+        let opts = DiscoveryOptions::files_only(ClaudeHome::at(fixtures().join("home")))
+            .with_agents(agents_command());
+        let mut disc = Discovery::new(opts);
+        let mut p = probe();
+        let t0 = Timestamp::from_millis(1_792_900_900_000);
+        let res = disc.refresh_files_only(&mut p, t0);
+        assert_eq!(res.report.agents_entries, None);
+        assert_eq!(res.report.agents_error, None);
+        assert_eq!(res.report.registry_entries, 4);
+        assert_eq!(res.report.jobs, 2);
+        assert_eq!(
+            disc.table().len(),
+            6,
+            "the session only the command lists is not seen"
+        );
+        let res = disc.refresh(&mut p, t0.plus_millis(2_000));
+        assert_eq!(res.report.agents_entries, Some(5));
+        assert_eq!(disc.table().len(), 7);
     }
 
     #[test]

@@ -1,0 +1,79 @@
+{
+  "note": "The labels the window shows for the core's enums. crates/c4-core/tests/labels.rs checks the Rust side against this file and apps/desktop/tests/labels.test.ts the TypeScript side, so the two can never disagree. Synthetic, like everything under fixtures/.",
+  "states": {
+    "waiting_permission": { "label": "waiting for permission", "weight": 100, "attention": true, "live": true },
+    "waiting_user_input": { "label": "waiting for input", "weight": 90, "attention": true, "live": true },
+    "failed": { "label": "failed", "weight": 80, "attention": true, "live": true },
+    "disconnected": { "label": "disconnected", "weight": 70, "attention": false, "live": false },
+    "running_tool": { "label": "running a tool", "weight": 40, "attention": false, "live": true },
+    "background_agents_active": { "label": "background agents active", "weight": 35, "attention": false, "live": true },
+    "working": { "label": "working", "weight": 30, "attention": false, "live": true },
+    "idle": { "label": "idle", "weight": 10, "attention": false, "live": true },
+    "completed": { "label": "completed", "weight": 0, "attention": false, "live": false }
+  },
+  "input_reasons": {
+    "question": "question",
+    "elicitation": "elicitation",
+    "agent_needs_input": "agent needs input",
+    "auth": "sign-in",
+    "dialog": "dialog",
+    "other": "input"
+  },
+  "disconnect_reasons": {
+    "process_gone": "process exited",
+    "pid_reused": "pid reused",
+    "registry_gone": "registry entry gone",
+    "host_gone": "terminal pane gone",
+    "host_exited": "session host exited"
+  },
+  "hosts": {
+    "c4": "C4",
+    "wez_term": "WezTerm",
+    "tmux": "tmux",
+    "i_term2": "iTerm2",
+    "kitty": "kitty",
+    "windows_terminal": "Windows Terminal",
+    "terminal_app": "Terminal.app",
+    "vs_code": "VS Code",
+    "gnome_terminal": "GNOME Terminal",
+    "alacritty": "Alacritty",
+    "conhost": "console",
+    "unknown": "unknown host"
+  },
+  "attachments": {
+    "managed": "managed",
+    "interactive_attached": "attached",
+    "observed": "observed",
+    "disconnected": "disconnected"
+  },
+  "sources": [
+    { "source": { "source": "registry" }, "label": "registry" },
+    { "source": { "source": "agents_json" }, "label": "claude agents" },
+    { "source": { "source": "hook", "detail": "Stop" }, "label": "hook Stop" },
+    { "source": { "source": "statusline" }, "label": "status line" },
+    { "source": { "source": "transcript" }, "label": "transcript" },
+    { "source": { "source": "osc7501" }, "label": "OSC 7501" },
+    { "source": { "source": "osc21337" }, "label": "OSC 21337" },
+    { "source": { "source": "process" }, "label": "process table" },
+    { "source": { "source": "daemon" }, "label": "background supervisor" },
+    { "source": { "source": "host", "detail": "wez_term" }, "label": "WezTerm" },
+    { "source": { "source": "managed" }, "label": "managed host" },
+    { "source": { "source": "timer" }, "label": "timer" }
+  ],
+  "describe": [
+    { "state": { "state": "working" }, "text": "working" },
+    { "state": { "state": "running_tool", "tool": "Bash" }, "text": "running Bash" },
+    { "state": { "state": "waiting_permission", "what": null }, "text": "waiting for permission" },
+    { "state": { "state": "waiting_permission", "what": "Bash" }, "text": "waiting for permission: Bash" },
+    { "state": { "state": "waiting_user_input", "reason": "question", "detail": null }, "text": "waiting for input: question" },
+    { "state": { "state": "waiting_user_input", "reason": "agent_needs_input", "detail": "a path" }, "text": "waiting for input: agent needs input (a path)" },
+    { "state": { "state": "waiting_user_input", "reason": "other", "detail": "" }, "text": "waiting for input: input" },
+    { "state": { "state": "waiting_user_input", "reason": "auth", "detail": null }, "text": "waiting for input: sign-in" },
+    { "state": { "state": "background_agents_active", "count": 1 }, "text": "1 background agent active" },
+    { "state": { "state": "background_agents_active", "count": 3 }, "text": "3 background agents active" },
+    { "state": { "state": "idle" }, "text": "idle" },
+    { "state": { "state": "failed", "error": "rate_limit" }, "text": "failed: rate_limit" },
+    { "state": { "state": "disconnected", "reason": "pid_reused" }, "text": "disconnected: pid reused" },
+    { "state": { "state": "completed", "reason": "logout" }, "text": "completed (logout)" }
+  ]
+}

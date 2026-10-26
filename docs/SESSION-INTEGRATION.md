@@ -78,9 +78,13 @@ leaves theirs alone. An installer that overwrites `statusLine` wholesale removes
 working from the status line's cache files and the hooks, `c4 doctor` points it out, and a watch on
 `settings.json` offers to re-apply the wrapper.
 
-Claude Code reloads `settings.json` hooks while a session runs, according to its documentation. Until
-the first event with a session's id arrives, that session shows "hook telemetry pending", which is
-correct whether or not the running session has picked the hooks up.
+Claude Code applies hook edits in a settings file to sessions that are already running. Tested
+2026-10-25 with Claude Code 2.1.299 on Windows: a `UserPromptSubmit` command hook written to a
+project's `.claude/settings.json` after a `claude -p --input-format stream-json` session had started
+ran on that session's next turn, with no restart. The user-level file is documented as watched the
+same way but was not part of the test. Until the first event with a session's id arrives, that session
+shows "hook telemetry pending", which stays correct for a session that runs with `disableAllHooks` or
+without the settings source C4 wrote to.
 
 ## Managed sessions
 

@@ -10,8 +10,10 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 
+# The headless commands on their own, for development: `cargo run -p c4-cli -- sessions` builds in
+# seconds and needs no webview. The `c4` executable (apps/desktop) serves the same commands.
 [[bin]]
-name = "c4"
+name = "c4-cli"
 path = "src/main.rs"
 
 [dependencies]

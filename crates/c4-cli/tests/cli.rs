@@ -12,7 +12,7 @@ use std::process::{Command, Output, Stdio};
 use std::time::{Duration, Instant};
 
 fn c4(scratch: &ScratchHome) -> Command {
-    let mut cmd = Command::new(env!("CARGO_BIN_EXE_c4"));
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_c4-cli"));
     let (key, value) = scratch.env_var();
     cmd.env(key, value)
         .env_remove("C4_AGENTS_CMD")

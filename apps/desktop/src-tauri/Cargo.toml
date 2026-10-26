@@ -1,0 +1,41 @@
+# <wtl> project: c4 | file: apps/desktop/src-tauri/Cargo.toml | author: watchthelight </wtl>
+
+[package]
+name = "c4-desktop"
+description = "C4, a command center for Claude Code sessions"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lib]
+name = "c4_desktop"
+path = "src/lib.rs"
+
+# The one executable users run: the window without arguments, the headless commands with them.
+[[bin]]
+name = "c4"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { workspace = true }
+
+[dependencies]
+c4-cli = { path = "../../../crates/c4-cli" }
+c4-core = { path = "../../../crates/c4-core" }
+c4-discovery = { path = "../../../crates/c4-discovery" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tauri = { workspace = true }
+tracing = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true }
+
+[dev-dependencies]
+c4-testkit = { path = "../../../crates/c4-testkit" }
+
+[lints]
+workspace = true
