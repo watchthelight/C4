@@ -53,8 +53,8 @@ stay at 0.y.z while the interfaces settle.
 - `c4-shim`, the sidecar with no dependencies: `c4-shim statusline -- <command>` copies the status
   line payload to C4 and runs the original command with the same stdin, its output and exit code
   untouched; `c4-shim hook` copies a hook payload, prints nothing and exits 0. Lines go to the ingest
-  endpoint of the C4 home (a named pipe in the per-session namespace on Windows, a socket file
-  elsewhere) and wait in `~/.c4/spool/<date>.jsonl` when C4 is not running. A test holds the endpoint
-  rule equal to `c4-core::home`.
+  endpoint of the C4 home (a named pipe on Windows, a socket file elsewhere) and wait in
+  `~/.c4/spool/<date>.jsonl` when C4 is not running. A test holds the endpoint rule equal to
+  `c4-core::home`.
 
 [Unreleased]: https://github.com/watchthelight/C4/compare/c3a0a47...HEAD

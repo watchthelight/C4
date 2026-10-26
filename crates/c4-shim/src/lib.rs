@@ -26,7 +26,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 pub const HOME_ENV: &str = "C4_HOME";
 /// Turns on the run log under `<home>/logs/shim.log` when set to anything but an empty value.
 pub const LOG_ENV: &str = "C4_SHIM_LOG";
-/// The Windows pipe prefix; the hash of the home follows. `LOCAL` keeps the name per login session.
+/// The Windows pipe prefix; the hash of the home follows. `LOCAL\` is what Claude Code's own pipes
+/// use; the server's DACL, not the prefix, keeps other users out.
 pub const PIPE_PREFIX: &str = r"\\.\pipe\LOCAL\c4-ingest-";
 /// The socket file under the home on Unix.
 pub const SOCKET_NAME: &str = "ingest.sock";
