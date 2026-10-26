@@ -503,7 +503,7 @@ mod platform {
     use super::{Ctx, StartError, drain, serve};
 
     pub(super) struct Listener {
-        listener: UnixListener,
+        socket: UnixListener,
         path: PathBuf,
         uid: u32,
     }
@@ -529,7 +529,7 @@ mod platform {
                 source,
             })?;
         }
-        let listener = UnixListener::bind(&path).map_err(|source| StartError::Listen {
+        let socket = UnixListener::bind(&path).map_err(|source| StartError::Listen {
             endpoint: endpoint.clone(),
             source,
         })?;
@@ -539,11 +539,7 @@ mod platform {
                 source,
             },
         )?;
-        Ok(Listener {
-            listener,
-            path,
-            uid,
-        })
+        Ok(Listener { socket, path, uid })
     }
 
     pub(super) async fn accept_loop(listener: Listener, ctx: Ctx, mut stop: watch::Receiver<bool>) {
@@ -552,7 +548,7 @@ mod platform {
             while conns.try_join_next().is_some() {}
             tokio::select! {
                 _ = stop.changed() => break,
-                accepted = listener.listener.accept() => match accepted {
+                accepted = listener.socket.accept() => match accepted {
                     Ok((stream, _)) => match stream.peer_cred() {
                         Ok(cred) if cred.uid() == listener.uid => {
                             conns.spawn(serve(stream, ctx.clone()));
@@ -573,7 +569,7 @@ mod platform {
                 },
             }
         }
-        drop(listener.listener);
+        drop(listener.socket);
         let _ = std::fs::remove_file(&listener.path);
         drain(conns).await;
     }

@@ -29,6 +29,17 @@ python scripts/precommit.py                            # what the git hook runs
 python scripts/gen_notices.py                          # regenerate THIRD-PARTY-NOTICES.md
 ```
 
+Code under `#[cfg(unix)]` is not compiled on a Windows machine, so a lint in it shows up on the CI
+runners first. Clippy only type-checks, so it can check that code for another target without a
+cross linker, once the target's standard library is installed:
+
+```sh
+rustup target add x86_64-unknown-linux-gnu
+cargo clippy -p c4-ingest --all-targets --target x86_64-unknown-linux-gnu -- -D warnings
+```
+
+The desktop crate is left out of such a run: its build script needs the Linux WebKit packages.
+
 ## The desktop app
 
 `apps/desktop` holds the window. `src-tauri` is the `c4-desktop` crate that builds the `c4`
