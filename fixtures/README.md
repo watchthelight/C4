@@ -20,6 +20,7 @@ temporary directory when they need to write.
 | `hook-payloads/` | one hook payload per event C4 listens to, with the fields Claude Code 2.1.299 documents, plus `subagent-tool-use.json` (a `PreToolUse` fired inside a subagent) and `unknown-event.json` (an event C4 does not know) | `c4-ingest` parser |
 | `statusline-payload/` | the status line payload, complete (`full.json`) and with only the fields the parser reads (`minimal.json`) | `c4-ingest` parser |
 | `spool/` | one day of the shim's spool: two good lines and two bad ones | `c4-ingest` replay |
+| `settings/full.json` | a user settings file as the agents repo's installer leaves it: permissions, env, model, the status line command and its hook groups, in the Windows `python` form | the `c4 install` and `c4 uninstall` tests and test M (`crates/c4-cli/tests/install.rs`) |
 
 Files that exist to prove tolerance: `home/sessions/broken.json` (truncated JSON), `home/sessions/notes.txt`
 (not a record), `home/sessions/41004.json` (an older record missing optional fields), the empty

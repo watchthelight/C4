@@ -2,6 +2,7 @@
 //! The command line. The desktop binary parses the same types, so `c4 sessions` means the same
 //! thing whichever executable runs it.
 
+use c4_core::C4Home;
 use c4_discovery::{CONFIG_DIR_ENV, ClaudeHome, HOME_ENV};
 use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
@@ -31,6 +32,10 @@ pub enum Command {
     Doctor(DoctorArgs),
     /// Token totals, cost and agents recorded in one transcript file.
     Telemetry(TelemetryArgs),
+    /// Copy the shim into the C4 home and wire it into settings.json, with a backup and a manifest.
+    Install(InstallArgs),
+    /// Take the shim out of settings.json again, from the backup when nothing else changed the file.
+    Uninstall(UninstallArgs),
 }
 
 /// Where the Claude home is.
@@ -65,6 +70,40 @@ impl HomeArgs {
             CONFIG_DIR_ENV
         } else {
             "~/.claude"
+        }
+    }
+}
+
+/// Where the C4 home is: the shim copy, the spool, the logs and the install manifest.
+#[derive(Args, Debug, Clone, Default)]
+pub struct C4HomeArgs {
+    /// The C4 home to use instead of the one the environment names.
+    #[arg(
+        long,
+        value_name = "DIR",
+        help = "The C4 home to use, instead of the one the environment names (C4_HOME, then ~/.c4)"
+    )]
+    pub c4_home: Option<PathBuf>,
+}
+
+impl C4HomeArgs {
+    /// The home: `--c4-home`, else the environment rule of [`C4Home::resolve`].
+    #[must_use]
+    pub fn resolve(&self) -> C4Home {
+        self.c4_home
+            .as_ref()
+            .map_or_else(C4Home::resolve, C4Home::at)
+    }
+
+    /// What decided the home, for the report.
+    #[must_use]
+    pub fn source(&self) -> &'static str {
+        if self.c4_home.is_some() {
+            "--c4-home"
+        } else if env_set(c4_core::home::HOME_ENV) {
+            c4_core::home::HOME_ENV
+        } else {
+            "~/.c4"
         }
     }
 }
@@ -127,4 +166,35 @@ pub struct TelemetryArgs {
     /// Print JSON instead of text.
     #[arg(long)]
     pub json: bool,
+}
+
+/// `c4 install`.
+#[derive(Args, Debug, Clone)]
+pub struct InstallArgs {
+    /// Where the Claude home is.
+    #[command(flatten)]
+    pub home: HomeArgs,
+    /// Where the C4 home is.
+    #[command(flatten)]
+    pub c4_home: C4HomeArgs,
+    /// The shim executable to copy into the C4 home, instead of the c4-shim beside this executable.
+    #[arg(long, value_name = "FILE")]
+    pub shim: Option<PathBuf>,
+    /// Print what would change and write nothing.
+    #[arg(long)]
+    pub dry_run: bool,
+}
+
+/// `c4 uninstall`.
+#[derive(Args, Debug, Clone)]
+pub struct UninstallArgs {
+    /// Where the Claude home is.
+    #[command(flatten)]
+    pub home: HomeArgs,
+    /// Where the C4 home is.
+    #[command(flatten)]
+    pub c4_home: C4HomeArgs,
+    /// Print what would change and write nothing.
+    #[arg(long)]
+    pub dry_run: bool,
 }

@@ -8,15 +8,22 @@
 //! - `c4 doctor`: where the Claude home is, what it holds, whether `claude` runs and whether the
 //!   process table answers. Nothing but file existence is read from the settings.
 //! - `c4 telemetry`: the token totals, cost, agents and recorded state of one transcript file.
+//! - `c4 install` and `c4 uninstall`: the shim copied into the C4 home and wired into
+//!   `settings.json`, with a backup beside the file and a manifest for the way back.
 //!
-//! Every command reads the Claude home and never writes to it.
+//! Every command reads the Claude home and never writes to it, except `install` and `uninstall`,
+//! which write `settings.json` alone, each time after a backup, and record what they touched.
 
 pub mod args;
 pub mod doctor;
+pub mod install;
 pub mod sessions;
 pub mod telemetry;
 
-pub use args::{Cli, Command, DoctorArgs, HomeArgs, SessionsArgs, TelemetryArgs};
+pub use args::{
+    C4HomeArgs, Cli, Command, DoctorArgs, HomeArgs, InstallArgs, SessionsArgs, TelemetryArgs,
+    UninstallArgs,
+};
 
 use clap::Parser;
 use std::process::ExitCode;
@@ -49,6 +56,8 @@ pub fn run(cli: &Cli) -> anyhow::Result<()> {
         Command::Sessions(a) => sessions::run(a, &mut out),
         Command::Doctor(a) => doctor::run(a, &mut out),
         Command::Telemetry(a) => telemetry::run(a, &mut out),
+        Command::Install(a) => install::run_install(a, &mut out),
+        Command::Uninstall(a) => install::run_uninstall(a, &mut out),
     }
 }
 
@@ -110,6 +119,30 @@ mod tests {
         }
         let cli = Cli::try_parse_from(["c4", "telemetry", "--transcript", "x.jsonl"]).unwrap();
         assert!(matches!(cli.command, Command::Telemetry(_)));
+        let cli = Cli::try_parse_from([
+            "c4",
+            "install",
+            "--dry-run",
+            "--c4-home",
+            "/tmp/c4",
+            "--shim",
+            "/tmp/c4-shim",
+        ])
+        .unwrap();
+        match cli.command {
+            Command::Install(a) => {
+                assert!(a.dry_run);
+                assert_eq!(a.c4_home.source(), "--c4-home");
+                assert_eq!(
+                    a.shim.as_deref(),
+                    Some(std::path::Path::new("/tmp/c4-shim"))
+                );
+                assert!(a.home.home.is_none());
+            }
+            other => panic!("{other:?}"),
+        }
+        let cli = Cli::try_parse_from(["c4", "uninstall"]).unwrap();
+        assert!(matches!(cli.command, Command::Uninstall(a) if !a.dry_run));
         assert!(Cli::try_parse_from(["c4", "frobnicate"]).is_err());
         assert!(
             Cli::try_parse_from(["c4", "telemetry"]).is_err(),

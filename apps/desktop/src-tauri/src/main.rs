@@ -1,6 +1,7 @@
 // <wtl> project: c4 | file: apps/desktop/src-tauri/src/main.rs | author: watchthelight </wtl>
 //! The `c4` executable. With arguments it is the headless command line (`c4 sessions`, `c4 doctor`,
-//! `c4 telemetry`) and no webview starts; without any it opens the window.
+//! `c4 telemetry`, `c4 install`, `c4 uninstall`) and no webview starts; without any it opens the
+//! window.
 #![cfg_attr(all(not(debug_assertions), windows), windows_subsystem = "windows")]
 
 use std::process::ExitCode;

@@ -56,6 +56,18 @@ impl Timestamp {
             .unwrap_or_else(|| self.0.to_string())
     }
 
+    /// Format for a file name: `20261026T051530Z`, UTC to the second, nothing a file system minds.
+    #[must_use]
+    pub fn to_file_stamp(self) -> String {
+        let format =
+            time::macros::format_description!("[year][month][day]T[hour][minute][second]Z");
+        let nanos = i128::from(self.0) * 1_000_000;
+        OffsetDateTime::from_unix_timestamp_nanos(nanos)
+            .ok()
+            .and_then(|dt| dt.format(&format).ok())
+            .unwrap_or_else(|| self.0.to_string())
+    }
+
     /// Milliseconds from `earlier` to `self`; negative when `earlier` is later.
     #[must_use]
     pub fn millis_since(self, earlier: Timestamp) -> i64 {
@@ -98,6 +110,7 @@ mod tests {
         assert_eq!(t.to_rfc3339(), "2026-10-25T18:07:12.345Z");
         assert_eq!(Timestamp::from_secs(0).to_rfc3339(), "1970-01-01T00:00:00Z");
         assert!(Timestamp::parse_rfc3339("yesterday").is_none());
+        assert_eq!(t.to_file_stamp(), "20261025T180712Z");
     }
 
     #[test]

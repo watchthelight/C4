@@ -9,14 +9,15 @@ from a per-session host process.
 
 Status: Milestone 1 delivers `c4-core`, `c4-discovery`, `c4-transcript` (tailer, parser, follower,
 index and watcher), `c4-testkit`, `c4-cli` and `c4-desktop`, whose window lists sessions. Milestone 2
-has so far added `c4-shim` and `c4-ingest`. The other crates are named below with the milestone that
-brings them; solid edges in the crate graph are in the tree, dotted ones are planned.
+has so far added `c4-shim`, `c4-ingest`, `Discovery::fold`, and `c4 install` and `c4 uninstall`. The
+other crates are named below with the milestone that brings them; solid edges in the crate graph are
+in the tree, dotted ones are planned.
 
 ## Processes
 
 | Process | Role | Since |
 |---|---|---|
-| `c4` | The desktop app. With no arguments it opens the window; with arguments it runs a headless command (`sessions`, `doctor`, `telemetry` today; `perf`, `install`, `uninstall` and `host` with their milestones) and exits before any webview exists. | 1 |
+| `c4` | The desktop app. With no arguments it opens the window; with arguments it runs a headless command (`sessions`, `doctor`, `telemetry`, `install`, `uninstall` today; `perf` and `host` with their milestones) and exits before any webview exists. | 1 |
 | `c4-cli` | The same commands as a webview-free executable for development (`cargo run -p c4-cli -- sessions`). Not shipped. | 1 |
 | `c4-shim` | A standard-library-only sidecar. `c4-shim statusline -- <original command>` starts the original command at once with the same stdin and copies the payload to C4's local socket on a thread beside it (spooled to disk when nothing listens), passing output and exit code through. `c4-shim hook` does the same copy and always exits 0 with empty output, 900 ms after reading the payload at the latest. The status line pays the shim's own startup and nothing else. | 2 |
 | `c4 host --session <id>` | One detached process per managed session. It owns the pty, a 2 MiB raw ring buffer, a screen model, the controller lease and a local socket. The UI can crash or exit and the host keeps the session alive. | 3 |
@@ -56,7 +57,7 @@ graph TD
 | `c4-discovery` | `ClaudeHome` resolution (`C4_CLAUDE_HOME`, `CLAUDE_CONFIG_DIR`, `~/.claude`), the registry reader, the `claude agents --json` runner with a timed capture, daemon and job enrichment with the auth fields dropped, the process probe (sysinfo) with the liveness ladder (pid, creation time, executable name), terminal host identification from the process environment, the transcript existence check, and `Discovery`, which folds one pass into the table and reports the transitions, and whose `fold` applies observations from outside a pass (the hook events and status line payloads the ingest server parses) in stamp order. | 1, 2 (`fold`) |
 | `c4-transcript` | The byte-offset tailer, the tolerant record parser gated on the major `version`, the record-to-event map, the subagent and workflow directory scanner, the project index built from metadata only, `SessionFollower` (one session's main transcript and agent files, folded into observations, usage max-merged per message id) and the file watcher. The workflow graph comes in Milestone 5. | 1 (reader), 5 (graph) |
 | `c4-testkit` | `ScratchHome` (a Claude home in a temp dir, seeded from `fixtures/home`), `FakeClaude` (a real process registered with its pid and creation time, so liveness tests run on a real process table), the discovery tests A and B. | 1 |
-| `c4-cli` | `c4 sessions [--json|--watch|--files-only|--redact|--home]`, `c4 doctor [--json|--no-commands]`, `c4 telemetry --transcript <file> [--json]`. JSON output carries `schema: 1`. Exit 0, 1 (could not do the job, reason on stderr) or 2 (usage). | 1 |
+| `c4-cli` | `c4 sessions [--json|--watch|--files-only|--redact|--home]`, `c4 doctor [--json|--no-commands]`, `c4 telemetry --transcript <file> [--json]`, `c4 install [--dry-run|--home|--c4-home|--shim]` and `c4 uninstall [--dry-run]`. The last two are the one writer of a Claude home: the shim copy, the status line wrapper and the hook groups, every write of `settings.json` after a backup beside it and recorded in a manifest under the C4 home for the way back (docs/SESSION-INTEGRATION.md). JSON output carries `schema: 1`. Exit 0, 1 (could not do the job, reason on stderr) or 2 (usage). | 1, 2 |
 | `c4-desktop` | The Tauri app: the refresh thread, two commands, one event, the Windows console attach for headless use. The window itself is `apps/desktop/src`. | 1 |
 | `c4-ingest` | The receiving end of the shim: a server on the home's ingest endpoint (a named pipe whose DACL admits the current user alone on Windows; a socket file with mode 0600 elsewhere, every peer's uid checked against the owner of the home), the parser that turns each line into an `Identity` observation plus the `Hook` or `Statusline` fact, a bounded inbox that drops its oldest item and counts the drop rather than hold up a hook, the spool replay at start and every 30 s, and a standard-library probe for `c4 doctor`. A line over 2 MiB or a connection silent for 5 s is dropped and counted; a line the parser refuses is logged by size and reason, never by content. A second server on the same home is refused. Its end-to-end test sends lines through `c4-shim`'s own delivery code. | 2 |
 | `c4-store` | SQLite schema and queries: sessions, identities, events, cursors, usage samples, agents, tasks, config transactions, audit, hosts, layouts, searchable scrollback. | 2 |

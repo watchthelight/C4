@@ -18,6 +18,29 @@ and toolkits.
 This repository is under construction. The first tagged release carries the
 working sidebar; see CHANGELOG.md for what each version adds.
 
+## Quick start, headless
+
+Until the first release the headless commands are the way in. `c4-cli` is the
+same command line as the `c4` executable without the window:
+
+```sh
+cargo build --release -p c4-cli -p c4-shim
+target/release/c4-cli install --dry-run   # what would change; nothing is written
+target/release/c4-cli install             # copy the shim to ~/.c4/bin and wire settings.json
+target/release/c4-cli doctor              # the Claude home's files, the claude command, the session list
+target/release/c4-cli sessions            # every session discovery can see
+target/release/c4-cli uninstall           # the way back
+```
+
+`c4 install` changes one file, `~/.claude/settings.json`: the status line command
+gets the shim in front of it and one hook group per event C4 listens to is added.
+The file is copied to a backup beside it first, written back in its own layout,
+and what changed is recorded under `~/.c4/` so that `c4 uninstall` can restore
+the backup byte for byte, or take C4's entries out one by one when something
+else has written the file since. The app does not start the ingest server yet,
+so a shim installed today spools what it receives under `~/.c4/spool/` until a
+later build replays it. docs/SESSION-INTEGRATION.md has the details.
+
 ## License
 
 MIT. Third-party licenses are listed in THIRD-PARTY-NOTICES.md.

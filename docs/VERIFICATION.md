@@ -22,7 +22,7 @@ and passes; "manual" means someone ran the checklist on real hardware; "unverifi
 | J | organization and layouts survive a restart | store round trip plus a relaunch smoke test | planned (Milestone 3) |
 | K | performance targets | criterion benches, `c4 perf`, a 40-session load generator | planned (Milestone 7) |
 | L | releases are published with checksums and attestations | `scripts/verify_release.py` after each tag | planned (Milestone 2) |
-| M | an existing Claude Code setup keeps working after install | scratch home seeded with a full settings file, then the agents installer twice | planned (Milestone 2) |
+| M | an existing Claude Code setup keeps working after install | scratch home seeded with `fixtures/settings/full.json`; `c4 install`, the agents repo's installer twice (`python -I install/install.py --home <scratch>`; the repo is checked out at a pinned commit in CI, `~/src/agents` or `C4_AGENTS_REPO` locally), `c4 install` again, `c4 uninstall` (`crates/c4-cli/tests/install.rs`) | verified, headless, on every runner; the test skips with a notice where the agents repo is not reachable; the real home is manual item 3 |
 
 ## Platform status
 
@@ -32,10 +32,10 @@ in CI starts the app yet; a smoke test that does is planned.
 
 | Platform | Built in CI | Tests in CI | Run on hardware |
 |---|---|---|---|
-| Windows x64 | debug app, verify run 40257450521 | `cargo test --workspace` and `pnpm -r test` green (windows-latest) | `c4 sessions`, `c4 doctor` and the window against a real home, see Results |
-| macOS arm64 | debug app, verify run 40257450521 | `cargo test --workspace` and `pnpm -r test` green (macos-latest) | no hardware in reach |
-| macOS x64 | debug app, verify run 40257450521 | `cargo test --workspace` and `pnpm -r test` green (macos-15-intel) | no hardware in reach |
-| Linux x64 | debug app, verify run 40257450521 | `cargo test --workspace` and `pnpm -r test` green (ubuntu-latest) | not yet |
+| Windows x64 | debug app, verify run 40271184171 | `cargo test --workspace` and `pnpm -r test` green (windows-latest) | `c4 sessions`, `c4 doctor`, `c4 install --dry-run` and the window against a real home, see Results |
+| macOS arm64 | debug app, verify run 40271184171 | `cargo test --workspace` and `pnpm -r test` green (macos-latest) | no hardware in reach |
+| macOS x64 | debug app, verify run 40271184171 | `cargo test --workspace` and `pnpm -r test` green (macos-15-intel) | no hardware in reach |
+| Linux x64 | debug app, verify run 40271184171 | `cargo test --workspace` and `pnpm -r test` green (ubuntu-latest) | not yet |
 
 ## Manual checklist
 
@@ -47,10 +47,11 @@ result below the list when you run it.
    background job whose supervisor is gone shows Disconnected, not blocked.
 2. (B, I) Open a new `claude` in WezTerm: it appears within 2 s as Interactive Attached with its pane
    id; "send message" delivers to a throwaway session only.
-3. (F, M) After `c4 install`: the sidebar context percentage equals the status line's meter in the same
-   terminal; the status line's cache files and ledger keep updating; `c4 uninstall` restores
-   settings.json byte for byte apart from the removed keys; the agents installer's dry run reports no
-   change beyond statusLine.
+3. (F, M) `c4 install --dry-run` first, then `c4 install`: the sidebar context percentage equals the
+   status line's meter in the same terminal; the status line's cache files and ledger keep updating;
+   `c4 uninstall` restores settings.json byte for byte when nothing else has written it since, and
+   otherwise removes C4's entries alone; the agents installer's dry run reports no change beyond
+   statusLine.
 4. (H, J) Start a managed `claude` in a scratch directory, type, interrupt with ESC, close the C4
    window, reopen: the session is still there with its scrollback.
 5. (K) Run the load generator with 40 sessions at 3,000 events per minute and `c4 perf`; record
@@ -82,3 +83,15 @@ result below the list when you run it.
 - 2026-10-26, the verify workflow for commit 923519b (run 40257450521): the lint job and the four
   test jobs green. Each runner built the debug app with `tauri build --debug --no-bundle` after
   `cargo test --workspace` and `pnpm -r test`. The app was built, not started, on every runner.
+- 2026-10-26, the verify workflow for commits 1cf88c6 and 08d7953 (run 40271184171): the lint job
+  and the four test jobs green, the ingest server's tests included on both macOS runners after the
+  `getpeereid` fix of 1cf88c6.
+- 2026-10-26, C4 0.0.1 (debug `c4-cli`), Claude Code 2.1.299, Windows 11 Pro. The dry-run half of
+  item 3 (M): `c4-cli install --dry-run` against the real Claude home named the shim it would copy to
+  `~/.c4/bin/`, the wrapped status line command (the original `PYTHONIOENCODING=utf-8 python
+  ~/.claude/statusline.py` with `~/.c4/bin/c4-shim.exe statusline --` in front of the program), the
+  17 hook groups it would add, the backup it would take and the manifest it would write, restorable.
+  `c4-cli uninstall --dry-run` reported nothing of C4's in the file, no shim copy and no manifest.
+  Afterwards `~/.c4/install-manifest.json` did not exist and `settings.json` had its previous size
+  and modification time, with no new backup beside it. The real install waits for the build in which
+  the app starts the ingest server, so that nothing installed sits unread.

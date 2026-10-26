@@ -4,19 +4,33 @@
 
 How C4 plugs into an existing Claude Code setup, what it changes, and how to take it out again.
 
-Status: the shim (`crates/c4-shim`) and the ingest server (`crates/c4-ingest`) exist; the app does not
-start the server yet, and `c4 install` follows, both in Milestone 2. Until they land C4 runs in the
-coarse mode described in docs/HOW-IT-WORKS.md: registry, transcripts and the status line's cache
-files, no hooks.
+Status: the shim (`crates/c4-shim`), the ingest server (`crates/c4-ingest`) and `c4 install` and
+`c4 uninstall` (`crates/c4-cli/src/install.rs`) exist; the app does not start the server yet, which
+the next Milestone 2 commit adds. Until then a shim installed with `c4 install` spools every payload
+under `~/.c4/spool/` for the app to replay later, and C4 runs in the coarse mode described in
+docs/HOW-IT-WORKS.md: registry, transcripts and the status line's cache files, no hooks.
 
 ## What `c4 install` changes
 
-Exactly two things in `~/.claude/settings.json`, nothing anywhere else:
+```sh
+c4 install --dry-run         # print what would change, write nothing
+c4 install                   # copy the shim, wrap the status line, add the hook groups
+c4 install --home DIR        # another Claude home (default: C4_CLAUDE_HOME, CLAUDE_CONFIG_DIR, ~/.claude)
+c4 install --c4-home DIR     # another C4 home (default: C4_HOME, ~/.c4)
+c4 install --shim FILE       # the shim to copy (default: the c4-shim beside the executable)
+c4 uninstall [--dry-run]     # the way back
+```
 
-1. The `statusLine.command` is wrapped so that the payload reaches C4 before the original command runs.
-2. Hook groups are added for the events C4 listens to.
+Install does three things and nothing else:
 
-Before:
+1. Copies `c4-shim` (`c4-shim.exe` on Windows) to `<c4 home>/bin/`, unless the copy there already has
+   the same bytes. It never runs the shim.
+2. Wraps `statusLine.command` in `settings.json` so that the payload reaches C4 before the original
+   command runs.
+3. Adds one hook group per event C4 listens to.
+
+Two and three are the only changes to `~/.claude/settings.json`, and nothing else under the Claude
+home is touched. Before:
 
 ```json
 {
@@ -61,6 +75,26 @@ SessionEnd hook with a 1 s timeout (Claude Code gives SessionEnd hooks 1.5 s). N
 anything or return a decision, so they cannot block a tool call, a permission prompt or a session.
 C4 never installs PermissionRequest, Elicitation, PreModelSwitch or any other hook that can decide
 something.
+
+The wrapper goes in after any leading `NAME=value` words, so an environment the original command
+relies on (`PYTHONIOENCODING` above) still reaches it. For the default C4 home the shim is named
+`~/.c4/bin/c4-shim` (`c4-shim.exe` on Windows), which bash expands wherever the settings file is
+read. For any other home the command carries the absolute path with forward slashes and a
+`C4_HOME=<home>` assignment ahead of it, as in `C4_HOME=/srv/c4 /srv/c4/bin/c4-shim hook`, so the
+shim and the app agree on the home; the app must then run with the same `C4_HOME`. A path bash would
+split or expand is double-quoted; one that holds a double quote, a dollar sign, a backtick, a
+backslash or a line break is refused, since every hook command runs through bash.
+
+The edge cases, each reported in the command's output: a file without `statusLine` gets the hook
+groups alone (the status line is the user's to configure; C4 does not add one). A `statusLine` that
+is not a command, or whose command names no program, is left alone. A status line already wrapped by
+this home's shim stays as it is; one wrapped by a `c4-shim` of another home is left alone, as is a
+hook group that runs another home's shim. The match is on the exact command string, so running
+`c4 install` twice changes nothing the second time. A file that is not valid JSON, or not a JSON
+object, stops the command before anything is written, the shim copy included. The file is written
+back with its own key order, indentation, line endings and byte order mark, through a temporary file
+beside it and a rename, with the permissions of the file that was there; the `hooks` key, when it did
+not exist, and new events under it go at the end.
 
 The shim adds about 2 ms before the original status line command runs. The status line's own output,
 cache files and everything that reads them keep working exactly as before.
@@ -149,18 +183,55 @@ second account on the machine.
 
 ## Backups and removal
 
-Before writing, the installer copies `settings.json` to `settings.json.bak-c4-<timestamp>`, writes the
-new file to a temporary name and renames it into place, and records the before and after hashes and
-the exact keys it touched in `~/.c4/install-manifest.json`. `c4 uninstall` removes only those keys and
-restores the original `statusLine.command`. `c4 doctor` reports whether the install is intact.
+Before every write of `settings.json`, by install and by uninstall alike, the file is copied to
+`settings.json.bak-c4-<UTC stamp>` beside it (`settings.json.bak-c4-20261026T051530Z`, with a
+counter added when that name is taken). C4 never removes a backup.
+
+`<c4 home>/install-manifest.json` records what install did:
+
+| Field | Meaning |
+|---|---|
+| `schema` | 1 |
+| `c4_version` | the C4 that wrote the manifest last |
+| `installed_at`, `updated_at` | the first install and the last write, in milliseconds since the epoch |
+| `settings_path` | the file that was installed into; another Claude home with the same C4 home is refused until this install is removed |
+| `original` | the file before C4 first wrote it: `{"kind": "backup", "path": ..., "sha256": ...}`, `{"kind": "missing"}` when there was no file, or `{"kind": "unchanged", "sha256": ...}` when the first install found nothing to change |
+| `after_sha256` | the SHA-256 of the file as C4 last left it |
+| `restorable` | true while nothing but C4 has written the file since the original was taken |
+| `hooks` | C4's hook entries, by event and command text |
+| `hooks_created` | true when the `hooks` key did not exist before C4 added it |
+| `statusline` | the status line command before and after the wrapper |
+| `shim` | the path, the source and the SHA-256 of the shim copy |
+
+`c4 uninstall` takes one of two routes. When `restorable` is true and the file's hash is still
+`after_sha256`, nothing else has written the file since C4 did, so the original comes back byte for
+byte: the backup's bytes are written over the file, or the file is removed when there was none before
+C4. Otherwise, and whenever the backup is gone or no longer matches its hash, C4's entries come out
+one by one: every hook handler whose command the manifest records (or that is this home's own), the
+groups and events left empty by that, the `hooks` key itself only when C4 created it, and the status
+line wrapper when the command is still the one the manifest wrote or still contains this home's
+segment. Everything else stays, including what other installers added since. Without a manifest,
+uninstall still finds this home's own shim text and takes it out. The shim copy and the manifest are
+removed; the spool, the logs and the backups are kept. `--dry-run` prints the route and writes
+nothing. A second install after another program rewrote the file turns `restorable` off, because the
+backup no longer describes a file that C4 alone changed; from then on uninstall takes the one-by-one
+route.
 
 ## Living with other installers
 
 Hook groups are matched by command string, so an installer that merges its own groups (such as the
 one in watchthelight-labs/agents, or iTerm2's Claude Code integration) leaves C4's groups alone and C4
-leaves theirs alone. An installer that overwrites `statusLine` wholesale removes the shim; C4 keeps
-working from the status line's cache files and the hooks, `c4 doctor` points it out, and a watch on
-`settings.json` offers to re-apply the wrapper.
+leaves theirs alone. An installer that overwrites `statusLine` wholesale removes the shim: the agents
+installer does, on every run, because its template sets the whole `statusLine` object. C4 keeps
+working from the status line's cache files and the hooks, and `c4 install` again puts the wrapper
+back while keeping everything the other installer added. Test M
+(`coexists_with_the_agents_installer` in `crates/c4-cli/tests/install.rs`) runs that installer twice
+over a file C4 installed into (`python -I install/install.py --home <scratch>`), then `c4 install` and
+`c4 uninstall` once more: C4's seventeen groups survive both runs, the agents' hooks and env keys
+survive C4's uninstall, and the status line ends up as the agents template writes it. CI checks the
+agents repo out at a pinned commit for that test; locally it uses `~/src/agents` or `C4_AGENTS_REPO`
+and skips with a notice when neither holds the installer. `c4 doctor` reporting the un-wrapped state
+and a watch on `settings.json` that offers to re-apply the wrapper come with the next commits.
 
 Claude Code applies hook edits in a settings file to sessions that are already running. Tested
 2026-10-25 with Claude Code 2.1.299 on Windows: a `UserPromptSubmit` command hook written to a

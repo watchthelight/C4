@@ -2,7 +2,7 @@
 
 [package]
 name = "c4-cli"
-description = "The headless side of C4: c4 sessions, c4 doctor and c4 telemetry"
+description = "The headless side of C4: c4 sessions, c4 doctor, c4 telemetry, c4 install and c4 uninstall"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -24,11 +24,13 @@ c4-transcript = { path = "../c4-transcript" }
 clap = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+sha2 = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 
 [dev-dependencies]
 c4-testkit = { path = "../c4-testkit" }
+tempfile = { workspace = true }
 
 [lints]
 workspace = true

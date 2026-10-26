@@ -103,7 +103,16 @@ jobs:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: the agents repo, for test M (its installer runs over a file c4 install wrote)
+        uses: actions/checkout@v7
+        with:
+          repository: watchthelight-labs/agents
+          ref: a80aa596ee78dabd2f0019efe1b585639833bd32
+          path: vendor/agents
+          persist-credentials: false
       - run: cargo test --workspace
+        env:
+          C4_AGENTS_REPO: ${{ github.workspace }}/vendor/agents
       - uses: pnpm/action-setup@v6
         if: hashFiles('pnpm-lock.yaml') != ''
       - uses: actions/setup-node@v7

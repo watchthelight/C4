@@ -91,6 +91,13 @@ impl ClaudeHome {
         self.root.join("projects")
     }
 
+    /// `settings.json`: the user-level settings, where hooks and the status line are configured.
+    /// `c4 install` is the one command that writes it.
+    #[must_use]
+    pub fn settings_path(&self) -> PathBuf {
+        self.root.join("settings.json")
+    }
+
     /// The transcript directory for a working directory.
     #[must_use]
     pub fn project_dir(&self, cwd: &str) -> PathBuf {
@@ -160,6 +167,7 @@ mod tests {
             h.roster_path(),
             Path::new("/tmp/scratch/daemon/roster.json")
         );
+        assert_eq!(h.settings_path(), Path::new("/tmp/scratch/settings.json"));
         let sid = SessionId::new("0a1b2c3d-0001-4000-8000-000000000001");
         assert_eq!(
             h.transcript_path("/home/example/proj-alpha", &sid),

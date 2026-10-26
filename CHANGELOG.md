@@ -68,5 +68,15 @@ stay at 0.y.z while the interfaces settle.
   payload's identity lands before its event, then runs the clock. It returns the transitions and the
   sessions touched. A session only such a payload names gets a view with no process. A test folds
   the hook and status line fixtures through the `c4-ingest` parser in reverse arrival order.
+- `c4 install` and `c4 uninstall`: the shim copied to `<c4 home>/bin/`, `statusLine.command` wrapped
+  after its leading assignments, one asynchronous hook group per event C4 listens to and a
+  synchronous one for `SessionEnd`, every write of `settings.json` after a backup beside it and
+  through a temporary file, with the file's key order, indentation, line endings and permissions
+  kept, and a manifest under the C4 home that names the original's backup and hash. Uninstall
+  restores the backup byte for byte while nothing else has written the file, and otherwise removes
+  C4's entries one by one. A second install changes nothing. Test M: the agents repo's installer run
+  twice over an installed file, with CI checking that repo out at a pinned commit;
+  `fixtures/settings/full.json` is the settings file it starts from. `serde_json` keeps key order
+  across the workspace now, which is what lets the rewrite leave a user's file in its own order.
 
 [Unreleased]: https://github.com/watchthelight/C4/compare/c3a0a47...HEAD

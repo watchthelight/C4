@@ -35,7 +35,7 @@ cross linker, once the target's standard library is installed:
 
 ```sh
 rustup target add x86_64-unknown-linux-gnu
-cargo clippy -p c4-ingest --all-targets --target x86_64-unknown-linux-gnu -- -D warnings
+cargo clippy -p c4-ingest -p c4-cli --all-targets --target x86_64-unknown-linux-gnu -- -D warnings
 ```
 
 The desktop crate is left out of such a run: its build script needs the Linux WebKit packages.
@@ -77,6 +77,8 @@ c4 sessions --json                 # the same as JSON; --redact for pasting
 c4 sessions --watch                # keep refreshing, print state changes
 c4 doctor                          # where the Claude home is, whether claude runs
 c4 telemetry --transcript <file>   # tokens, cost and agents of one transcript
+c4 install [--dry-run]             # copy the shim, wrap the status line, add the hook groups
+c4 uninstall [--dry-run]           # the way back, from the backup or entry by entry
 ```
 
 During development `cargo run -p c4-cli -- <command>` runs the same commands as their own executable,
@@ -94,6 +96,15 @@ another command, which is how the tests feed fixtures in; `--files-only` runs no
 python scripts/fake_claude.py --home /tmp/scratch --cwd /tmp/proj --status busy --name demo &
 C4_CLAUDE_HOME=/tmp/scratch cargo run -p c4-cli -- sessions --files-only
 ```
+
+`install` copies the `c4-shim` that sits beside the executable. During development that is
+`target/debug/c4-shim` (`.exe` on Windows) after `cargo build -p c4-shim`, so
+`cargo run -p c4-cli -- install --dry-run` shows what would change in the real home without writing
+anything; `--shim FILE` names another copy. Point `--home` and `--c4-home` at scratch directories to
+try the real thing. Test M (`crates/c4-cli/tests/install.rs`) runs the agents repo's installer and
+needs that repo at `~/src/agents` or wherever `C4_AGENTS_REPO` points; without it the test prints a
+notice and passes without running that part. docs/SESSION-INTEGRATION.md describes what install
+writes and how uninstall takes it back.
 
 ## Licenses
 

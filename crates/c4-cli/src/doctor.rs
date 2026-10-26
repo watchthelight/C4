@@ -150,7 +150,7 @@ fn examine_home(home: &ClaudeHome, source: &'static str, notes: &mut Vec<String>
     let sessions_dir = home.sessions_dir().is_dir();
     let registry = scan_registry(&home.sessions_dir());
     let daemon = scan_daemon(home);
-    let settings_json = home.root().join("settings.json").is_file();
+    let settings_json = home.settings_path().is_file();
     if !exists {
         notes.push("the Claude home does not exist; there is nothing to discover".into());
     } else if !sessions_dir {

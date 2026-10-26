@@ -24,6 +24,18 @@ without the user asking.
 These fields are on a deny list that is applied while parsing, before any struct exists, so they
 cannot reach the SQLite store, the logs, an export or the screen.
 
+## What C4 writes
+
+Under the user's own profile only: `~/.c4/` (the shim copy, the spool, the logs, the install manifest
+and, later, the store) and one file of Claude Code's, `~/.claude/settings.json`, through `c4 install`
+and `c4 uninstall` alone. Every write of that file is preceded by a copy to
+`settings.json.bak-c4-<stamp>` beside it, goes through a temporary file and a rename, keeps the file's
+permissions, key order and layout, and is recorded in `~/.c4/install-manifest.json`. `c4 uninstall`
+restores the backup byte for byte when nothing else has written the file since, and otherwise removes
+C4's entries one by one. C4 never writes `~/.claude.json`, a project's `.claude/` directory or any
+other file under the Claude home, and never runs the shim it installs. The hooks it installs print
+nothing and return no decision, so none of them can approve, block or alter what a session does.
+
 ## Redaction
 
 Logs and exports pass through a redaction layer that rewrites bearer tokens, `sk-ant` keys, OAuth
