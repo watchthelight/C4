@@ -21,7 +21,7 @@ and passes; "manual" means someone ran the checklist on real hardware; "unverifi
 | I | a session that cannot be attached is Observed with no input affordance | registry entry with an unmatched host; the window renders no input control for any session (`apps/desktop/tests/list.test.ts`) | in part: the window side is verified, the host match lands with the adapters (Milestone 3) |
 | J | organization and layouts survive a restart | the preferences file round trip (`crates/c4-cli/src/serve/prefs.rs` unit tests: an absent file, a section round trip, a newer schema number and an unknown section kept, a file that is not a JSON object moved aside, the size cap, section names), the window's read of it and its store (`apps/desktop/tests/prefs.test.ts`), the mock bridge's copy in local storage (`apps/desktop/tests/mock.test.ts`); layouts and the relaunch smoke test come with the terminal workspace | in part: the sidebar's pins, grouping, folded groups, density and width are verified headless and were seen surviving a reload in Chromium against the mock bridge (Results); layouts planned (Milestone 3) |
 | K | performance targets | criterion benches, `c4 perf`, a 40-session load generator | planned (Milestone 7) |
-| L | releases are published with checksums and attestations | the release workflow (a gate on the version and the commit's verify run, the installers on four runners with the Playwright check over each, one drafted release with `SHA256SUMS` and an attestation per asset, public when complete) and the post-release workflow (every asset downloaded again on each runner, checked against the checksums and its attestation, installed and run; `scripts/verify_release.py <tag>` on Linux, which anyone can run by hand) | in part: the workflows and the script exist; the build side's dry run goes in Results; the first tag runs the rest |
+| L | releases are published with checksums and attestations | the release workflow (a gate on the version and the commit's verify run, the installers on four runners with the Playwright check over each, one drafted release with `SHA256SUMS` and an attestation per asset, public when complete) and the post-release workflow (every asset downloaded again on each runner, checked against the checksums and its attestation, installed and run; `scripts/verify_release.py <tag>` on Linux, which anyone can run by hand) | in part: the build side is verified by a dispatch dry run on all four runners (Results, run 40349620757); the draft release, the attestations and the post-release checks run on the first tag |
 | M | an existing Claude Code setup keeps working after install | scratch home seeded with `fixtures/settings/full.json`; `c4 install`, the agents repo's installer twice (`python -I install/install.py --home <scratch>`; the repo is checked out at a pinned commit in CI, `~/src/agents` or `C4_AGENTS_REPO` locally), `c4 install` again, `c4 uninstall` (`crates/c4-cli/tests/install.rs`) | verified, headless, on every runner; the test skips with a notice where the agents repo is not reachable; run against the real home on Windows (Results, item 3) |
 
 ## Platform status
@@ -391,3 +391,19 @@ result below the list when you run it.
   with the core's `unexpected argument '--no-sandbox'`, since a switch after the command is the
   command's. The Playwright check over that build passes with the `--no-sandbox --version` relay
   added to it (3.4 s); the rule's cases are in `apps/desktop/electron/tests/cli.test.ts`.
+- 2026-10-26, the release workflow's dispatch dry run for commit 277129f (run 40349620757; its gate
+  found verify run 40349582379 green for the same commit): the gate, the four build jobs
+  (ubuntu-22.04, macos-15-intel, macos-latest and windows-latest) and the publish job all green.
+  Each builder packaged its installers with `pnpm -C apps/desktop package`, ran the Playwright check
+  over its unpacked app with the sandbox on, and uploaded the installers. The publish job wrote
+  `SHA256SUMS` with six entries (`c4-0.0.1-linux-amd64.deb`, `c4-0.0.1-linux-x86_64.AppImage`,
+  `c4-0.0.1-mac-arm64.dmg`, `c4-0.0.1-mac-x64.dmg`, `c4-0.0.1-win-x64.exe` and
+  `c4-0.0.1-win-x64.msi`, each between 97 and 121 MiB, with a `.blockmap` beside each dmg),
+  rendered the notes from the Unreleased section of the changelog (`scripts/changelog_section.py
+  --or-unreleased`, since no 0.0.1 section exists), and kept the lot as the `release-assets`
+  artifact: on a dispatch nothing is drafted or published. The Windows builder printed "no code
+  signing certificate configured, signing is skipped", which is the expected line without a
+  certificate. The gate started at 15:33 UTC, the builds finished between 15:35 and 15:42 with
+  Windows last, and the publish job at 15:42. One thing to know: a workflow file pushed a moment
+  earlier is not dispatchable for a few seconds, so the first `gh workflow run` answered 404 and
+  the second, after `gh workflow list` showed it, went through.
