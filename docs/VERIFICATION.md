@@ -12,7 +12,7 @@ and passes; "manual" means someone ran the checklist on real hardware; "unverifi
 |---|---|---|---|
 | A | sessions that were running before C4 started appear | three stand-in sessions started before `c4 sessions --json` (`crates/c4-testkit/tests/discovery.rs`, `crates/c4-cli/tests/cli.rs`) | verified, headless; the desktop app and real terminals are manual item 1 |
 | B | a session started after C4 appears within 2 s | a stand-in started after the first discovery pass, and the Python stand-in through the binary | verified, headless |
-| C | state changes show live | a hook line delivered through the shim's own code moves a session in the window's document (`apps/desktop/src-tauri/src/ingest.rs`); a stand-in that flips its registry status on a timeline and the Playwright side come with later Milestone 2 commits | in part: the hook path is verified, headless, on every runner |
+| C | state changes show live | a hook line delivered through the shim's own code moves a session in the window's document (`apps/desktop/src-tauri/src/ingest.rs`); a stand-in that flips its registry status on a timeline and the Playwright side come with later Milestone 2 commits | in part: the hook path is verified, headless, on every runner, and seen in the window against a live session on Windows (Results, item 3) |
 | D | subagents and background agents are listed with their totals | subagent transcript files appear mid-run | planned (Milestone 2, full in 5) |
 | E | sidebar interactions | vitest components plus Playwright on the mock bridge | planned (Milestone 2) |
 | F | token numbers match the status line | the status line's own parser run against the same transcript | planned (Milestone 4) |
@@ -22,7 +22,7 @@ and passes; "manual" means someone ran the checklist on real hardware; "unverifi
 | J | organization and layouts survive a restart | store round trip plus a relaunch smoke test | planned (Milestone 3) |
 | K | performance targets | criterion benches, `c4 perf`, a 40-session load generator | planned (Milestone 7) |
 | L | releases are published with checksums and attestations | `scripts/verify_release.py` after each tag | planned (Milestone 2) |
-| M | an existing Claude Code setup keeps working after install | scratch home seeded with `fixtures/settings/full.json`; `c4 install`, the agents repo's installer twice (`python -I install/install.py --home <scratch>`; the repo is checked out at a pinned commit in CI, `~/src/agents` or `C4_AGENTS_REPO` locally), `c4 install` again, `c4 uninstall` (`crates/c4-cli/tests/install.rs`) | verified, headless, on every runner; the test skips with a notice where the agents repo is not reachable; the real home is manual item 3 |
+| M | an existing Claude Code setup keeps working after install | scratch home seeded with `fixtures/settings/full.json`; `c4 install`, the agents repo's installer twice (`python -I install/install.py --home <scratch>`; the repo is checked out at a pinned commit in CI, `~/src/agents` or `C4_AGENTS_REPO` locally), `c4 install` again, `c4 uninstall` (`crates/c4-cli/tests/install.rs`) | verified, headless, on every runner; the test skips with a notice where the agents repo is not reachable; run against the real home on Windows (Results, item 3) |
 
 ## Platform status
 
@@ -32,10 +32,10 @@ in CI starts the app yet; a smoke test that does is planned.
 
 | Platform | Built in CI | Tests in CI | Run on hardware |
 |---|---|---|---|
-| Windows x64 | debug app, verify run 40276837007 | `cargo test --workspace` and `pnpm -r test` green (windows-latest) | `c4 sessions`, `c4 doctor`, `c4 install --dry-run` and the window against a real home, see Results |
-| macOS arm64 | debug app, verify run 40276837007 | `cargo test --workspace` and `pnpm -r test` green (macos-latest) | no hardware in reach |
-| macOS x64 | debug app, verify run 40276837007 | `cargo test --workspace` and `pnpm -r test` green (macos-15-intel) | no hardware in reach |
-| Linux x64 | debug app, verify run 40276837007 | `cargo test --workspace` and `pnpm -r test` green (ubuntu-latest) | not yet |
+| Windows x64 | debug app with the sidecar, verify run 40282296177 | `cargo test --workspace` and `pnpm -r test` green (windows-latest) | `c4 sessions`, `c4 doctor`, `c4 install` and `c4 uninstall` against the real home, and the window showing hook states and context figures from live sessions, see Results |
+| macOS arm64 | debug app with the sidecar, verify run 40282296177 | `cargo test --workspace` and `pnpm -r test` green (macos-latest) | no hardware in reach |
+| macOS x64 | debug app with the sidecar, verify run 40282296177 | `cargo test --workspace` and `pnpm -r test` green (macos-15-intel) | no hardware in reach |
+| Linux x64 | debug app with the sidecar, verify run 40282296177 | `cargo test --workspace` and `pnpm -r test` green (ubuntu-latest) | not yet |
 
 ## Manual checklist
 
@@ -127,3 +127,30 @@ result below the list when you run it.
   The second test starts a plain server on the home first, sees the worker report the endpoint as
   taken, naming it, and watches the worker listen once that server shuts down. Both pass serially and
   in parallel.
+- 2026-10-26, the verify workflow for commit 194716b (run 40282296177): the lint job and the four
+  test jobs green, the desktop crate's two ingest tests included on every runner.
+- 2026-10-26, C4 0.0.1 (debug `c4.exe` built with the sidecar), Claude Code 2.1.299, Windows 11 Pro,
+  Windows Terminal, display at 150 %. Item 3 (M, and the sidebar half of F): with the window open,
+  `c4 install` against the real Claude home copied the shim to `~/.c4/bin/`, wrapped the status line
+  and added the 17 hook groups, after a backup (`settings.json.bak-c4-20261026T065517Z`, the same
+  16,887 bytes and SHA-256 as the file before) and with the manifest written, restorable. About two
+  minutes later the window's row for the session running the check read "running PowerShell", a
+  state only a hook delivers, with a context figure of 23 %, and the other live session's row 19 %.
+  The status line's own cache file for that session, rewritten after the install, held 227,341 input
+  tokens for its last turn, 22.7 % of a 1M window, which agrees with the sidebar; a digit-for-digit
+  comparison with the meter in the terminal is left to a person at that terminal. `c4 doctor`
+  reported the shim copy as the manifest recorded and the same as the sidecar, 17 of 17 hook groups,
+  the status line wrapped, the endpoint listening and the spool empty, so every payload was delivered
+  and none spooled. The agents installer's dry run (`python -I install/install.py --dry-run --home
+  <copy>`) reported one settings change, "hook wiring, env and statusLine (python)", against the
+  installed file and none against the file as it was before the install; its summary does not
+  itemize, and test M covers what its merge keeps. `c4 uninstall --dry-run` named the restore route;
+  `c4 uninstall` took a second backup, restored the file from the first one byte for byte (the same
+  size and SHA-256 as before the install) and removed the shim copy and the manifest; both backups
+  stay. Closing the window ended the process within 8 s and left the endpoint free, per
+  `c4 doctor --no-commands`. The window was captured with `PrintWindow`; a capture from a process
+  that is not DPI aware came back as the top-left 1295x837 physical pixels of a 1942x1256 window and
+  so missed the status strip, which a capture sized by the window's own DPI showed: "refreshed 0s
+  ago in 50 ms | session list: 3 entries, 5s ago | ingest: 0 lines | home from ~/.claude | c4 0.0.1
+  | bridge: tauri" (taken after the uninstall, hence no lines). The ledger was not watched: no turn
+  ended during the check.
