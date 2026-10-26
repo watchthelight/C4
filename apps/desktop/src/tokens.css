@@ -1,0 +1,206 @@
+/* <wtl> project: c4 | file: apps/desktop/src/tokens.css | author: watchthelight </wtl> */
+/* The design tokens, as docs/DESIGN-SYSTEM.md lists them: chrome colors, the terminal palette, chart
+   categories, type, spacing, row and control heights, region sizes, motion. Components read these and
+   define nothing of their own. The fonts are bundled from assets/fonts/ with their OFL texts. */
+
+@font-face {
+  font-family: "Space Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("../../../assets/fonts/SpaceMono/SpaceMono-Regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Space Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url("../../../assets/fonts/SpaceMono/SpaceMono-Bold.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("../../../assets/fonts/JetBrainsMono/JetBrainsMono-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: block;
+  src: url("../../../assets/fonts/JetBrainsMono/JetBrainsMono-Medium.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url("../../../assets/fonts/JetBrainsMono/JetBrainsMono-Bold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: italic;
+  font-weight: 400;
+  font-display: block;
+  src: url("../../../assets/fonts/JetBrainsMono/JetBrainsMono-Italic.woff2") format("woff2");
+}
+
+:root {
+  /* chrome */
+  --bg: #08080c;
+  --panel: #0d0e12;
+  --panel-2: #111217;
+  --head: #e1e5e8;
+  --text: #c8ccd0;
+  --dim: #8a8e96;
+  --mute: #5a5e66;
+  --faint: #2a2d33;
+  --line: #1c1e23;
+  --sage: #6a9a6e;
+  --sage-hi: #7bc67e;
+  --sage-deep: #4d7a51;
+  --sage-wash: rgba(106, 154, 110, 0.08);
+  --amber: #b8a44a;
+  --red: #c45454;
+  --star: rgb(200, 210, 220);
+  --star-sage: rgb(122, 170, 126);
+  --scrim: rgba(8, 8, 12, 0.72);
+
+  /* terminal panes only (Quiet Machine); never used in chrome */
+  --term-bg: #0d120b;
+  --term-fg: #c9d1c4;
+  --term-cursor: #ecb442;
+  --term-selection: #586555;
+  --term-black: #161c13;
+  --term-red: #b5563f;
+  --term-green: #8a9a5b;
+  --term-yellow: #ecb442;
+  --term-blue: #6e8fa0;
+  --term-magenta: #a07089;
+  --term-cyan: #7fb0a8;
+  --term-white: #c9d1c4;
+  --term-bright-black: #586555;
+  --term-bright-red: #e06a4f;
+  --term-bright-green: #a8c46a;
+  --term-bright-yellow: #f6c95a;
+  --term-bright-blue: #8fb8c9;
+  --term-bright-magenta: #c68aa0;
+  --term-bright-cyan: #9ad0c6;
+  --term-bright-white: #ecf0e6;
+
+  /* chart categories */
+  --cat-1: #7bc67e;
+  --cat-2: #7fb0a8;
+  --cat-3: #6e8fa0;
+  --cat-4: #a07089;
+  --cat-5: #b8a44a;
+  --cat-6: #c8ccd0;
+
+  /* type */
+  --display: "Space Mono", "JetBrains Mono", "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+  --mono: "JetBrains Mono", "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+  --term-font: "JetBrainsMono Nerd Font", "JetBrains Mono", "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+  --fs-10: 10px;
+  --fs-11: 11px;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-20: 20px;
+  --fs-28: 28px;
+  --track-eyebrow: 0.18em;
+  --track-chip: 0.08em;
+
+  /* spacing */
+  --s-1: 2px;
+  --s-2: 4px;
+  --s-3: 6px;
+  --s-4: 8px;
+  --s-5: 12px;
+  --s-6: 16px;
+  --s-7: 24px;
+  --s-8: 32px;
+
+  /* rows and controls */
+  --row-compact: 22px;
+  --row-standard: 34px;
+  --row-expanded: 56px;
+  --row-header: 24px;
+  --ctl-sm: 20px;
+  --ctl-md: 24px;
+  --ctl-lg: 28px;
+
+  /* regions */
+  --topbar-h: 32px;
+  --strip-h: 22px;
+  --tabstrip-h: 28px;
+  --sidebar-w: 320px;
+  --sidebar-min: 220px;
+  --rail-w: 36px;
+  --inspector-w: 360px;
+
+  /* geometry and motion */
+  --radius: 0;
+  --t-fast: 100ms;
+  --t-base: 150ms;
+  --t-slow: 200ms;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font: var(--fs-13) / 1.5 var(--mono);
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 1px solid var(--sage-hi);
+  outline-offset: 3px;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* the two recurring text styles */
+
+.eyebrow {
+  font-family: var(--display);
+  font-size: var(--fs-12);
+  letter-spacing: var(--track-eyebrow);
+  text-transform: uppercase;
+  color: var(--sage);
+}
+
+.chip {
+  display: inline-block;
+  padding: 0 var(--s-2);
+  border: 1px solid var(--faint);
+  font-size: var(--fs-11);
+  line-height: 16px;
+  letter-spacing: var(--track-chip);
+  text-transform: uppercase;
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -39,5 +39,10 @@ stay at 0.y.z while the interfaces settle.
 - Documentation set under docs/ and the project directive and plan under docs/prompts/, including
   the finding that Claude Code 2.1.299 applies a hook added to a settings file to sessions that are
   already running.
+- The design tokens stylesheet from docs/DESIGN-SYSTEM.md, Space Mono and JetBrains Mono bundled
+  under assets/fonts/ with their OFL texts, and the starfield canvas behind the sidebar and the
+  status strip: three drifting layers, one star in ten sage, a rare shooting star drawn as fading
+  pixels, 30 fps inside a 1 ms budget, frozen while hidden or under reduced motion, seedable for
+  screenshots.
 
 [Unreleased]: https://github.com/watchthelight/C4/compare/c3a0a47...HEAD

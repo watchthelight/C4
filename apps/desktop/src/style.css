@@ -1,58 +1,32 @@
 /* <wtl> project: c4 | file: apps/desktop/src/style.css | author: watchthelight </wtl> */
-/* Tokens from docs/DESIGN-SYSTEM.md: near-black chrome, sage accents, square geometry, mono type.
-   No rounded corners, gradients, blur or drop shadows; elevation is a 1px border. */
-
-:root {
-  --bg: #08080c;
-  --panel: #0d0e12;
-  --panel-2: #111217;
-  --head: #e1e5e8;
-  --text: #c8ccd0;
-  --dim: #8a8e96;
-  --mute: #5a5e66;
-  --faint: #2a2d33;
-  --line: #1c1e23;
-  --sage: #6a9a6e;
-  --sage-hi: #7bc67e;
-  --sage-deep: #4d7a51;
-  --sage-wash: rgba(106, 154, 110, 0.08);
-  --amber: #b8a44a;
-  --red: #c45454;
-  --display: "Space Mono", "JetBrains Mono", "Cascadia Mono", Consolas, "Liberation Mono", monospace;
-  --mono: "JetBrains Mono", "Cascadia Mono", Consolas, "Liberation Mono", monospace;
-  --s-1: 2px;
-  --s-2: 4px;
-  --s-3: 6px;
-  --s-4: 8px;
-  --s-5: 12px;
-  --s-6: 16px;
-  --s-7: 24px;
-  --s-8: 32px;
-  --radius: 0;
-  --t-fast: 100ms;
-  --t-base: 150ms;
-}
-
-html,
-body {
-  margin: 0;
-  height: 100%;
-  background: var(--bg);
-  color: var(--text);
-  font: 13px/1.5 var(--mono);
-  -webkit-font-smoothing: antialiased;
-}
-
-* {
-  box-sizing: border-box;
-}
+/* Component styles for the window. Every color, size and duration comes from tokens.css; nothing
+   here invents a value. No rounded corners, gradients, blur or shadows: elevation is a 1px border. */
 
 #app {
+  position: relative;
   display: grid;
-  grid-template-rows: 32px 1fr 22px;
-  grid-template-columns: 320px 1fr;
+  grid-template-rows: var(--topbar-h) 1fr var(--strip-h);
+  grid-template-columns: var(--sidebar-w) 1fr;
   height: 100vh;
   overflow: hidden;
+}
+
+/* The starfield canvas sits under every region. The top bar and the workspace are opaque and cover
+   it; the sidebar and the status strip are transparent and let it through. */
+
+.stars {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.topbar,
+.sidebar,
+.workspace,
+.strip {
+  position: relative;
+  z-index: 1;
 }
 
 /* top bar */
@@ -87,7 +61,7 @@ body {
 .topbar .home {
   margin-left: auto;
   color: var(--mute);
-  font-size: 11px;
+  font-size: var(--fs-11);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -99,7 +73,7 @@ body {
   border-right: 1px solid var(--line);
   overflow-y: auto;
   overflow-x: hidden;
-  background: var(--bg);
+  background: transparent;
 }
 
 .sessions {
@@ -127,7 +101,9 @@ body {
   border-bottom: 1px solid var(--line);
   cursor: default;
   user-select: none;
-  transition: background-color var(--t-fast), border-color var(--t-fast);
+  transition:
+    background-color var(--t-fast),
+    border-color var(--t-fast);
 }
 
 .row:hover {
@@ -168,13 +144,13 @@ body {
 .row .when {
   flex: 0 0 auto;
   color: var(--mute);
-  font-size: 11px;
+  font-size: var(--fs-11);
 }
 
 .row .activity {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 11px;
+  font-size: var(--fs-11);
   color: var(--dim);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -198,7 +174,7 @@ body {
   flex: 0 3 auto;
   min-width: 0;
   max-width: 55%;
-  font-size: 10px;
+  font-size: var(--fs-10);
   color: var(--mute);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -310,13 +286,6 @@ body {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .row .sq,
-  .row .sq::after {
-    animation: none;
-  }
-}
-
 /* workspace and inspector */
 
 .workspace {
@@ -331,17 +300,12 @@ body {
 
 .inspector .eyebrow {
   margin: 0 0 var(--s-2);
-  font-family: var(--display);
-  font-size: 12px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--sage);
 }
 
 .inspector .title {
   margin: 0 0 var(--s-4);
   font-family: var(--display);
-  font-size: 20px;
+  font-size: var(--fs-20);
   font-weight: 700;
   color: var(--head);
 }
@@ -383,9 +347,9 @@ body {
 
 .inspector .facts dt {
   color: var(--mute);
-  font-size: 11px;
+  font-size: var(--fs-11);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--track-chip);
   padding-top: 2px;
 }
 
@@ -402,14 +366,10 @@ body {
   align-items: center;
   padding: 0 var(--s-5);
   border-top: 1px solid var(--line);
-  background: var(--bg);
+  background: transparent;
   color: var(--mute);
-  font-size: 11px;
+  font-size: var(--fs-11);
   white-space: nowrap;
   overflow: hidden;
   user-select: none;
-}
-
-[hidden] {
-  display: none !important;
 }

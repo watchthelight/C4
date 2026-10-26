@@ -1,6 +1,7 @@
 // <wtl> project: c4 | file: apps/desktop/src/main.ts | author: watchthelight </wtl>
 // Wires the bridge to the window: a snapshot signal, a selection signal and a one-second clock feed
-// one render per animation frame. Nothing renders while the window is hidden.
+// one render per animation frame. Nothing renders while the window is hidden. The starfield canvas
+// goes in first and runs on its own clock behind the sidebar and the status strip.
 
 import { effect, signal } from "@preact/signals-core";
 import { selectBridge } from "./bridge";
@@ -9,6 +10,9 @@ import { createStrip, createTopBar } from "./chrome";
 import { el } from "./dom";
 import { createInspector } from "./sessions/inspector";
 import { createSessionList } from "./sessions/list";
+import { createStarfield } from "./starfield";
+import type { StarfieldOptions } from "./starfield";
+import "./tokens.css";
 import "./style.css";
 
 interface Frame {
@@ -43,6 +47,16 @@ sidebar.append(list.el);
 const workspace = el("main", "workspace");
 workspace.append(inspector.el);
 root.append(topBar.el, sidebar, workspace, strip.el);
+createStarfield(root, starfieldOptions());
+
+/** A fixed seed, for screenshots, gives the same sky every run and no shooting stars. */
+function starfieldOptions(): StarfieldOptions {
+  const seed = import.meta.env.VITE_C4_SEED;
+  if (seed === undefined || seed === "") {
+    return {};
+  }
+  return { seed: Number(seed) || 0, shootingStars: false };
+}
 
 let frame: Frame | null = null;
 let scheduled = false;
