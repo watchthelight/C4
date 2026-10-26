@@ -456,35 +456,39 @@
   color: var(--dim);
 }
 
-/* state squares: 8 by 8, the label beside them always carries the state too */
+/* state squares: 8 by 8, in the rows and on the hover card, colored by the data-kind of the row
+   or the card around them; the label beside them always carries the state too */
 
-.row .sq {
-  grid-row: 1 / -1;
+.sq {
   position: relative;
   width: 8px;
   height: 8px;
-  margin-top: 4px;
   background: var(--mute);
 }
 
-.row[data-kind="idle"] .sq {
+.row .sq {
+  grid-row: 1 / -1;
+  margin-top: 4px;
+}
+
+[data-kind="idle"] .sq {
   background: transparent;
   border: 1px solid var(--mute);
 }
 
-.row[data-kind="completed"] .sq {
+[data-kind="completed"] .sq {
   background: var(--mute);
 }
 
-.row[data-kind="working"] .sq {
+[data-kind="working"] .sq {
   background: var(--sage);
 }
 
-.row[data-kind="running_tool"] .sq {
+[data-kind="running_tool"] .sq {
   background: var(--sage-hi);
 }
 
-.row[data-kind="running_tool"] .sq::after {
+[data-kind="running_tool"] .sq::after {
   content: "";
   position: absolute;
   left: 0;
@@ -495,17 +499,17 @@
   animation: advance 1s steps(4, end) infinite;
 }
 
-.row[data-kind="background_agents_active"] .sq {
+[data-kind="background_agents_active"] .sq {
   background: var(--sage);
   box-shadow: 2px 2px 0 0 var(--sage-deep);
 }
 
-.row[data-kind="waiting_permission"] .sq {
+[data-kind="waiting_permission"] .sq {
   background: var(--amber);
   animation: pulse 1s steps(2, end) infinite;
 }
 
-.row[data-kind="waiting_permission"] .sq::after {
+[data-kind="waiting_permission"] .sq::after {
   content: "";
   position: absolute;
   left: 3px;
@@ -515,21 +519,21 @@
   background: var(--bg);
 }
 
-.row[data-kind="waiting_user_input"] .sq {
+[data-kind="waiting_user_input"] .sq {
   background: transparent;
   border: 1px solid var(--amber);
 }
 
-.row[data-kind="failed"] .sq {
+[data-kind="failed"] .sq {
   background: var(--red);
 }
 
-.row[data-kind="disconnected"] .sq {
+[data-kind="disconnected"] .sq {
   background: transparent;
   border: 1px solid var(--red);
 }
 
-.row[data-kind="disconnected"] .sq::after {
+[data-kind="disconnected"] .sq::after {
   content: "";
   position: absolute;
   left: 2px;
@@ -643,4 +647,147 @@
   white-space: nowrap;
   overflow: hidden;
   user-select: none;
+}
+
+/* The hover card: opens beside the row the pointer has rested on, over the workspace, placed by
+   sessions/hovercard.ts. It takes no pointer events, so the row under the pointer keeps it, and
+   nothing in it takes input. */
+
+.hovercard {
+  position: fixed;
+  z-index: 2;
+  width: var(--card-w);
+  padding: var(--s-4) var(--s-5);
+  border: 1px solid var(--faint);
+  background: var(--bg);
+  color: var(--text);
+  font-size: var(--fs-12);
+  line-height: 16px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.hovercard .head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.hovercard .head .sq {
+  flex: 0 0 8px;
+}
+
+.hovercard .head .name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--display);
+  font-weight: 700;
+  color: var(--head);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hovercard .head .chip {
+  flex: 0 0 auto;
+}
+
+.hovercard .reason,
+.hovercard .source {
+  margin: 0;
+  color: var(--dim);
+  font-size: var(--fs-11);
+}
+
+.hovercard .state {
+  margin: var(--s-2) 0 0;
+  color: var(--text);
+}
+
+.hovercard[data-kind="waiting_permission"] .state,
+.hovercard[data-kind="waiting_user_input"] .state {
+  color: var(--amber);
+}
+
+.hovercard[data-kind="failed"] .state {
+  color: var(--red);
+}
+
+.hovercard[data-certainty="heuristic"] .state {
+  color: var(--dim);
+}
+
+.hovercard .facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: var(--s-5);
+  row-gap: var(--s-1);
+  margin: var(--s-4) 0 0;
+  padding: var(--s-4) 0 0;
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-11);
+}
+
+.hovercard .facts dt {
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: var(--track-chip);
+}
+
+.hovercard .facts dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.hovercard .facts dd[data-band="warn"] {
+  color: var(--amber);
+}
+
+.hovercard .facts dd[data-band="hot"] {
+  color: var(--red);
+}
+
+.hovercard .facts .bar {
+  display: inline-block;
+  width: 24px;
+  height: 3px;
+  margin-right: var(--s-2);
+  vertical-align: middle;
+  background: var(--faint);
+}
+
+.hovercard .facts .bar .fill {
+  display: block;
+  height: 100%;
+  background: currentColor;
+}
+
+/* the last agents, one line each, with a 4px sage square in front */
+
+.hovercard .agents {
+  margin: var(--s-2) 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--dim);
+  font-size: var(--fs-11);
+}
+
+.hovercard .agents li {
+  position: relative;
+  padding-left: var(--s-5);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hovercard .agents li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  width: 4px;
+  height: 4px;
+  background: var(--sage);
 }

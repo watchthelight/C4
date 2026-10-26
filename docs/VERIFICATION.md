@@ -14,7 +14,7 @@ and passes; "manual" means someone ran the checklist on real hardware; "unverifi
 | B | a session started after C4 appears within 2 s | a stand-in started after the first discovery pass, and the Python stand-in through the binary | verified, headless |
 | C | state changes show live | a hook line delivered through the shim's own code moves a session in the window's document (`apps/desktop/src-tauri/src/ingest.rs`); a stand-in that flips its registry status on a timeline and the Playwright side come with later Milestone 2 commits | in part: the hook path is verified, headless, on every runner, and seen in the window against a live session on Windows (Results, item 3) |
 | D | subagents and background agents are listed with their totals | subagent transcript files appear mid-run | planned (Milestone 2, full in 5) |
-| E | sidebar interactions | vitest components plus Playwright on the mock bridge | in part: vitest covers the virtual list (`apps/desktop/tests/list.test.ts`: the rows near the viewport, node reuse while scrolling, the three densities, keyboard selection, the reorder rule, headers that fold, the filter, pins, keyboard travel over headers and a row that arrives under its header while the order is held), the order rules (`apps/desktop/tests/arrange.test.ts`: the filter grammar, the attention sort with pins first, grouping by project, host and state) and the filter bar (`apps/desktop/tests/filterbar.test.ts`); the hover card, the detached window and the Playwright side come with later Milestone 2 commits |
+| E | sidebar interactions | vitest components plus Playwright on the mock bridge | in part: vitest covers the virtual list (`apps/desktop/tests/list.test.ts`: the rows near the viewport, node reuse while scrolling, the three densities, keyboard selection, the reorder rule, headers that fold, the filter, pins, keyboard travel over headers and a row that arrives under its header while the order is held), the order rules (`apps/desktop/tests/arrange.test.ts`: the filter grammar, the attention sort with pins first, grouping by project, host and state) the filter bar (`apps/desktop/tests/filterbar.test.ts`) and the hover card (`apps/desktop/tests/hovercard.test.ts`: what the card says about a view, where it goes, the 350 ms rest and what closes it); the detached window and the Playwright side come with later Milestone 2 commits |
 | F | token numbers match the status line | the status line's own parser run against the same transcript | planned (Milestone 4) |
 | G | the REA toolkit can be assigned and reverted | scratch settings file, byte-identical revert | planned (Milestone 6) |
 | H | a managed terminal is a real pty | real shell, echo, interrupt, terminate | planned (Milestone 3) |
@@ -181,3 +181,25 @@ result below the list when you run it.
   glyph a plus, the title `--dim`, the spacer 430px, the hidden selection no longer announced). No
   console errors or warnings. A code edit while the dev server runs reloads the page and resets the
   list, so every check was redone after the last edit.
+- 2026-10-26, the verify workflow for commit fe1f779 (run 40288510275): the lint job and the four
+  test jobs green.
+- 2026-10-26, the hover card, locally on Windows: vitest 44 tests green
+  (`apps/desktop/tests/hovercard.test.ts`: what the card says about the synthetic sessions, the
+  agent lines and task counts, where it goes with stubbed geometry, the refresh that keeps it
+  current, and the list's 350 ms wait with fake timers), eslint and tsc clean. Measured in Chromium
+  against the mock bridge at 1036x850: the card opened beside the beta row after the pointer rested
+  on it, 300px wide, 8px right of the row's edge and level with its top, `position: fixed`, a 1px
+  `--faint` border on `--bg`, `pointer-events: none` (the element under the card's center is the
+  workspace), no input or button inside it; the head's state square 8x8 in `--amber` beside the name
+  and the OBSERVED chip, then "WezTerm, no input from C4", "waiting for permission: Bash for 3m 28s"
+  in `--amber`, "observed from hook Notification", the eight facts in order (model, context "78% of
+  200K" with a 24x3px bar filled to 78% in `--amber`, agents "none seen", cwd, started, last
+  activity, status line, telemetry) and the agent list hidden. Moving to the nightly row switched
+  the card at once, with its two agent lines; the docs card carried the tool line "Read for 3m 23s"
+  and the context "91% of 1.0M" in `--red`. At 620px wide the card went to the left of the row,
+  held 8px from the window's edge. A click on a row closed the card and focused the list; a hover
+  opened it for another row and ArrowDown closed it, and it stayed closed through the next three
+  seconds of refreshes while the pointer rested. Before the pointer-rest rule it came back after
+  350 ms on Chromium's own pointer event for the resting pointer, which is why the rule exists. No
+  console errors or warnings. A Playwright screenshot that changes the device scale factor resets
+  Chromium's hover state and closed the card, so the screenshots were taken at device scale.

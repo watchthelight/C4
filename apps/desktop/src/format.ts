@@ -204,6 +204,18 @@ export function displayName(v: Pick<SessionView, "id" | "name" | "cwd">): string
   return cwdTail(v.cwd) ?? shortId(v.id);
 }
 
+/** The model and effort from the last status line payload, or that none came. */
+export function modelText(v: Pick<SessionView, "model" | "effort">): string {
+  const parts: string[] = [];
+  if (v.model) {
+    parts.push(v.model);
+  }
+  if (v.effort) {
+    parts.push(`effort ${v.effort}`);
+  }
+  return parts.length === 0 ? "no status line yet" : parts.join(", ");
+}
+
 /** A duration for the sidebar: "12s", "3m 04s", "1h 12m", "2d 3h". Negative or odd input reads 0s. */
 export function elapsed(ms: number): string {
   const total = Number.isFinite(ms) && ms > 0 ? Math.floor(ms / 1000) : 0;

@@ -143,6 +143,7 @@
   --sidebar-min: 220px;
   --rail-w: 36px;
   --inspector-w: 360px;
+  --card-w: 300px;
 
   /* geometry and motion */
   --radius: 0;

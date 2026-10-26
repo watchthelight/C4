@@ -5,10 +5,11 @@
 
 import { effect, signal } from "@preact/signals-core";
 import { selectBridge } from "./bridge";
-import type { About, Snapshot } from "./bridge/types";
+import type { About, SessionView, Snapshot } from "./bridge/types";
 import { createStrip, createTopBar } from "./chrome";
 import { el } from "./dom";
 import { createFilterBar } from "./sessions/filter";
+import { createHoverCard } from "./sessions/hovercard";
 import { createInspector } from "./sessions/inspector";
 import { createSessionList, nextDensity } from "./sessions/list";
 import { createStarfield } from "./starfield";
@@ -34,7 +35,16 @@ const about = signal<About | null>(null);
 const selected = signal<string | null>(null);
 const clock = signal(Date.now());
 
+let frame: Frame | null = null;
+let scheduled = false;
+
+/** The view the last frame carried for `id`, if any. */
+function viewOf(id: string): SessionView | undefined {
+  return frame?.snapshot?.sessions.find((v) => v.id === id);
+}
+
 const topBar = createTopBar();
+const hover = createHoverCard();
 const list = createSessionList({
   onSelect: (id) => {
     selected.value = id;
@@ -42,6 +52,16 @@ const list = createSessionList({
   // nothing is persisted yet; the bar only mirrors a grouping the `g` key chose
   onPrefs: (prefs) => {
     filterBar.setGroupBy(prefs.groupBy);
+  },
+  // the card is drawn outside the list, beside the row the pointer rests on, on the frame's clock
+  // so its times agree with the rows
+  onHover: (id, anchor) => {
+    const view = id === null ? undefined : viewOf(id);
+    if (view && anchor && frame) {
+      hover.show(view, anchor, frame.now);
+    } else {
+      hover.hide();
+    }
   },
 });
 const filterBar = createFilterBar({
@@ -63,7 +83,7 @@ const sidebar = el("aside", "sidebar");
 sidebar.append(filterBar.el, list.el);
 const workspace = el("main", "workspace");
 workspace.append(inspector.el);
-root.append(topBar.el, sidebar, workspace, strip.el);
+root.append(topBar.el, sidebar, workspace, strip.el, hover.el);
 createStarfield(root, starfieldOptions());
 
 /** A fixed seed, for screenshots, gives the same sky every run and no shooting stars. */
@@ -75,13 +95,11 @@ function starfieldOptions(): StarfieldOptions {
   return { seed: Number(seed) || 0, shootingStars: false };
 }
 
-let frame: Frame | null = null;
-let scheduled = false;
-
 function render(f: Frame): void {
   const views = f.snapshot?.sessions ?? [];
   topBar.update(views, f.about);
   list.update(views, f.selected, f.now);
+  hover.refresh(views, f.now);
   inspector.update(views.find((v) => v.id === f.selected) ?? null, f.now);
   strip.update(f.snapshot, f.about, f.now);
 }

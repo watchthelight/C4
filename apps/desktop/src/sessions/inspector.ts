@@ -37,7 +37,8 @@ function noteFor(v: SessionView): string {
   }
 }
 
-function telemetry(v: SessionView): string {
+/** "hook telemetry" or "coarse: no hook telemetry yet", then what has been seen. */
+export function telemetry(v: SessionView): string {
   const parts = [v.coarse ? "coarse: no hook telemetry yet" : "hook telemetry"];
   if (v.hooks_seen) {
     parts.push("hooks seen");
@@ -54,7 +55,8 @@ function telemetry(v: SessionView): string {
   return parts.join(", ");
 }
 
-function contextText(v: SessionView): string {
+/** "78% of 200K", "78% used" without a window size, "unknown" without a payload. */
+export function contextText(v: SessionView): string {
   if (v.context_pct === null) {
     return "unknown";
   }

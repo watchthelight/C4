@@ -6,7 +6,9 @@
 // text, a `~` on guessed states, and nothing to type into. A row changes its glyph and text at
 // once; a reorder from the core waits while the pointer is inside the list or the list has keyboard
 // focus, and applies on leave or once both have rested for two seconds. What the user does by hand
-// (filter, pin, collapse, regroup) applies at once.
+// (filter, pin, collapse, regroup) applies at once. The pointer resting on a row for 350 ms asks the
+// owner of the list for the hover card, which is drawn outside the list, beside the row; a key, a
+// button, a scroll or a change closes it until the pointer moves again.
 
 import { el } from "../dom";
 import {
@@ -17,6 +19,7 @@ import {
   displayName,
   elapsed,
   hostLabel,
+  modelText,
   needsAttention,
   sourceLabel,
 } from "../format";
@@ -40,6 +43,9 @@ export const OVERSCAN = 8;
 /** How long the pointer or the keyboard rests inside the list before a pending reorder applies. */
 export const SETTLE_MS = 2000;
 
+/** How long the pointer rests on a row before the hover card is asked for. */
+export const HOVER_DELAY_MS = 350;
+
 /** Nodes of each kind kept for reuse once they scroll out. */
 const POOL_MAX = 64;
 
@@ -62,6 +68,13 @@ export interface SessionListOptions {
   onSelect(id: string): void;
   /** Called after every change made by hand: a pin, a collapse, the grouping, the density. */
   onPrefs?(prefs: ListPrefs): void;
+  /**
+   * Called with a row once the pointer has rested on it for HOVER_DELAY_MS, again at once when the
+   * pointer moves to another row, and with nulls when the card should close: the pointer left the
+   * rows, the list scrolled or changed by hand, a key or a button went down, or the row is gone.
+   * After such a close the card waits for the pointer to move again.
+   */
+  onHover?(id: string | null, anchor: HTMLElement | null): void;
   density?: Density;
   groupBy?: GroupBy;
   pinned?: readonly string[];
@@ -237,18 +250,6 @@ function tagsFor(v: SessionView): string[] {
   return tags;
 }
 
-/** The third line's model text: what the last status line payload said, or that none came. */
-function modelText(v: SessionView): string {
-  const parts: string[] = [];
-  if (v.model) {
-    parts.push(v.model);
-  }
-  if (v.effort) {
-    parts.push(`effort ${v.effort}`);
-  }
-  return parts.length === 0 ? "no status line yet" : parts.join(", ");
-}
-
 function fill(row: Row, v: SessionView, selected: boolean, now: number, density: Density, pinned: boolean): void {
   const state = v.state.state;
   if (row.seq !== v.seq || row.state !== state || row.density !== density || row.pinned !== pinned) {
@@ -361,6 +362,18 @@ export function createSessionList(options: SessionListOptions): SessionList {
   let focused = false;
   let lastInput = 0;
   let scheduled = false;
+  /** The row under the pointer, the wait for the card, and the row the card shows. */
+  let hoverId: string | null = null;
+  let hoverTimer: ReturnType<typeof setTimeout> | null = null;
+  let shown: string | null = null;
+  /**
+   * Where the pointer was at its last event, and whether the card waits for it to move again: the
+   * browser sends pointer events for a resting pointer whenever the rows change under it, and a
+   * card closed by a key, a button, a scroll or a change must not come back on one of those.
+   */
+  let lastX = Number.NaN;
+  let lastY = Number.NaN;
+  let quiet = false;
 
   function heightOf(item: Item | undefined): number {
     return item?.kind === "head" ? HEADER_HEIGHT : ROW_HEIGHT[density];
@@ -472,6 +485,9 @@ export function createSessionList(options: SessionListOptions): SessionList {
     } else {
       root.removeAttribute("aria-activedescendant");
     }
+    if (shown !== null && !live.has(rowKey(shown))) {
+      hideHover();
+    }
   }
 
   function schedule(): void {
@@ -497,6 +513,9 @@ export function createSessionList(options: SessionListOptions): SessionList {
 
   /** Arrange the views again. A change made by hand applies at once; one from the core may wait. */
   function rebuild(immediate: boolean): void {
+    if (immediate) {
+      hideHover();
+    }
     const arranged = arrange(views, { groupBy, query, pinned, collapsed });
     byKey.clear();
     for (const item of arranged.items) {
@@ -589,6 +608,66 @@ export function createSessionList(options: SessionListOptions): SessionList {
     lastInput = Date.now();
   }
 
+  function cancelHover(): void {
+    if (hoverTimer !== null) {
+      clearTimeout(hoverTimer);
+      hoverTimer = null;
+    }
+  }
+
+  /** Close the card and forget the row under the pointer; the next real movement arms the wait again. */
+  function hideHover(): void {
+    cancelHover();
+    hoverId = null;
+    quiet = true;
+    if (shown !== null) {
+      shown = null;
+      options.onHover?.(null, null);
+    }
+  }
+
+  function openHover(id: string): void {
+    const node = live.get(rowKey(id));
+    if (node?.kind !== "row") {
+      hideHover();
+      return;
+    }
+    shown = id;
+    options.onHover?.(id, node.el);
+  }
+
+  /** The pointer is over `event.target`: arm the wait for a row, or move an open card to it now. */
+  function onPointerHover(event: MouseEvent): void {
+    touch();
+    const moved = event.clientX !== lastX || event.clientY !== lastY;
+    lastX = event.clientX;
+    lastY = event.clientY;
+    if (moved) {
+      quiet = false;
+    } else if (quiet) {
+      return;
+    }
+    const target = event.target instanceof Element ? event.target : null;
+    const id = target?.closest<HTMLElement>(".row")?.dataset.id ?? null;
+    if (id === hoverId) {
+      return;
+    }
+    cancelHover();
+    hoverId = id;
+    if (id === null) {
+      hideHover();
+    } else if (shown !== null) {
+      openHover(id);
+    } else {
+      hoverTimer = setTimeout(() => {
+        hoverTimer = null;
+        if (hoverId === id) {
+          openHover(id);
+        }
+      }, HOVER_DELAY_MS);
+    }
+  }
+
   function onPointerEnter(): void {
     hovering = true;
     touch();
@@ -596,9 +675,17 @@ export function createSessionList(options: SessionListOptions): SessionList {
 
   function onPointerLeave(): void {
     hovering = false;
+    hideHover();
+    lastX = Number.NaN;
+    lastY = Number.NaN;
     if (settled()) {
       applyPending();
     }
+  }
+
+  function onScroll(): void {
+    hideHover();
+    schedule();
   }
 
   function onFocusIn(): void {
@@ -618,6 +705,7 @@ export function createSessionList(options: SessionListOptions): SessionList {
 
   function onClick(event: Event): void {
     touch();
+    hideHover();
     const target = event.target instanceof Element ? event.target : null;
     const head = target?.closest<HTMLElement>(".group");
     if (head?.dataset.group !== undefined) {
@@ -654,6 +742,7 @@ export function createSessionList(options: SessionListOptions): SessionList {
 
   function onKeyDown(event: KeyboardEvent): void {
     touch();
+    hideHover();
     if (event.ctrlKey || event.metaKey || event.altKey) {
       return;
     }
@@ -718,13 +807,15 @@ export function createSessionList(options: SessionListOptions): SessionList {
   }
 
   root.addEventListener("pointerenter", onPointerEnter);
-  root.addEventListener("pointermove", touch);
+  root.addEventListener("pointerover", onPointerHover);
+  root.addEventListener("pointermove", onPointerHover);
+  root.addEventListener("pointerdown", hideHover);
   root.addEventListener("pointerleave", onPointerLeave);
   root.addEventListener("focusin", onFocusIn);
   root.addEventListener("focusout", onFocusOut);
   root.addEventListener("click", onClick);
   root.addEventListener("keydown", onKeyDown);
-  root.addEventListener("scroll", schedule);
+  root.addEventListener("scroll", onScroll);
   const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(schedule);
   observer?.observe(root);
 
@@ -754,6 +845,7 @@ export function createSessionList(options: SessionListOptions): SessionList {
       if (d === density) {
         return;
       }
+      hideHover();
       const anchor = indexAt(root.scrollTop);
       density = d;
       root.dataset.density = d;
@@ -776,14 +868,17 @@ export function createSessionList(options: SessionListOptions): SessionList {
     toggleGroup,
     prefs,
     dispose() {
+      cancelHover();
       root.removeEventListener("pointerenter", onPointerEnter);
-      root.removeEventListener("pointermove", touch);
+      root.removeEventListener("pointerover", onPointerHover);
+      root.removeEventListener("pointermove", onPointerHover);
+      root.removeEventListener("pointerdown", hideHover);
       root.removeEventListener("pointerleave", onPointerLeave);
       root.removeEventListener("focusin", onFocusIn);
       root.removeEventListener("focusout", onFocusOut);
       root.removeEventListener("click", onClick);
       root.removeEventListener("keydown", onKeyDown);
-      root.removeEventListener("scroll", schedule);
+      root.removeEventListener("scroll", onScroll);
       observer?.disconnect();
       live.clear();
       rowPool.length = 0;

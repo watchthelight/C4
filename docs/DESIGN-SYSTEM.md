@@ -103,6 +103,18 @@ needs you, that count in `--amber`. A folded header keeps its counts and dims it
 above the list holds the filter box, a 24px input on `--panel-2` with a 1px `--faint` border that
 turns `--sage-hi` on focus, and the grouping button beside it, an uppercase 11px chip.
 
+The hover card opens beside a row once the pointer has rested on it for 350 ms, to the right of the
+sidebar when there is room, else to the left, never past the window's edge. It is 300px wide on
+`--bg` with a 1px `--faint` border: the state square and the name in Space Mono 700 with the
+attachment chip, a `--dim` line saying why (the host and pane, or what ended the session), the state
+text colored as in the row, its evidence in `--dim`, then a two-column fact list under a `--line`
+rule (model, context with the same 24 by 3px bar, tool, agents, tasks, cwd, started, last activity,
+status line, telemetry) and up to three agent lines, each with a 4px sage square in front. It takes
+no pointer events, animates nothing, follows the pointer from row to row without a second wait, and
+closes when the pointer leaves the rows, the list scrolls or changes by hand, or a key goes down,
+then stays closed until the pointer moves again. The keyboard never needs it: the inspector holds
+the same facts.
+
 ## Layout
 
 | Region | Size | Content |

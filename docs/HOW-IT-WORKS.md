@@ -206,7 +206,15 @@ key mean either, and tokens of different keys all have to hold. A row changes it
 the moment a fact arrives, but a reorder from the core waits while the pointer is inside the list
 or the list has keyboard focus, and applies on leave or after two seconds at rest, so a row never
 moves out from under a click. What you do by hand (filter, pin, fold, regroup) applies at once, and
-a session that arrives while the order is held joins under its header. Selecting a row opens a
+a session that arrives while the order is held joins under its header. Resting the pointer on a row
+for 350 ms opens a card beside it: the attachment and why (the host and pane, or what ended the
+session), the state with its evidence, the model and effort, the context figure with its bar, the
+open tool, the agents with the last three named, the cwd, and when the session started, last did
+something and last sent a status line. The card takes no pointer events, follows the pointer from
+row to row, and closes when the pointer leaves the rows, the list scrolls or a key is pressed, then
+stays closed until the pointer moves again; the keyboard has the inspector. Tokens, the cache
+ratio, the branch and the last tool calls join the
+card when the telemetry and transcript readers land in Milestones 4 and 5. Selecting a row opens a
 read-only inspector: the state with the source and time of its evidence, the process, cwd,
 name, version, host, attachment, transcript path, agents and tasks as far as the files say. The
 status strip shows when the last pass ran and how long it took, when the session list command last

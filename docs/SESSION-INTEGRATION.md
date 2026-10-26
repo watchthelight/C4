@@ -9,9 +9,8 @@ Status: the shim (`crates/c4-shim`), the ingest server (`crates/c4-ingest`), `c4
 (`apps/desktop/src-tauri/src/ingest.rs`) exist. The window starts the server when it opens, replays
 what the shim spooled while no C4 ran, and folds every hook event and status line payload into the
 session list as it arrives. A session the shim has not reported yet runs in the coarse mode described
-in docs/HOW-IT-WORKS.md: registry, transcripts and the status line's cache files, no hooks. The
-virtual-list sidebar, the hover card, saved preferences and notifications come with later Milestone 2
-commits.
+in docs/HOW-IT-WORKS.md: registry, transcripts and the status line's cache files, no hooks. Saved
+preferences, the detached sidebar window and notifications come with later Milestone 2 commits.
 
 ## What `c4 install` changes
 

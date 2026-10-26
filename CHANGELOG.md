@@ -117,5 +117,13 @@ stay at 0.y.z while the interfaces settle.
   the user does by hand applies at once; a reorder from the core still waits for the pointer and
   the keyboard, and a session that arrives meanwhile joins under its header. Pins, the grouping and
   the folded groups live in memory until the preferences store lands.
+- A hover card beside the row the pointer rests on for 350 ms: the attachment and why (the host
+  and pane, or what ended the session), the state with its evidence, the model and effort, the
+  context figure with its bar, the open tool, the agents with the last three named, the cwd, and
+  when the session started, last did something and last sent a status line. It takes no pointer
+  events, follows the pointer from row to row, and closes when the pointer leaves the rows, the
+  list scrolls or changes by hand, or a key goes down, then stays closed until the pointer moves
+  again. Tokens, the cache ratio, the branch and the last tool calls join it with the telemetry and
+  transcript readers.
 
 [Unreleased]: https://github.com/watchthelight/C4/compare/c3a0a47...HEAD
