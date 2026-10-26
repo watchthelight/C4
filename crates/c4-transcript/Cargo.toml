@@ -1,0 +1,25 @@
+# <wtl> project: c4 | file: crates/c4-transcript/Cargo.toml | author: watchthelight </wtl>
+
+[package]
+name = "c4-transcript"
+description = "Incremental reader of Claude Code transcripts: byte-offset tailer, tolerant record parser, subagent directory scanner and file watcher"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+c4-core = { path = "../c4-core" }
+notify = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+
+[lints]
+workspace = true
