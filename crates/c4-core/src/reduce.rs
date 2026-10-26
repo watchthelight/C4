@@ -430,6 +430,7 @@ fn reduce_hook(view: &mut SessionView, event: &HookEvent, at: Timestamp) -> Opti
             let id = AgentId::new(agent_id.clone());
             if let Some(existing) = view.agents.iter_mut().find(|a| a.id == id) {
                 existing.ended_at = None;
+                existing.observed_running = true;
                 if agent_type.is_some() {
                     existing.agent_type.clone_from(agent_type);
                 }
@@ -441,6 +442,7 @@ fn reduce_hook(view: &mut SessionView, event: &HookEvent, at: Timestamp) -> Opti
                     transcript_path: transcript_path.clone(),
                     started_at: at,
                     ended_at: None,
+                    observed_running: true,
                 });
             }
             None
@@ -572,18 +574,35 @@ fn reduce_transcript(
             view.pending_background_agents = *pending_background_agents;
             view.pending_workflows = *pending_workflows;
             view.current_tool = None;
+            if *pending_background_agents == 0 {
+                // Claude Code's own count says nothing it launched is still running.
+                for agent in &mut view.agents {
+                    if agent.is_running() {
+                        agent.ended_at = Some(at);
+                    }
+                }
+            }
             set_state(view, rest_state(view), ev)
         }
-        TranscriptEvent::AgentLaunched { agent_id, .. } => {
+        TranscriptEvent::AgentLaunched { agent_id, is_async } => {
+            // A background launch is recorded when the agent starts. A foreground one is recorded
+            // when the agent has already returned, so that record also says it ended.
             let id = AgentId::new(agent_id.clone());
-            if !view.agents.iter().any(|a| a.id == id) {
+            let ended_at = if *is_async { None } else { Some(at) };
+            if let Some(existing) = view.agents.iter_mut().find(|a| a.id == id) {
+                existing.observed_running = true;
+                if existing.ended_at.is_none() {
+                    existing.ended_at = ended_at;
+                }
+            } else {
                 view.agents.push(AgentInfo {
                     id,
                     agent_type: None,
                     description: None,
                     transcript_path: None,
                     started_at: at,
-                    ended_at: None,
+                    ended_at,
+                    observed_running: true,
                 });
             }
             None
@@ -599,6 +618,36 @@ fn reduce_transcript(
             },
             ev,
         ),
+        TranscriptEvent::AgentSeen {
+            agent_id,
+            agent_type,
+            description,
+            transcript_path,
+        } => {
+            let id = AgentId::new(agent_id.clone());
+            if let Some(existing) = view.agents.iter_mut().find(|a| a.id == id) {
+                if existing.agent_type.is_none() {
+                    existing.agent_type.clone_from(agent_type);
+                }
+                if existing.description.is_none() {
+                    existing.description.clone_from(description);
+                }
+                if existing.transcript_path.is_none() {
+                    existing.transcript_path.clone_from(transcript_path);
+                }
+            } else {
+                view.agents.push(AgentInfo {
+                    id,
+                    agent_type: agent_type.clone(),
+                    description: description.clone(),
+                    transcript_path: transcript_path.clone(),
+                    started_at: at,
+                    ended_at: None,
+                    observed_running: false,
+                });
+            }
+            None
+        }
     }
 }
 
@@ -1394,6 +1443,94 @@ mod tests {
                 1600,
             ),
         );
+        assert_eq!(v.state, SessionState::Idle);
+    }
+
+    #[test]
+    fn an_agent_file_fills_in_what_the_launch_record_lacked() {
+        let mut v = fresh();
+        let tr = |event, at| {
+            Observation::new(
+                sid(),
+                Timestamp::from_millis(at),
+                ObservationBody::Transcript(event),
+            )
+        };
+        reduce(
+            &mut v,
+            &tr(
+                TranscriptEvent::AgentLaunched {
+                    agent_id: "ag1".into(),
+                    is_async: true,
+                },
+                1000,
+            ),
+        );
+        assert!(
+            reduce(
+                &mut v,
+                &tr(
+                    TranscriptEvent::AgentSeen {
+                        agent_id: "ag1".into(),
+                        agent_type: Some("Explore".into()),
+                        description: Some("find entry points".into()),
+                        transcript_path: Some("/tmp/agent-ag1.jsonl".into()),
+                    },
+                    1100,
+                ),
+            )
+            .is_none(),
+            "metadata is not a state change"
+        );
+        assert_eq!(v.agents.len(), 1);
+        assert_eq!(v.agents[0].agent_type.as_deref(), Some("Explore"));
+        assert_eq!(
+            v.agents[0].description.as_deref(),
+            Some("find entry points")
+        );
+        assert_eq!(v.agents[0].started_at, Timestamp::from_millis(1000));
+        // A file seen before any launch record is metadata only: nothing said the agent runs.
+        reduce(
+            &mut v,
+            &tr(
+                TranscriptEvent::AgentSeen {
+                    agent_id: "ag2".into(),
+                    agent_type: None,
+                    description: None,
+                    transcript_path: None,
+                },
+                1200,
+            ),
+        );
+        assert_eq!(v.agents.len(), 2);
+        assert!(!v.agents[1].is_running());
+        assert_eq!(v.running_agents(), 1);
+        // A foreground launch is recorded once the agent has returned.
+        reduce(
+            &mut v,
+            &tr(
+                TranscriptEvent::AgentLaunched {
+                    agent_id: "ag3".into(),
+                    is_async: false,
+                },
+                1250,
+            ),
+        );
+        assert_eq!(v.agents[2].ended_at, Some(Timestamp::from_millis(1250)));
+        assert_eq!(v.running_agents(), 1);
+        // The turn record's zero count ends what the transcript launched.
+        reduce(
+            &mut v,
+            &tr(
+                TranscriptEvent::TurnEnded {
+                    pending_background_agents: 0,
+                    pending_workflows: 0,
+                },
+                1300,
+            ),
+        );
+        assert_eq!(v.agents[0].ended_at, Some(Timestamp::from_millis(1300)));
+        assert_eq!(v.running_agents(), 0);
         assert_eq!(v.state, SessionState::Idle);
     }
 

@@ -32,6 +32,13 @@ impl Timestamp {
         Self(secs.saturating_mul(1000))
     }
 
+    /// From a [`std::time::SystemTime`], such as a file's modification time. `None` before 1970.
+    #[must_use]
+    pub fn from_system_time(t: std::time::SystemTime) -> Option<Self> {
+        let since_epoch = t.duration_since(std::time::UNIX_EPOCH).ok()?;
+        i64::try_from(since_epoch.as_millis()).ok().map(Self)
+    }
+
     /// Parse an RFC 3339 string such as `2026-10-25T18:07:12.345Z`.
     #[must_use]
     pub fn parse_rfc3339(s: &str) -> Option<Self> {
@@ -100,6 +107,17 @@ mod tests {
         assert_eq!(b.millis_since(a), 500);
         assert_eq!(a.millis_since(b), -500);
         assert_eq!(Timestamp::from_secs(2).0, 2000);
+    }
+
+    #[test]
+    fn from_system_time_is_millis() {
+        let t = std::time::UNIX_EPOCH + std::time::Duration::from_millis(1500);
+        assert_eq!(
+            Timestamp::from_system_time(t),
+            Some(Timestamp::from_millis(1500))
+        );
+        let before_epoch = std::time::UNIX_EPOCH - std::time::Duration::from_secs(1);
+        assert_eq!(Timestamp::from_system_time(before_epoch), None);
     }
 
     #[test]

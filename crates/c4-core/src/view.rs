@@ -23,13 +23,16 @@ pub struct AgentInfo {
     pub started_at: Timestamp,
     /// When it stopped, if it has.
     pub ended_at: Option<Timestamp>,
+    /// True once a launch record or a `SubagentStart` hook said the agent ran. False when the only
+    /// evidence is its transcript file, which proves it existed and nothing more.
+    pub observed_running: bool,
 }
 
 impl AgentInfo {
-    /// True while the agent has not stopped.
+    /// True while the agent was seen running and has not stopped.
     #[must_use]
     pub fn is_running(&self) -> bool {
-        self.ended_at.is_none()
+        self.observed_running && self.ended_at.is_none()
     }
 }
 

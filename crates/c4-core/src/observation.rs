@@ -269,6 +269,18 @@ pub enum TranscriptEvent {
         /// The message text.
         message: String,
     },
+    /// A subagent transcript file exists under the session directory. Fills in what the file and
+    /// its `.meta.json` say; it does not decide whether the agent still runs.
+    AgentSeen {
+        /// The agent id (the file name without `agent-` and `.jsonl`).
+        agent_id: String,
+        /// `agentType` from the meta file.
+        agent_type: Option<String>,
+        /// `description` from the meta file.
+        description: Option<String>,
+        /// The transcript file path.
+        transcript_path: Option<String>,
+    },
 }
 
 /// One fact about one session.
