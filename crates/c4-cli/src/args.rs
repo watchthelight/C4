@@ -37,6 +37,9 @@ pub enum Command {
     Install(InstallArgs),
     /// Take the shim out of settings.json again, from the backup when nothing else changed the file.
     Uninstall(UninstallArgs),
+    /// Run the window's core as a child process: JSON requests on stdin, answers and `sessions`
+    /// events on stdout, until stdin closes.
+    Serve(ServeArgs),
 }
 
 /// Where the Claude home is.
@@ -202,4 +205,18 @@ pub struct UninstallArgs {
     /// Print what would change and write nothing.
     #[arg(long)]
     pub dry_run: bool,
+}
+
+/// `c4 serve`.
+#[derive(Args, Debug, Clone, Default)]
+pub struct ServeArgs {
+    /// Where the Claude home is.
+    #[command(flatten)]
+    pub home: HomeArgs,
+    /// Where the C4 home is: the ingest endpoint and the preferences file.
+    #[command(flatten)]
+    pub c4_home: C4HomeArgs,
+    /// Read the files under the home only; never run the session list command.
+    #[arg(long)]
+    pub files_only: bool,
 }

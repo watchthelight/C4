@@ -2,7 +2,7 @@
 
 [package]
 name = "c4-cli"
-description = "The headless side of C4: c4 sessions, c4 doctor, c4 telemetry, c4 install and c4 uninstall"
+description = "The headless side of C4: c4 sessions, c4 doctor, c4 telemetry, c4 install, c4 uninstall and c4 serve"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -10,8 +10,9 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 
-# The headless commands on their own, for development: `cargo run -p c4-cli -- sessions` builds in
-# seconds and needs no webview. The `c4` executable (apps/desktop) serves the same commands.
+# The headless commands on their own: `cargo run -p c4-cli -- sessions` builds in seconds and
+# needs no window. `c4-cli serve` is the core the desktop shell runs as a child process; the `c4`
+# executable (apps/desktop) serves the same commands.
 [[bin]]
 name = "c4-cli"
 path = "src/main.rs"
@@ -26,10 +27,13 @@ clap = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha2 = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 
 [dev-dependencies]
+c4-shim = { path = "../c4-shim" }
 c4-testkit = { path = "../c4-testkit" }
 tempfile = { workspace = true }
 

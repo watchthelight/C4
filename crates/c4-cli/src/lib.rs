@@ -1,7 +1,7 @@
 // <wtl> project: c4 | file: crates/c4-cli/src/lib.rs | author: watchthelight </wtl>
-//! The headless side of C4: the `c4` subcommands that run without a window. The desktop binary
-//! parses the same [`Cli`] and calls [`run`] before it starts a webview, so `c4 sessions --json`
-//! behaves the same from either executable.
+//! The headless side of C4: the `c4` subcommands that run without a window, and the window's core
+//! as a child process. The desktop binary parses the same [`Cli`] and calls [`run`] before it
+//! opens a window, so `c4 sessions --json` behaves the same from either executable.
 //!
 //! - `c4 sessions`: one discovery pass, as a table or as JSON, or a watch loop that prints state
 //!   changes. Discovery only; no transcript is read.
@@ -12,6 +12,8 @@
 //! - `c4 telemetry`: the token totals, cost, agents and recorded state of one transcript file.
 //! - `c4 install` and `c4 uninstall`: the shim copied into the C4 home and wired into
 //!   `settings.json`, with a backup beside the file and a manifest for the way back.
+//! - `c4 serve`: the session table, the ingest server and the preferences file behind a line
+//!   protocol on stdin and stdout, for a window in another process ([`serve`]).
 //!
 //! Every command reads the Claude home and never writes to it, except `install` and `uninstall`,
 //! which write `settings.json` alone, each time after a backup, and record what they touched.
@@ -19,12 +21,13 @@
 pub mod args;
 pub mod doctor;
 pub mod install;
+pub mod serve;
 pub mod sessions;
 pub mod telemetry;
 
 pub use args::{
-    C4HomeArgs, Cli, Command, DoctorArgs, HomeArgs, InstallArgs, SessionsArgs, TelemetryArgs,
-    UninstallArgs,
+    C4HomeArgs, Cli, Command, DoctorArgs, HomeArgs, InstallArgs, ServeArgs, SessionsArgs,
+    TelemetryArgs, UninstallArgs,
 };
 
 use clap::Parser;
@@ -47,23 +50,26 @@ pub fn main() -> ExitCode {
     }
 }
 
-/// Run a parsed command line, writing to stdout.
+/// Run a parsed command line, writing to stdout. `serve` writes stdout from a thread of its own
+/// for as long as it runs, so it takes no lock here; every other command holds the lock while it
+/// prints.
 pub fn run(cli: &Cli) -> anyhow::Result<()> {
     if let Some(filter) = &cli.log {
         init_logging(filter)?;
     }
-    let stdout = std::io::stdout();
-    let mut out = stdout.lock();
     match &cli.command {
-        Command::Sessions(a) => sessions::run(a, &mut out),
-        Command::Doctor(a) => doctor::run(a, &mut out),
-        Command::Telemetry(a) => telemetry::run(a, &mut out),
-        Command::Install(a) => install::run_install(a, &mut out),
-        Command::Uninstall(a) => install::run_uninstall(a, &mut out),
+        Command::Sessions(a) => sessions::run(a, &mut std::io::stdout().lock()),
+        Command::Doctor(a) => doctor::run(a, &mut std::io::stdout().lock()),
+        Command::Telemetry(a) => telemetry::run(a, &mut std::io::stdout().lock()),
+        Command::Install(a) => install::run_install(a, &mut std::io::stdout().lock()),
+        Command::Uninstall(a) => install::run_uninstall(a, &mut std::io::stdout().lock()),
+        Command::Serve(a) => serve::run(a),
     }
 }
 
-fn init_logging(filter: &str) -> anyhow::Result<()> {
+/// Diagnostics on stderr, filtered by `filter`. Fails when a filter is malformed or a subscriber
+/// is already installed.
+pub(crate) fn init_logging(filter: &str) -> anyhow::Result<()> {
     use tracing_subscriber::EnvFilter;
     let filter =
         EnvFilter::try_new(filter).map_err(|e| anyhow::anyhow!("bad --log filter: {e}"))?;
@@ -145,6 +151,18 @@ mod tests {
         }
         let cli = Cli::try_parse_from(["c4", "uninstall"]).unwrap();
         assert!(matches!(cli.command, Command::Uninstall(a) if !a.dry_run));
+        let cli =
+            Cli::try_parse_from(["c4", "serve", "--files-only", "--c4-home", "/tmp/c4"]).unwrap();
+        match cli.command {
+            Command::Serve(a) => {
+                assert!(a.files_only);
+                assert_eq!(a.c4_home.source(), "--c4-home");
+                assert!(a.home.home.is_none());
+            }
+            other => panic!("{other:?}"),
+        }
+        let cli = Cli::try_parse_from(["c4", "serve"]).unwrap();
+        assert!(matches!(cli.command, Command::Serve(a) if !a.files_only));
         assert!(Cli::try_parse_from(["c4", "frobnicate"]).is_err());
         assert!(
             Cli::try_parse_from(["c4", "telemetry"]).is_err(),

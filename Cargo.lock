@@ -257,6 +257,7 @@ dependencies = [
  "c4-core",
  "c4-discovery",
  "c4-ingest",
+ "c4-shim",
  "c4-testkit",
  "c4-transcript",
  "clap",
@@ -264,6 +265,8 @@ dependencies = [
  "serde_json",
  "sha2",
  "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
  "tracing",
  "tracing-subscriber",
 ]
@@ -283,18 +286,10 @@ name = "c4-desktop"
 version = "0.0.1"
 dependencies = [
  "c4-cli",
- "c4-core",
- "c4-discovery",
- "c4-ingest",
- "c4-shim",
  "c4-testkit",
- "serde",
  "serde_json",
  "tauri",
  "tauri-build",
- "tempfile",
- "thiserror 2.0.21",
- "tokio",
  "tracing",
  "windows-sys 0.61.2",
 ]

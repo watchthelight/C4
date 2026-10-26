@@ -251,7 +251,7 @@ or Disconnected and draws no input control.
 ## Store
 
 What is kept between runs today is `prefs.json` under the C4 home
-(`apps/desktop/src-tauri/src/prefs.rs`): one JSON object with `schema` 1 and one section per part
+(`crates/c4-cli/src/serve/prefs.rs`): one JSON object with `schema` 1 and one section per part
 of the window, `sidebar` today (`density`, `group_by`, `pinned`, `collapsed`, `width`). The core
 treats a section as opaque JSON: `prefs_set` replaces one, refuses a result over 1 MiB, writes
 `prefs.json.tmp` (0600 on Unix, the directory 0700 when it creates it) and renames it over the file,

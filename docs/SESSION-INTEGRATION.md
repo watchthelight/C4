@@ -5,10 +5,10 @@
 How C4 plugs into an existing Claude Code setup, what it changes, and how to take it out again.
 
 Status: the shim (`crates/c4-shim`), the ingest server (`crates/c4-ingest`), `c4 install` and
-`c4 uninstall` (`crates/c4-cli/src/install.rs`) and the app's end of the line
-(`apps/desktop/src-tauri/src/ingest.rs`) exist. The window starts the server when it opens, replays
-what the shim spooled while no C4 ran, and folds every hook event and status line payload into the
-session list as it arrives. A session the shim has not reported yet runs in the coarse mode described
+`c4 uninstall` (`crates/c4-cli/src/install.rs`) and the core's end of the line
+(`crates/c4-cli/src/serve/ingest.rs`, run by the window and by `c4-cli serve`) exist. The core
+starts the server when it starts, replays what the shim spooled while no C4 ran, and folds every
+hook event and status line payload into the session list as it arrives. A session the shim has not reported yet runs in the coarse mode described
 in docs/HOW-IT-WORKS.md: registry, transcripts and the status line's cache files, no hooks. The
 sidebar's organization is kept in `prefs.json` under the C4 home, never under the Claude home
 (docs/HOW-IT-WORKS.md, "The window today"). The detached sidebar window and notifications come with

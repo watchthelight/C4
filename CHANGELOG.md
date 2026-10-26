@@ -97,9 +97,9 @@ stay at 0.y.z while the interfaces settle.
   identity only, so a subagent's tool calls never move the session. When another C4 holds the
   endpoint the status strip says so and the worker tries again every 15 s; on exit the server is
   stopped and its socket file removed. The document and the status strip carry the server's state
-  and counts, and `about` names the C4 home and the endpoint. Two desktop tests send a hook line
-  through the shim's own delivery code and watch it reach the window's document, and start a second
-  server on the home to see the state reported and the endpoint taken over later.
+  and counts, and `about` names the C4 home and the endpoint. Two tests send a hook line through
+  the shim's own delivery code and watch it reach the window's document, and start a second server
+  on the home to see the state reported and the endpoint taken over later.
 - The sidebar is a virtual list: only the rows near the viewport exist, on pooled nodes placed with
   a transform, eight rows beyond each edge. Three densities (22, 34 and 56px rows) cycle on
   Ctrl+Shift+=; the compact row carries the state text in its tooltip, the standard row adds the
@@ -127,7 +127,7 @@ stay at 0.y.z while the interfaces settle.
 - Saved preferences and a sidebar splitter. The sidebar's pins, grouping, folded groups, density
   and width go to `prefs.json` under the C4 home a quarter of a second after each change by hand,
   and the next start builds the sidebar from them before the first pass (`prefs_get` and
-  `prefs_set`; `apps/desktop/src-tauri/src/prefs.rs`, `apps/desktop/src/prefs.ts`). The file is
+  `prefs_set`; `crates/c4-cli/src/serve/prefs.rs`, `apps/desktop/src/prefs.ts`). The file is
   one JSON object with a schema number and a section per part of the window; the core replaces one
   section at a time through a temporary file and a rename, keeps a section or a schema number
   another version wrote, caps the file at 1 MiB, and moves a file it cannot read aside as
@@ -145,5 +145,18 @@ stay at 0.y.z while the interfaces settle.
   the rail, the chord again or `/` opens the sidebar back up. A reorder waits while the pointer or
   the keyboard is in the rail, as in the list. The fold is kept in `prefs.json` with the rest of
   the sidebar's organization (`apps/desktop/src/sessions/rail.ts`).
+- `c4-cli serve`, the window's core as a child process. A shell starts it with pipes on stdin and
+  stdout and talks JSON lines: a request `{"id", "method", "params"}` on stdin gets `{"id", "ok"}`
+  or `{"id", "error"}` back with the same id, and every refresh pass and every batch the ingest
+  server folds arrives as a `{"event": "sessions", "data"}` line, after a first `hello` line that
+  names the protocol version, the output schema, the C4 version and the pid. The methods are the
+  window's four (`list_sessions`, `about`, `prefs_get`, `prefs_set`); `--files-only` skips the
+  session list command; a line that is not a request is answered with a null id; logs go to
+  stderr, warnings and worse unless `--log` says otherwise. The process ends, with the ingest
+  server stopped and the endpoint free, when stdin closes or stdout cannot be written. The session
+  table, the ingest worker and the preferences file moved from the Tauri crate to
+  `crates/c4-cli/src/serve/`, so the window and the child process share them. A test drives
+  `c4-cli serve` as a child process through the whole protocol, including a hook line delivered
+  through the shim's own code and the exit when stdin closes (`crates/c4-cli/tests/serve.rs`).
 
 [Unreleased]: https://github.com/watchthelight/C4/compare/c3a0a47...HEAD

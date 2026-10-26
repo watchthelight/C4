@@ -1,19 +1,19 @@
-// <wtl> project: c4 | file: apps/desktop/src-tauri/src/ingest.rs | author: watchthelight </wtl>
-//! The app's end of the shim: the ingest server on the C4 home's endpoint, started when the window
-//! opens and stopped when it closes, and the loop that folds every line it receives into the
-//! session table and emits the `sessions` event.
+// <wtl> project: c4 | file: crates/c4-cli/src/serve/ingest.rs | author: watchthelight </wtl>
+//! The core's end of the shim: the ingest server on the C4 home's endpoint, started with the core
+//! and stopped when it stops, and the loop that folds every line it receives into the session
+//! table and emits the `sessions` event.
 //!
 //! The server runs on a tokio runtime of its own (two worker threads named `c4-ingest`), apart from
-//! the Tauri event loop and the refresh thread. A line waits in the server's inbox until the drain
-//! loop wakes; then everything queued is folded as one batch under the table's mutex, on a blocking
-//! thread, so a refresh pass that holds the mutex (the session list command can take seconds) never
-//! stalls the runtime that accepts connections. One event per batch, at most one every
-//! [`COALESCE`], so a burst of tool events costs the window one render.
+//! the refresh thread and the thread that answers the window. A line waits in the server's inbox
+//! until the drain loop wakes; then everything queued is folded as one batch under the table's
+//! mutex, on a blocking thread, so a refresh pass that holds the mutex (the session list command
+//! can take seconds) never stalls the runtime that accepts connections. One event per batch, at
+//! most one every [`COALESCE`], so a burst of tool events costs the window one render.
 //!
-//! A server that cannot start never fails the window. Another C4 on the same home holds the
-//! endpoint ([`StartError::EndpointTaken`]): the report says so and the loop tries again every
-//! [`RETRY`], so when that C4 exits this one takes over and replays what the shim spooled in
-//! between. Any other error is reported and retried the same way.
+//! A server that cannot start never fails the core. Another C4 on the same home holds the endpoint
+//! ([`StartError::EndpointTaken`]): the report says so and the loop tries again every [`RETRY`],
+//! so when that C4 exits this one takes over and replays what the shim spooled in between. Any
+//! other error is reported and retried the same way.
 //!
 //! A hook that fires inside a subagent (its payload carries `agent_id`) folds its identity fields
 //! and nothing else: the subagent's tool calls would otherwise move the session between running a
@@ -31,7 +31,7 @@ use tokio::runtime::Runtime;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 
-use crate::app::AppState;
+use super::state::AppState;
 
 /// How long the loop waits after a failed start before trying again.
 pub const RETRY: Duration = Duration::from_secs(15);
@@ -54,7 +54,7 @@ pub enum IngestState {
     Taken,
     /// The server could not start for another reason, given in the detail; retried the same way.
     Error,
-    /// The window closed and the server shut down.
+    /// The core stopped and the server shut down.
     Stopped,
 }
 
@@ -64,7 +64,7 @@ pub enum IngestState {
 pub struct IngestReport {
     /// The C4 home the server serves.
     pub home: String,
-    /// What chose it (`C4_HOME` or `~/.c4`).
+    /// What chose it (`--c4-home`, `C4_HOME` or `~/.c4`).
     pub home_source: &'static str,
     /// The pipe name or socket path.
     pub endpoint: String,
@@ -116,7 +116,7 @@ struct Shared {
     last_line_at: Option<Timestamp>,
 }
 
-/// The app's handle on the server: its home, its inbox and its report. The server itself runs on
+/// The core's handle on the server: its home, its inbox and its report. The server itself runs on
 /// the [`Worker`]'s runtime and is lent to this struct for its counters while it listens.
 pub struct Ingest {
     home: C4Home,
@@ -354,27 +354,21 @@ async fn drain(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::refresh_period;
+    use crate::serve::prefs::Prefs;
+    use crate::serve::state::refresh_period;
     use c4_discovery::ClaudeHome;
     use c4_ingest::{Probe, probe};
-    use c4_testkit::ScratchHome;
-    use std::path::{Path, PathBuf};
+    use c4_testkit::{ScratchHome, fixtures_root};
     use std::time::Instant;
 
     /// A session no file in the seeded home names, so the line alone creates its view.
     const SESSION: &str = "c4c4c4c4-0001-4000-8000-000000000099";
 
-    fn fixtures() -> PathBuf {
-        Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../fixtures")
-            .canonicalize()
-            .expect("the fixtures directory")
-    }
-
     /// One shim line around a fixture payload, stamped now and renamed to [`SESSION`].
     fn hook_line(name: &str) -> String {
         let text =
-            std::fs::read_to_string(fixtures().join(format!("hook-payloads/{name}.json"))).unwrap();
+            std::fs::read_to_string(fixtures_root().join(format!("hook-payloads/{name}.json")))
+                .unwrap();
         let mut payload: Value = serde_json::from_str(&text).unwrap();
         payload["session_id"] = Value::String(SESSION.into());
         let line = serde_json::json!({
@@ -394,7 +388,7 @@ mod tests {
             scratch.files_only(),
             refresh_period(),
             Ingest::new(c4_home.clone(), "test"),
-            crate::prefs::Prefs::open(c4_home),
+            Prefs::open(c4_home),
         ))
     }
 

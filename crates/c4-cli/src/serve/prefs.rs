@@ -1,4 +1,4 @@
-// <wtl> project: c4 | file: apps/desktop/src-tauri/src/prefs.rs | author: watchthelight </wtl>
+// <wtl> project: c4 | file: crates/c4-cli/src/serve/prefs.rs | author: watchthelight </wtl>
 //! What the window keeps between runs: `prefs.json` under the C4 home, one JSON object with a
 //! `schema` number and one section per part of the window (`sidebar` today). The window owns the
 //! shape of each section and reads it tolerantly; this side keeps the file whole. A section is
