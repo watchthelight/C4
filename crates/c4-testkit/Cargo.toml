@@ -1,0 +1,22 @@
+# <wtl> project: c4 | file: crates/c4-testkit/Cargo.toml | author: watchthelight </wtl>
+
+[package]
+name = "c4-testkit"
+description = "Test harness for C4: a scratch Claude home and a stand-in process registered in it"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[dependencies]
+c4-core = { path = "../c4-core" }
+c4-discovery = { path = "../c4-discovery" }
+serde_json = { workspace = true }
+tempfile = { workspace = true }
+uuid = { workspace = true }
+
+[lints]
+workspace = true

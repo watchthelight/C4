@@ -32,7 +32,7 @@ pub use home::{CONFIG_DIR_ENV, ClaudeHome, HOME_ENV, encode_cwd};
 pub use host::{HOST_ENV_KEYS, HostHint, identify_host};
 pub use process::{
     FakeProbe, Liveness, ProcessInfo, ProcessProbe, START_TOLERANCE_SECS, SysinfoProbe,
-    check_liveness, filetime_to_unix_secs, start_matches,
+    check_liveness, filetime_to_unix_secs, start_matches, unix_secs_to_filetime,
 };
 pub use registry::{RegistryEntry, RegistryScan, scan_registry};
 pub use snapshot::{

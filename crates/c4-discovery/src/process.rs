@@ -168,6 +168,14 @@ pub fn filetime_to_unix_secs(ft: u64) -> Option<u64> {
     (ft / FILETIME_TICKS_PER_SEC).checked_sub(FILETIME_UNIX_OFFSET_SECS)
 }
 
+/// Unix seconds as a Windows `FILETIME`, the inverse of [`filetime_to_unix_secs`] at whole
+/// seconds. Test harnesses use it to write a `procStart` in the shape Claude Code writes on Windows.
+#[must_use]
+pub fn unix_secs_to_filetime(secs: u64) -> u64 {
+    secs.saturating_add(FILETIME_UNIX_OFFSET_SECS)
+        .saturating_mul(FILETIME_TICKS_PER_SEC)
+}
+
 /// Compare a raw `procStart` value with a start time from the process table. The raw value is read
 /// as a `FILETIME` when it is large enough (verified on Windows), else as Unix milliseconds, else as
 /// Unix seconds (the macOS and Linux encodings are not verified; this is the ladder a test can pin
@@ -235,6 +243,15 @@ mod tests {
             Some(1_792_826_400)
         );
         assert_eq!(filetime_to_unix_secs(5), None);
+        assert_eq!(
+            unix_secs_to_filetime(1_792_826_400),
+            134_373_000_000_000_000,
+            "the inverse at whole seconds"
+        );
+        assert_eq!(
+            filetime_to_unix_secs(unix_secs_to_filetime(1_792_826_400)),
+            Some(1_792_826_400)
+        );
         assert_eq!(
             start_matches(134_373_000_000_000_000, 1_792_826_401),
             Some(true)
