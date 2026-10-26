@@ -19,5 +19,8 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     include: ["tests/**/*.test.ts"],
+    // vitest blanks every stylesheet it is not told to process; tokens.css is read as text by the
+    // list test that checks the row heights against the TypeScript constants
+    css: { include: [/tokens\.css/] },
   },
 });

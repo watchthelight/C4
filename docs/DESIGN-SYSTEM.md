@@ -82,6 +82,20 @@ The text label is always present (in the row at Standard and Expanded density, i
 the accessible name at Compact). Color is never the only carrier of state. Observed facts are plain;
 guessed ones carry a `~` prefix and a dashed border.
 
+## Sidebar rows
+
+The list is virtual: a spacer holds the full height, the rows near the viewport (plus eight beyond
+each edge) sit on pooled nodes placed with a transform, and the density sets one row height for the
+whole list. Compact (22px) shows the state square, the name, the context figure and the time in
+state, with the state text in the tooltip and the accessible name. Standard (34px) adds a second
+line with the state text (`~` in front of a guess, amber for the waiting states, red for Failed) and
+the host, attachment, pid and coarse tags, and puts a 24 by 3px context bar in front of the figure,
+colored by the status line's bands (sage under 75 percent, amber from 75, red from 90). Expanded
+(56px) adds a third line: the attachment chip, the model and effort from the last status line
+payload, and the cwd. A 2px amber stripe on the left marks the two waiting states, red marks Failed.
+Every piece of secondary text is `--dim` at 10 or 11px; `--mute` paints only the idle and completed
+squares.
+
 ## Layout
 
 | Region | Size | Content |
@@ -107,8 +121,10 @@ App chords use Ctrl+Shift on Windows and Linux and Cmd+Shift on macOS so that pl
 through to the terminal. Palette `Ctrl+Shift+P`, switcher `Ctrl+K`, split right and down
 `Ctrl+Shift+D` and `Ctrl+Shift+E`, focus pane `Ctrl+Shift+Arrow`, tabs `Ctrl+Tab` and `Ctrl+1..9`,
 zoom `Ctrl+Shift+Enter`, focus mode `Ctrl+Shift+F`, find `Ctrl+F`, regions `Ctrl+Shift+B/I/L/M/Y`,
-cycle regions F6, Esc back to the terminal. Interrupt and terminate have no single-key binding; they go
-through the palette or the pane menu with a confirmation.
+row density `Ctrl+Shift+=`, cycle regions F6, Esc back to the terminal. In the session list the
+arrow keys, PageUp, PageDown, Home and End move the selection and scroll to it. Interrupt and
+terminate have no single-key binding; they go through the palette or the pane menu with a
+confirmation.
 
 ## Accessibility
 

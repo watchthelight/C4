@@ -60,7 +60,7 @@
 
 .topbar .home {
   margin-left: auto;
-  color: var(--mute);
+  color: var(--dim);
   font-size: var(--fs-11);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -70,19 +70,47 @@
 /* sidebar */
 
 .sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   border-right: 1px solid var(--line);
-  overflow-y: auto;
-  overflow-x: hidden;
   background: transparent;
+  overflow: hidden;
 }
 
+/* The list is virtual: a spacer holds the height of every row, and only the rows near the viewport
+   exist, placed on the spacer with a transform. The density sets one row height for the whole list:
+   22px with one line, 34px with two, 56px with three. */
+
 .sessions {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
   outline: none;
 }
 
 .sessions:focus-visible {
   outline: 1px solid var(--sage-hi);
   outline-offset: -1px;
+}
+
+.sessions[data-density="compact"] {
+  --row-h: var(--row-compact);
+}
+
+.sessions[data-density="standard"] {
+  --row-h: var(--row-standard);
+}
+
+.sessions[data-density="expanded"] {
+  --row-h: var(--row-expanded);
+}
+
+.sessions .spacer {
+  position: relative;
+  width: 100%;
 }
 
 .sessions .empty {
@@ -92,9 +120,15 @@
 }
 
 .row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--row-h);
   display: grid;
   grid-template-columns: 12px minmax(0, 1fr);
-  grid-template-rows: 17px 17px;
+  grid-template-rows: 16px 16px;
+  align-content: center;
   column-gap: var(--s-3);
   padding: 0 var(--s-5) 0 var(--s-4);
   border-left: 2px solid transparent;
@@ -104,6 +138,21 @@
   transition:
     background-color var(--t-fast),
     border-color var(--t-fast);
+}
+
+.sessions[data-density="compact"] .row {
+  grid-template-rows: 16px;
+}
+
+.sessions[data-density="expanded"] .row {
+  grid-template-rows: 16px 16px 16px;
+}
+
+.sessions[data-density="compact"] .row .second,
+.sessions[data-density="compact"] .row .third,
+.sessions[data-density="compact"] .row .bar,
+.sessions[data-density="standard"] .row .third {
+  display: none;
 }
 
 .row:hover {
@@ -130,6 +179,7 @@
   align-items: baseline;
   gap: var(--s-3);
   min-width: 0;
+  line-height: 16px;
 }
 
 .row .name {
@@ -140,6 +190,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* the context figure with a 24px bar in front of it; both take the band's color */
 
 .row .ctx {
   flex: 0 0 auto;
@@ -155,9 +207,24 @@
   color: var(--red);
 }
 
+.row .bar {
+  display: inline-block;
+  width: 24px;
+  height: 3px;
+  margin-right: var(--s-2);
+  vertical-align: middle;
+  background: var(--faint);
+}
+
+.row .bar .fill {
+  display: block;
+  height: 100%;
+  background: currentColor;
+}
+
 .row .when {
   flex: 0 0 auto;
-  color: var(--mute);
+  color: var(--dim);
   font-size: var(--fs-11);
 }
 
@@ -180,16 +247,40 @@
   color: var(--red);
 }
 
-.row[data-certainty="heuristic"] .activity {
-  color: var(--mute);
-}
-
 .row .tags {
   flex: 0 3 auto;
   min-width: 0;
   max-width: 55%;
   font-size: var(--fs-10);
-  color: var(--mute);
+  color: var(--dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* the third line, expanded rows only: the attachment chip, the model and effort, the cwd */
+
+.row .third .chip {
+  flex: 0 0 auto;
+  line-height: 14px;
+}
+
+.row .model {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 50%;
+  color: var(--dim);
+  font-size: var(--fs-11);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row .cwd {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--dim);
+  font-size: var(--fs-11);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -202,11 +293,11 @@
 /* state squares: 8 by 8, the label beside them always carries the state too */
 
 .row .sq {
-  grid-row: 1 / span 2;
+  grid-row: 1 / -1;
   position: relative;
   width: 8px;
   height: 8px;
-  margin-top: 5px;
+  margin-top: 4px;
   background: var(--mute);
 }
 
@@ -360,7 +451,7 @@
 }
 
 .inspector .facts dt {
-  color: var(--mute);
+  color: var(--dim);
   font-size: var(--fs-11);
   text-transform: uppercase;
   letter-spacing: var(--track-chip);
@@ -381,7 +472,7 @@
   padding: 0 var(--s-5);
   border-top: 1px solid var(--line);
   background: transparent;
-  color: var(--mute);
+  color: var(--dim);
   font-size: var(--fs-11);
   white-space: nowrap;
   overflow: hidden;

@@ -100,5 +100,13 @@ stay at 0.y.z while the interfaces settle.
   and counts, and `about` names the C4 home and the endpoint. Two desktop tests send a hook line
   through the shim's own delivery code and watch it reach the window's document, and start a second
   server on the home to see the state reported and the endpoint taken over later.
+- The sidebar is a virtual list: only the rows near the viewport exist, on pooled nodes placed with
+  a transform, eight rows beyond each edge. Three densities (22, 34 and 56px rows) cycle on
+  Ctrl+Shift+=; the compact row carries the state text in its tooltip, the standard row adds the
+  state line and a 24px context bar, the expanded row adds the attachment chip, the model and
+  effort, and the cwd. The arrow, page, Home and End keys move the selection and scroll to it. A
+  reorder waits while the pointer is inside the list or the list has keyboard focus and applies on
+  leave or after two seconds at rest. Secondary text at 10 and 11px uses `--dim`, as the design
+  system says; `--mute` paints only the idle and completed squares.
 
 [Unreleased]: https://github.com/watchthelight/C4/compare/c3a0a47...HEAD

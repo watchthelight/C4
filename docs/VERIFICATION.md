@@ -14,7 +14,7 @@ and passes; "manual" means someone ran the checklist on real hardware; "unverifi
 | B | a session started after C4 appears within 2 s | a stand-in started after the first discovery pass, and the Python stand-in through the binary | verified, headless |
 | C | state changes show live | a hook line delivered through the shim's own code moves a session in the window's document (`apps/desktop/src-tauri/src/ingest.rs`); a stand-in that flips its registry status on a timeline and the Playwright side come with later Milestone 2 commits | in part: the hook path is verified, headless, on every runner, and seen in the window against a live session on Windows (Results, item 3) |
 | D | subagents and background agents are listed with their totals | subagent transcript files appear mid-run | planned (Milestone 2, full in 5) |
-| E | sidebar interactions | vitest components plus Playwright on the mock bridge | planned (Milestone 2) |
+| E | sidebar interactions | vitest components plus Playwright on the mock bridge | in part: vitest covers the virtual list (`apps/desktop/tests/list.test.ts`: the rows near the viewport, node reuse while scrolling, the three densities, keyboard selection, the reorder rule); filter, grouping, pins and the Playwright side come with later Milestone 2 commits |
 | F | token numbers match the status line | the status line's own parser run against the same transcript | planned (Milestone 4) |
 | G | the REA toolkit can be assigned and reverted | scratch settings file, byte-identical revert | planned (Milestone 6) |
 | H | a managed terminal is a real pty | real shell, echo, interrupt, terminate | planned (Milestone 3) |
@@ -154,3 +154,11 @@ result below the list when you run it.
   ago in 50 ms | session list: 3 entries, 5s ago | ingest: 0 lines | home from ~/.claude | c4 0.0.1
   | bridge: tauri" (taken after the uninstall, hence no lines). The ledger was not watched: no turn
   ended during the check.
+- 2026-10-26, the virtual list, locally on Windows: vitest 25 tests green (the list tests give the
+  listbox a viewport height and set its scroll position by hand, since jsdom lays nothing out),
+  eslint and tsc clean. The layout itself was measured in Chromium against the mock bridge at
+  1280x800: rows of 34, 56 and 22px as the chord walks the densities, the state square 8px and
+  centered, the 24x3px context bar present at standard and expanded and gone at compact, the third
+  line present only at expanded with the long model text clipped so the cwd keeps room, the compact
+  row carrying the state text in its tooltip, every secondary color `--dim`, no console messages.
+  With the eight synthetic sessions nothing scrolls; the 200-session case is the vitest test.

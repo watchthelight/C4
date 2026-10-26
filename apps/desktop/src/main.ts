@@ -9,7 +9,7 @@ import type { About, Snapshot } from "./bridge/types";
 import { createStrip, createTopBar } from "./chrome";
 import { el } from "./dom";
 import { createInspector } from "./sessions/inspector";
-import { createSessionList } from "./sessions/list";
+import { createSessionList, nextDensity } from "./sessions/list";
 import { createStarfield } from "./starfield";
 import type { StarfieldOptions } from "./starfield";
 import "./tokens.css";
@@ -94,6 +94,15 @@ setInterval(() => {
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) {
     schedule();
+  }
+});
+
+// Ctrl+Shift+= (Cmd+Shift+= on macOS) walks the row density: compact, standard, expanded.
+document.addEventListener("keydown", (event) => {
+  const chord = (event.ctrlKey || event.metaKey) && event.shiftKey && !event.altKey;
+  if (chord && event.code === "Equal") {
+    event.preventDefault();
+    list.setDensity(nextDensity(list.density));
   }
 });
 

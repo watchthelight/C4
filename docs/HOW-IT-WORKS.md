@@ -185,10 +185,18 @@ window and `c4 sessions` print guesses with a `~` in front of the state.
 
 ## The window today
 
-`c4` with no arguments opens one window. Its list holds every session discovery can see, in
+`c4` with no arguments opens one window. Its sidebar lists every session discovery can see, in
 attention order (the waiting states first, then failed and disconnected, then running, then idle and
-completed), each row with its state text, how long it has been in it, and its host. Selecting a row
-opens a read-only inspector: the state with the source and time of its evidence, the process, cwd,
+completed). The list is virtual: only the rows near the viewport exist, so a thousand sessions
+scroll like twenty. Each row shows the state square and the state text (a `~` in front of a guess),
+the context figure from the status line with a small bar, how long the session has been in its
+state, and its host, attachment and pid; the third line of an expanded row adds the attachment
+chip, the model and effort, and the cwd. Three densities (22, 34 and 56px rows) cycle on
+Ctrl+Shift+= (Cmd+Shift+= on macOS); the compact row keeps the state text in its tooltip and its
+accessible name. The arrow, page, Home and End keys move the selection and scroll to it. A row
+changes its glyph and text the moment a fact arrives, but a reorder waits while the pointer is
+inside the list or the list has keyboard focus, and applies on leave or after two seconds at rest,
+so a row never moves out from under a click. Selecting a row opens a read-only inspector: the state with the source and time of its evidence, the process, cwd,
 name, version, host, attachment, transcript path, agents and tasks as far as the files say. The
 status strip shows when the last pass ran and how long it took, when the session list command last
 ran and what it returned, how many files could not be read, the ingest server's state (how many
