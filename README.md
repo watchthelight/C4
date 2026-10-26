@@ -37,9 +37,11 @@ gets the shim in front of it and one hook group per event C4 listens to is added
 The file is copied to a backup beside it first, written back in its own layout,
 and what changed is recorded under `~/.c4/` so that `c4 uninstall` can restore
 the backup byte for byte, or take C4's entries out one by one when something
-else has written the file since. The app does not start the ingest server yet,
-so a shim installed today spools what it receives under `~/.c4/spool/` until a
-later build replays it. docs/SESSION-INTEGRATION.md has the details.
+else has written the file since. While the window is open the app listens for
+what the shim sends and folds each hook event and status line payload into the
+session list as it arrives; what the shim sends while no C4 runs waits under
+`~/.c4/spool/` and is replayed at the next start. docs/SESSION-INTEGRATION.md
+has the details.
 
 ## License
 

@@ -12,7 +12,7 @@ and passes; "manual" means someone ran the checklist on real hardware; "unverifi
 |---|---|---|---|
 | A | sessions that were running before C4 started appear | three stand-in sessions started before `c4 sessions --json` (`crates/c4-testkit/tests/discovery.rs`, `crates/c4-cli/tests/cli.rs`) | verified, headless; the desktop app and real terminals are manual item 1 |
 | B | a session started after C4 appears within 2 s | a stand-in started after the first discovery pass, and the Python stand-in through the binary | verified, headless |
-| C | state changes show live | fake session flips its registry status on a timeline | planned (Milestone 2) |
+| C | state changes show live | a hook line delivered through the shim's own code moves a session in the window's document (`apps/desktop/src-tauri/src/ingest.rs`); a stand-in that flips its registry status on a timeline and the Playwright side come with later Milestone 2 commits | in part: the hook path is verified, headless, on every runner |
 | D | subagents and background agents are listed with their totals | subagent transcript files appear mid-run | planned (Milestone 2, full in 5) |
 | E | sidebar interactions | vitest components plus Playwright on the mock bridge | planned (Milestone 2) |
 | F | token numbers match the status line | the status line's own parser run against the same transcript | planned (Milestone 4) |
@@ -93,8 +93,8 @@ result below the list when you run it.
   17 hook groups it would add, the backup it would take and the manifest it would write, restorable.
   `c4-cli uninstall --dry-run` reported nothing of C4's in the file, no shim copy and no manifest.
   Afterwards `~/.c4/install-manifest.json` did not exist and `settings.json` had its previous size
-  and modification time, with no new backup beside it. The real install waits for the build in which
-  the app starts the ingest server, so that nothing installed sits unread.
+  and modification time, with no new backup beside it. The real install was left for the build in
+  which the app starts the ingest server, so that nothing installed sits unread.
 - 2026-10-26, the verify workflow for commit 3238e80 (run 40276837007): the lint job and the four
   test jobs green, with the agents repo checked out at its pinned commit for test M on every runner.
 - 2026-10-26, C4 0.0.1 (debug `c4-cli`), Claude Code 2.1.299, Windows 11 Pro. `c4-cli doctor`
@@ -115,3 +115,15 @@ result below the list when you run it.
   the build; with the file back and `target/debug/c4-shim.exe` moved aside, the build put a copy
   there with the staged file's hash. The built `c4.exe install --dry-run` named that copy as the
   shim it would install, and wrote nothing.
+- 2026-10-26, the verify workflow for commit f798164 (run 40279629986): the lint job and the four
+  test jobs green, each runner staging the debug shim and building the debug app with the sidecar
+  declared.
+- 2026-10-26, C4 0.0.1, Windows 11 Pro, the app's ingest worker, local: `cargo test -p c4-desktop
+  --lib` runs two tests against a scratch Claude home and a scratch C4 home. The first starts the
+  worker, sees the probe answer listening, delivers a `UserPromptSubmit` payload through the shim's
+  own delivery code (sent, not spooled) and finds the session in the next emitted document as working
+  with the hook seen; a second payload from inside a subagent leaves the state alone and is counted as
+  a subagent line; a refresh pass carries the same counts; stopping the worker frees the endpoint.
+  The second test starts a plain server on the home first, sees the worker report the endpoint as
+  taken, naming it, and watches the worker listen once that server shuts down. Both pass serially and
+  in parallel.

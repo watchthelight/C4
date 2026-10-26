@@ -61,8 +61,8 @@ stay at 0.y.z while the interfaces settle.
   on macOS and the BSDs because a shim has closed its end before the server looks) that turns each shim line
   into observations, a bounded inbox that drops its oldest item under pressure and counts the drop,
   the spool replay at start and every 30 s, a probe for `c4 doctor`, and a second server on the same
-  home refused. The app does not start the server yet. Fixtures for every hook payload C4 listens
-  to, two status line payloads and a spool file with two bad lines.
+  home refused. Fixtures for every hook payload C4 listens to, two status line payloads and a spool
+  file with two bad lines.
 - `Discovery::fold` in `c4-discovery`: applies a batch of observations from outside a pass (the hook
   events and status line payloads the ingest server parses) in `recv_at` order, a stable sort so a
   payload's identity lands before its event, then runs the clock. It returns the transitions and the
@@ -90,5 +90,15 @@ stay at 0.y.z while the interfaces settle.
   to `src-tauri/binaries/c4-shim-<triple>`, `tauri.sidecar.conf.json` declares it for
   `tauri build --config`, and CI stages it before the debug app build on every runner. A plain cargo
   build or test never needs the staged file.
+- The app runs the ingest server. A worker started when the window opens, on a tokio runtime of its
+  own, listens on the C4 home's endpoint, replays the spool, and folds each batch of hook events and
+  status line payloads into the session table on a blocking thread, sending the window the same
+  `sessions` event a pass does, at most one every 40 ms. A line from inside a subagent folds its
+  identity only, so a subagent's tool calls never move the session. When another C4 holds the
+  endpoint the status strip says so and the worker tries again every 15 s; on exit the server is
+  stopped and its socket file removed. The document and the status strip carry the server's state
+  and counts, and `about` names the C4 home and the endpoint. Two desktop tests send a hook line
+  through the shim's own delivery code and watch it reach the window's document, and start a second
+  server on the home to see the state reported and the endpoint taken over later.
 
 [Unreleased]: https://github.com/watchthelight/C4/compare/c3a0a47...HEAD

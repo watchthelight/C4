@@ -10,9 +10,10 @@ session is in, and what C4 never reads.
 Status: Milestone 1 is in the tree. That is the discovery pass over the registry, the session list
 command, the supervisor files and the process table; the state machine with its evidence; the
 transcript reader, which `c4 telemetry` uses today; the headless commands; and a window that lists
-sessions. Live states from hooks and the status line arrive in Milestone 2, managed terminals in
-Milestone 3, telemetry in Milestone 4 and the workflow graph in Milestone 5. Each row and section
-below says which. docs/VERIFICATION.md records what has been verified where.
+sessions. Milestone 2 has so far added live states from hooks and the status line: the shim, the
+ingest server the window runs, and `c4 install`. Managed terminals come in Milestone 3, telemetry in
+Milestone 4 and the workflow graph in Milestone 5. Each row and section below says which.
+docs/VERIFICATION.md records what has been verified where.
 
 ## What C4 reads
 
@@ -23,8 +24,8 @@ below says which. docs/VERIFICATION.md records what has been verified where.
 | The process table | Whether the pid a file names is still the same process, and which terminal it runs in. | One lookup per pid per pass, never a scan of every process. A pid that is gone is gone. A pid that exists is the same process when its creation time matches the registry's `procStart` within 2 s; a different creation time is a reused pid. When no creation time can be compared (the session list command gives none), the process counts as alive but unverified if its executable is named like Claude Code (`claude`, `node`, `bun`), else as reused. The environment of a live process is read for the terminal variables listed below and nothing else. | 1 |
 | `~/.claude/daemon/` and `jobs/` | Background session supervisor state: workers with their pids, each job's state, what a blocked job needs, how much work it counts as in flight. | Read on every pass, with the auth fields dropped before anything is deserialized. The format is undocumented, so every field is optional in the parser. | 1 |
 | `~/.claude/projects/<encoded cwd>/<session id>.jsonl` and its `subagents/` folder | The transcript: prompts, tool calls, tool results, model usage, compactions, turn boundaries, subagent and workflow launches. | Discovery only checks that the main transcript exists where the cwd says it should, and records the path. `c4 telemetry --transcript <file>` reads one file through the tailer and the follower: byte offsets, a partial last line ignored, usage max-merged per message id, one entry per agent file. The window does not follow transcripts yet. | 1 (reader), 4 and 5 (window) |
-| The status line payload | Context window usage, rate limits, cost, model, prompt cache, effort, session name. | A tiny shim (`c4-shim`) wrapped around the existing status line command copies the payload to C4 and then runs the original command unchanged. | 2 |
-| Hook events | Turn start and end, tool start and end, permission and input prompts, subagent start and end, compaction, cwd and config changes, session end. | Async command hooks that `c4 install` adds to `~/.claude/settings.json`. They print nothing and exit 0, so they can never block Claude Code. Claude Code applies a hook added to a settings file to sessions that are already running (tested with 2.1.299 and a project settings file; docs/SESSION-INTEGRATION.md has the details). The state machine already reduces every one of these events, and the shim and the ingest server that deliver them exist; the app starts the server in a later Milestone 2 commit. | 2 |
+| The status line payload | Context window usage, rate limits, cost, model, prompt cache, effort, session name. | A tiny shim (`c4-shim`) wrapped around the existing status line command copies the payload to C4 and runs the original command unchanged; the window folds each payload into the table as it arrives. | 2 |
+| Hook events | Turn start and end, tool start and end, permission and input prompts, subagent start and end, compaction, cwd and config changes, session end. | Async command hooks that `c4 install` adds to `~/.claude/settings.json`. They print nothing and exit 0, so they can never block Claude Code. Claude Code applies a hook added to a settings file to sessions that are already running (tested with 2.1.299 and a project settings file; docs/SESSION-INTEGRATION.md has the details). The window starts the ingest server that receives them when it opens and folds each event into the table as it arrives; what arrived while no C4 ran is replayed from the spool at the next start. | 2 |
 | OSC 7501 and OSC 21337 | Claude Code's own terminal status protocol (`working`, `blocked`, `done`, `error`, `idle`). | C4's terminal panes answer the protocol's query, so a session running inside C4 reports its state with nothing installed. | 3 |
 | The status line's own cache files | Per-session token accounting and the quota cache that `statusline.py` maintains. | Read as they are. C4 reproduces none of that accounting; it shows the same numbers the status line shows. | 4 |
 
@@ -142,8 +143,8 @@ stateDiagram-v2
 ```
 
 Every transition comes from an observed input: a registry status, a session list entry, a
-supervisor job state, a liveness check, and from Milestone 2 on a hook event, an OSC report or a
-transcript record. What each source says today:
+supervisor job state, a liveness check, a hook event or a status line payload, and later an OSC
+report (Milestone 3) or a transcript record (Milestone 5). What each source says today:
 
 | Input | Transition |
 |---|---|
@@ -153,6 +154,16 @@ transcript record. What each source says today:
 | `claude agents --json` interactive `status` and `waitingFor` | the same mapping |
 | `claude agents --json` background `state`, and the supervisor's job state | `working` is Working; `blocked` is Waiting, with the job's `needs` text deciding permission or input; `done` is Idle; `failed` is Failed; `stopped` is Completed |
 | Process lookup | Disconnected (process gone or pid reused), or Completed (continued in a new session id) |
+| Hook `UserPromptSubmit`, `PreCompact` | Working |
+| Hook `PreToolUse`, then `PostToolUse` or `PostToolUseFailure` | Running a tool, named, then Working |
+| Hook `Notification` | Waiting for permission for `permission_prompt` (and the worker form of it), naming the open tool; Waiting for user input for `elicitation_dialog` and `agent_needs_input`; `idle_prompt` confirms the rest state (Idle, or Background agents active while work is in flight); an elicitation or auth that completes takes a waiting session back to busy |
+| Hook `Stop` | Background agents active when the payload lists tasks still running, else Idle |
+| Hook `SubagentStart`, `SubagentStop`, `TaskCreated`, `TaskCompleted` | The agent and task lists; a stop or completion moves the session only out of Background agents active |
+| Hook `StopFailure` | Failed, with Claude Code's error |
+| Hook `SessionEnd` | Completed with the reason; a session that still has work in flight stays Background agents active unless the reason is `clear` or `resume` |
+| Hook `PostCompact`, `CwdChanged`, `ConfigChange` | The compaction count, the cwd, nothing |
+| A hook fired inside a subagent | Nothing but the session's identity; the subagent's own tool calls never move the session |
+| A status line payload | Nothing; it carries the model, the context figures and the effort, and proves the process is alive |
 | The clock | A session busy for ten minutes with no new fact gets a "stalled?" badge and nothing else |
 
 The rules that keep the sidebar honest:
@@ -166,7 +177,8 @@ The rules that keep the sidebar honest:
 3. A guess never overrides an observed fact that is less than 30 s old, and a fact stamped earlier
    than what the view already knows is dropped (with 1 s of tolerance for clocks that disagree).
 4. Sessions without hook telemetry run on the registry status, the transcript and the status line's
-   cache alone and are marked "coarse". Today that is every session.
+   cache alone and are marked "coarse". That is every session until its first hook event arrives
+   through the shim that `c4 install` wires in.
 
 Every transition carries its evidence: the source and whether the fact was observed or guessed. The
 window and `c4 sessions` print guesses with a `~` in front of the state.
@@ -179,10 +191,13 @@ completed), each row with its state text, how long it has been in it, and its ho
 opens a read-only inspector: the state with the source and time of its evidence, the process, cwd,
 name, version, host, attachment, transcript path, agents and tasks as far as the files say. The
 status strip shows when the last pass ran and how long it took, when the session list command last
-ran and what it returned, how many files could not be read, and where the Claude home came from.
+ran and what it returned, how many files could not be read, the ingest server's state (how many
+lines it has taken in, when the last one arrived, whether any were dropped, or that another C4 holds
+the endpoint), and where the Claude home came from.
 
 Nothing in the window types into any session, and nothing is persisted: closing the window forgets
-the table, and the next start runs a fresh pass. `c4 sessions`, `c4 doctor` and `c4 telemetry`
+the table and stops the ingest server, and the next start runs a fresh pass and replays what the
+shim spooled in the meantime. `c4 sessions`, `c4 doctor` and `c4 telemetry`
 print the same facts without a window; docs/BUILDING.md lists them.
 
 ## What C4 never reads

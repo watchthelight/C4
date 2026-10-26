@@ -8,6 +8,7 @@ import type {
   AgentsRun,
   Bridge,
   Evidence,
+  IngestReport,
   SessionState,
   SessionView,
   Snapshot,
@@ -283,6 +284,33 @@ export function createMock(options: MockOptions = {}): MockBridge {
     };
   }
 
+  /** A server that has been listening since the start and takes two lines per pass. */
+  function ingest(): IngestReport {
+    return {
+      home: "/home/example/.c4",
+      home_source: "synthetic",
+      endpoint: "/home/example/.c4/ingest.sock",
+      state: "listening",
+      detail: null,
+      since: now() - 10 * MINUTE,
+      connections: tick * 2,
+      refused: 0,
+      lines: tick * 2,
+      bad_lines: 0,
+      oversize: 0,
+      idle_closed: 0,
+      replayed_files: 0,
+      replayed_lines: 0,
+      replay_bad_lines: 0,
+      received: tick * 2,
+      dropped: 0,
+      queued: 0,
+      folded: tick * 4,
+      subagent_lines: 0,
+      last_line_at: tick > 0 ? now() : null,
+    };
+  }
+
   function snapshot(transitions: TransitionOut[]): Snapshot {
     return {
       schema: 1,
@@ -293,6 +321,7 @@ export function createMock(options: MockOptions = {}): MockBridge {
       tick,
       agents,
       transitions,
+      ingest: ingest(),
     };
   }
 
@@ -361,6 +390,9 @@ export function createMock(options: MockOptions = {}): MockBridge {
         version: "0.0.1",
         home: "/home/example/.claude",
         home_source: "synthetic",
+        c4_home: "/home/example/.c4",
+        c4_home_source: "synthetic",
+        endpoint: "/home/example/.c4/ingest.sock",
         refresh_ms: period,
         agents_every: 8,
         os: "mock",

@@ -45,8 +45,9 @@ The desktop crate is left out of such a run: its build script needs the Linux We
 
 `apps/desktop` holds the window. `src-tauri` is the `c4-desktop` crate that builds the `c4`
 executable, `src` is the window itself (TypeScript and Vite, no framework), `tests` is the vitest
-suite. The crate links `c4-cli`, `c4-core` and `c4-discovery` directly; there is no server and no
-second process.
+suite. The crate links `c4-cli`, `c4-core`, `c4-discovery` and `c4-ingest` directly: the ingest
+server runs inside the app on a tokio runtime of its own, and the only other process is the shim
+that Claude Code starts.
 
 `pnpm -C apps/desktop tauri dev` starts Vite on port 1420 and opens the app against it. `tauri build`
 runs `pnpm build` first and embeds `dist/` in the executable. A plain `cargo build` or `cargo test` of
@@ -60,7 +61,10 @@ from `src/bridge/mock.ts`, so the layout can be worked on without Claude Code; `
 or `=tauri` forces either.
 
 The app refreshes from the Claude home's files every 2 s (`C4_REFRESH_MS`, floor 250) and runs the
-session list command on every eighth pass. Hook and status line telemetry arrive in Milestone 2.
+session list command on every eighth pass. Hook and status line payloads arrive through the shim on
+the C4 home's endpoint (`C4_HOME`, else `~/.c4`) while the window is open; `c4 install` wires the
+shim in. The desktop crate's tests send lines through the shim's own delivery code against a scratch
+C4 home, so they bind that home's endpoint and never the real one.
 
 ### The shim as a sidecar
 

@@ -9,9 +9,10 @@ from a per-session host process.
 
 Status: Milestone 1 delivers `c4-core`, `c4-discovery`, `c4-transcript` (tailer, parser, follower,
 index and watcher), `c4-testkit`, `c4-cli` and `c4-desktop`, whose window lists sessions. Milestone 2
-has so far added `c4-shim`, `c4-ingest`, `Discovery::fold`, and `c4 install` and `c4 uninstall`. The
-other crates are named below with the milestone that brings them; solid edges in the crate graph are
-in the tree, dotted ones are planned.
+has so far added `c4-shim`, `c4-ingest`, `Discovery::fold`, `c4 install` and `c4 uninstall`, and the
+app's ingest worker, which runs the server and folds its lines. The other crates are named below with
+the milestone that brings them; solid edges in the crate graph are in the tree, dotted ones are
+planned.
 
 ## Processes
 
@@ -39,9 +40,11 @@ graph TD
     desktop --> core
     desktop --> discovery
     ingest[c4-ingest] --> core
+    desktop --> ingest
     store[c4-store, M2] -.-> core
     shim[c4-shim: no dependencies]
     ingest -. tests only .-> shim
+    desktop -. tests only .-> shim
     adapters[c4-adapters, M3] -.-> core
     host[c4-host, M3] -.-> core
     controls[c4-controls, M3] -.-> adapters
@@ -58,7 +61,7 @@ graph TD
 | `c4-transcript` | The byte-offset tailer, the tolerant record parser gated on the major `version`, the record-to-event map, the subagent and workflow directory scanner, the project index built from metadata only, `SessionFollower` (one session's main transcript and agent files, folded into observations, usage max-merged per message id) and the file watcher. The workflow graph comes in Milestone 5. | 1 (reader), 5 (graph) |
 | `c4-testkit` | `ScratchHome` (a Claude home in a temp dir, seeded from `fixtures/home`), `FakeClaude` (a real process registered with its pid and creation time, so liveness tests run on a real process table), the discovery tests A and B. | 1 |
 | `c4-cli` | `c4 sessions [--json|--watch|--files-only|--redact|--home]`, `c4 doctor [--json|--no-commands|--c4-home]`, `c4 telemetry --transcript <file> [--json]`, `c4 install [--dry-run|--home|--c4-home|--shim]` and `c4 uninstall [--dry-run]`. The last two are the one writer of a Claude home: the shim copy, the status line wrapper and the hook groups, every write of `settings.json` after a backup beside it and recorded in a manifest under the C4 home for the way back (docs/SESSION-INTEGRATION.md). `doctor` audits that install as well: the shim copy against the manifest and the sidecar, the hook groups and the wrapper as `settings.json` holds them now, the ingest endpoint and the spool. JSON output carries `schema: 1`. Exit 0, 1 (could not do the job, reason on stderr) or 2 (usage). | 1, 2 |
-| `c4-desktop` | The Tauri app: the refresh thread, two commands, one event, the Windows console attach for headless use. The window itself is `apps/desktop/src`. | 1 |
+| `c4-desktop` | The Tauri app: the refresh thread, the ingest worker (the server on a tokio runtime of its own and the drain that folds its lines), two commands, one event, the Windows console attach for headless use. The window itself is `apps/desktop/src`. | 1, 2 |
 | `c4-ingest` | The receiving end of the shim: a server on the home's ingest endpoint (a named pipe whose DACL admits the current user alone on Windows; a socket file with mode 0600 elsewhere, every peer's uid checked against the owner of the home), the parser that turns each line into an `Identity` observation plus the `Hook` or `Statusline` fact, a bounded inbox that drops its oldest item and counts the drop rather than hold up a hook, the spool replay at start and every 30 s, and a standard-library probe for `c4 doctor`. A line over 2 MiB or a connection silent for 5 s is dropped and counted; a line the parser refuses is logged by size and reason, never by content. A second server on the same home is refused. Its end-to-end test sends lines through `c4-shim`'s own delivery code. | 2 |
 | `c4-store` | SQLite schema and queries: sessions, identities, events, cursors, usage samples, agents, tasks, config transactions, audit, hosts, layouts, searchable scrollback. | 2 |
 | `c4-shim` | The sidecar: the `statusline -- <command>` and `hook` subcommands, the one-line JSON envelope, the endpoint rule (repeated from `c4-core::home` and held equal by a test), the spool and the run log. Standard library only. docs/SESSION-INTEGRATION.md has the wire format. | 2 |
@@ -81,19 +84,36 @@ refresh thread (`c4-refresh`) runs a pass every `C4_REFRESH_MS` milliseconds (20
 250): the registry files, the daemon files, the process table and the transcript check. Every eighth
 pass also runs the session list command, because it starts a Node process and, on macOS and Linux, can
 revive Claude Code's background supervisor as a side effect. After each pass the thread emits the
-`sessions` event with the document below. The mutex serializes a pass with a `list_sessions` call, so
-the table is never read half-updated.
+`sessions` event with the document below. The mutex serializes a pass with a `list_sessions` call and
+with a fold of ingested lines, so the table is never read half-updated.
+
+The ingest worker (`ingest.rs`) starts after the Tauri app is built and before its event loop runs.
+It owns a tokio runtime of two threads named `c4-ingest`, on which the `c4-ingest` server listens on
+the C4 home's endpoint, replays the spool and serves the shim's connections. A drain task takes the
+parsed lines from the inbox as they arrive and hands each batch to `AppState::fold` on a blocking
+thread of that runtime, which takes the same mutex as a pass, folds the observations in `recv_at`
+order (`Discovery::fold`) and emits the `sessions` event with the document; batches are at least
+40 ms apart, so a burst of hooks is one event. A line whose `agent_id` is set came from inside a
+subagent and folds its identity only, because a subagent's tool calls must not move the session.
+When another C4 holds the endpoint, or the server cannot start, the worker records the state and the
+error for the document and tries again every 15 s. On `RunEvent::Exit` the app stops the worker,
+which shuts the server down (the socket file is removed on Unix) and waits up to 2 s for it; a stop
+that takes longer is logged and not waited on. The runtime lives only while the worker does; the
+refresh thread and the commands never touch tokio. A worker that cannot get a runtime is reported on
+stderr and the window runs without hooks.
 
 | Call | Direction | Payload |
 |---|---|---|
 | `list_sessions` | window to core (invoke) | runs one files-only pass and returns the document |
-| `about` | window to core (invoke) | C4 version, the Claude home and what chose it, refresh period, agents cadence, operating system |
-| `sessions` | core to window (event) | the document, after every pass |
+| `about` | window to core (invoke) | C4 version, the Claude home and what chose it, the C4 home and what chose it, the ingest endpoint, refresh period, agents cadence, operating system |
+| `sessions` | core to window (event) | the document, after every pass and after every batch of ingested lines |
 
 The document is what `c4 sessions --json` prints (`schema`, `at`, `home`, `sessions[]`, `report`)
 plus `tick` (the pass counter), `agents` (when the session list command last ran, how many entries it
-returned or why it failed) and `transitions[]` (session, from, to, the state text and the evidence of
-every state change in the pass). `apps/desktop/src/bridge/types.ts` mirrors every shape.
+returned or why it failed), `transitions[]` (session, from, to, the state text and the evidence of
+every state change in the pass or the batch) and `ingest` (the server's state and endpoint, its
+counts of connections, lines, replayed lines, drops, folded observations and subagent lines, and when
+the last line arrived). `apps/desktop/src/bridge/types.ts` mirrors every shape.
 
 The window is TypeScript without a framework. Four signals (`snapshot`, `about`, `selected`, a
 one-second `clock`) feed one render per animation frame; nothing renders while the window is hidden.
@@ -127,8 +147,9 @@ sequenceDiagram
 
 Hook and status line payloads join through the shim and the ingest server. The server, the parser, the
 inbox and the fold into the table (`Discovery::fold`, a stable sort by `recv_at` and then the
-reducer) are in the tree; the app starts the server and drains the inbox in a later Milestone 2
-commit:
+reducer) are in the tree and the app runs them. The store and the channel patches in the sequence
+below are still to come: today the whole document goes to the window as the `sessions` event after
+each batch, at most one every 40 ms:
 
 ```mermaid
 sequenceDiagram
@@ -155,9 +176,11 @@ screen snapshot plus the tail of the ring buffer.
 
 The CLI is synchronous on the main thread: a command is one pass or one file read, then exit. The app
 has the Tauri event loop on the main thread, the `c4-refresh` thread, and whatever threads the
-webview brings. `c4-ingest` brings tokio: an accept task, one task per connection, a replay timer, and
-the spool read on a blocking thread; the app starts them in a later Milestone 2 commit. The process
-probe keeps its own system snapshot and refreshes only the pids it is asked about.
+webview brings. `c4-ingest` brings tokio: the app's ingest worker owns a runtime of two threads named
+`c4-ingest` that run the accept task, one task per connection, the replay timer, the drain, and on
+blocking threads the spool reads and the folds into the table. Nothing else in the app is
+asynchronous. The process probe keeps its own system snapshot and refreshes only the pids it is
+asked about.
 
 A file discovery cannot use becomes a `Problem` (path and reason) in the pass report, never an error
 that stops the pass, because one broken file must not hide the sessions around it. The window shows
@@ -228,7 +251,7 @@ persisted yet; every start of the window begins with an empty table and a fresh 
 | Stage | Budget | Measured |
 |---|---|---|
 | Cold start to the first session list | 2 s | 37 ms for the window's first pass over a real home with four sessions; 611 ms for `c4 sessions` with the session list command (Windows, see docs/VERIFICATION.md) |
-| Hook event to UI | 150 ms p95 | Milestone 2 |
+| Hook event to UI | 150 ms p95 | the path is in the tree; not measured yet (`c4 perf`, Milestone 7) |
 | Transcript append to graph update | 500 ms | Milestone 5 |
 | Pty frames | 8 to 16 ms, two in flight | Milestone 3 |
 | Memory | 8 MiB of core per session plus xterm scrollback; under 400 MiB RSS at 30 sessions | Milestone 7 |

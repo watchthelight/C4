@@ -4,11 +4,14 @@
 
 How C4 plugs into an existing Claude Code setup, what it changes, and how to take it out again.
 
-Status: the shim (`crates/c4-shim`), the ingest server (`crates/c4-ingest`) and `c4 install` and
-`c4 uninstall` (`crates/c4-cli/src/install.rs`) exist; the app does not start the server yet, which
-the next Milestone 2 commit adds. Until then a shim installed with `c4 install` spools every payload
-under `~/.c4/spool/` for the app to replay later, and C4 runs in the coarse mode described in
-docs/HOW-IT-WORKS.md: registry, transcripts and the status line's cache files, no hooks.
+Status: the shim (`crates/c4-shim`), the ingest server (`crates/c4-ingest`), `c4 install` and
+`c4 uninstall` (`crates/c4-cli/src/install.rs`) and the app's end of the line
+(`apps/desktop/src-tauri/src/ingest.rs`) exist. The window starts the server when it opens, replays
+what the shim spooled while no C4 ran, and folds every hook event and status line payload into the
+session list as it arrives. A session the shim has not reported yet runs in the coarse mode described
+in docs/HOW-IT-WORKS.md: registry, transcripts and the status line's cache files, no hooks. The
+virtual-list sidebar, the hover card, saved preferences and notifications come with later Milestone 2
+commits.
 
 ## What `c4 install` changes
 
@@ -177,6 +180,20 @@ once: a C4 that dies between reading a file and removing it reads the file again
 and the same line reaches the inbox twice. A file that cannot be renamed is left for the next pass.
 A shim that opened a spool file just before the rename and finished its one write after the server's
 last size check loses that line; the window is a few microseconds wide.
+
+The app starts the server when its window opens, on a runtime of its own with two threads named
+`c4-ingest`, so a slow refresh pass (the session list command can take seconds) never holds up a
+connection. When another C4 already holds the home's endpoint the window's status strip says so
+("ingest: another C4 holds this home's endpoint") and the app tries again every 15 s, which is how a
+second window takes the endpoint over once the first closes; a server that cannot start for another
+reason is reported with its error and retried at the same pace. Lines are taken from the inbox as
+they arrive and folded on a blocking thread under the same lock as a refresh pass, at most one batch
+every 40 ms, and each batch goes to the window as the same `sessions` event a pass emits, so a burst
+of hooks is one update. A line from inside a subagent (its `agent_id` set) folds its identity only:
+the subagent's own tool calls never move the session, which stays where the parent's events put it.
+On exit the app stops the server, which removes its socket file on Unix. The status strip shows the
+server's state and counts (lines taken in, lines replayed from the spool, drops, the age of the last
+line) and `c4 doctor` reports whether something listens on the endpoint.
 
 Not covered by a test on any platform: that a connection from another user is refused. It needs a
 second account on the machine.

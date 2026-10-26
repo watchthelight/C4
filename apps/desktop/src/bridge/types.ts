@@ -178,7 +178,41 @@ export interface TransitionOut {
   evidence: Evidence;
 }
 
-/** What `c4 sessions --json` prints; the app adds the last three fields. */
+export type IngestState = "starting" | "listening" | "taken" | "error" | "stopped";
+
+/** The ingest server and its drain loop, as the app reports them after every pass or batch. */
+export interface IngestReport {
+  home: string;
+  home_source: string;
+  endpoint: string;
+  state: IngestState;
+  /** The error text when the state is taken or error. */
+  detail: string | null;
+  since: number;
+  connections: number;
+  refused: number;
+  /** Lines parsed from the socket. */
+  lines: number;
+  bad_lines: number;
+  oversize: number;
+  idle_closed: number;
+  replayed_files: number;
+  /** Lines parsed from the spool. */
+  replayed_lines: number;
+  replay_bad_lines: number;
+  /** Lines the inbox took in, from the socket and the spool together. */
+  received: number;
+  /** Lines the inbox dropped for being full. */
+  dropped: number;
+  queued: number;
+  /** Observations folded into the table. */
+  folded: number;
+  /** Lines from inside a subagent, whose event was not folded. */
+  subagent_lines: number;
+  last_line_at: number | null;
+}
+
+/** What `c4 sessions --json` prints; the app adds the last four fields. */
 export interface Snapshot {
   schema: number;
   at: number;
@@ -188,12 +222,18 @@ export interface Snapshot {
   tick?: number;
   agents?: AgentsRun | null;
   transitions?: TransitionOut[];
+  ingest?: IngestReport;
 }
 
 export interface About {
   version: string;
   home: string;
   home_source: string;
+  /** The C4 home the ingest server serves and what chose it. */
+  c4_home: string;
+  c4_home_source: string;
+  /** The pipe name or socket path the shim writes to. */
+  endpoint: string;
   refresh_ms: number;
   agents_every: number;
   os: string;

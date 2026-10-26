@@ -37,7 +37,10 @@ other file under the Claude home. `c4 install` never runs the shim it copies; `c
 copy with `--version` and `endpoint` alone, which `--no-commands` skips, and opens `settings.json`
 to count C4's own hook groups and check the status line wrapper, reporting nothing else from it. The
 hooks C4 installs print nothing and return no decision, so none of them can approve, block or alter
-what a session does.
+what a session does. The app itself writes under `~/.c4/` alone: on Unix it creates the directory
+(mode 0700) and the socket file when the ingest server starts and removes the socket file when it
+stops, and on every platform it removes each spool file once it has replayed it. It never writes
+under the Claude home.
 
 ## Redaction
 
